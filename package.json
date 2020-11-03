@@ -1,0 +1,22 @@
+{
+  "name": "Miris",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "lint": "npm run eslint && npm run solium",
+    "eslint": "eslint test/",
+    "solium": "solium --dir contracts",
+    "coverage": "truffle run coverage",
+    "build": "truffle build",
+    "test": "truffle test",
+    "truffle": "truffle",
+    "flatten": "truffle-flattener $PROJECT_NAME.sol >> contracts/Flattened.sol"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
