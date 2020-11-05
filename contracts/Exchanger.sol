@@ -1,11 +1,9 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
-contract Exchanger is Ownable {
+contract Exchanger {
     using SafeMath for uint256;
 
     address private _tUSDT;
@@ -28,11 +26,7 @@ contract Exchanger is Ownable {
         _tEURxb = tEURxb;
     }
 
-    function exchange(address from, uint256 amount)
-        public
-        onlyOwner
-        returns (bool)
-    {
+    function exchange(address from, uint256 amount) public returns (bool) {
         require(
             from == _tUSDT || from == _tUSDC || from == _tBUSD || from == _tDAI,
             "Token not found"
@@ -45,5 +39,6 @@ contract Exchanger is Ownable {
 
         IERC20(from).transferFrom(msg.sender, address(this), amount);
         IERC20(_tEURxb).transfer(msg.sender, eur);
+        return true;
     }
 }

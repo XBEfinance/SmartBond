@@ -26,7 +26,6 @@ contract('DepositContract', (accounts) => {
     exchanger = await Exchanger.new(
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
-    await exchanger.transferOwnership(router);
     await EURxb.transfer(exchanger.address, web3.utils.toWei('100', 'ether'));
   });
 
