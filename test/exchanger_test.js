@@ -3,7 +3,7 @@ const { assert } = require('chai');
 const Exchanger = artifacts.require('Exchanger');
 const MockToken = artifacts.require('MockToken');
 
-contract('DepositContract', (accounts) => {
+contract('Exchanger', (accounts) => {
   const router = accounts[1];
 
   let USDT;
