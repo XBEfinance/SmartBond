@@ -54,7 +54,7 @@ contract Router is Ownable {
         IERC20(_tEURxb).transfer(msg.sender, amountEUR);
     }
 
-    function addLiquidity(address from, uint256 amount) public returns (bool) {
+    function addLiquidity(address from, uint256 amount) public {
         uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
         require(allowance >= amount, "No coins available"); // TODO: overcheck
 
@@ -76,13 +76,9 @@ contract Router is Ownable {
         uint256 ratio = amountEUR.div(balance);
         uint256 amountBPT = totalSupply.mul(ratio);
 
-        // TODO calculate exchangeTokens
-
         uint256[] memory data = new uint256[](2);
         data[0] = exchangeTokens;
         data[1] = amountEUR;
         balancer.joinPool(amountBPT, data);
-
-        return true;
     }
 }
