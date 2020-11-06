@@ -1,6 +1,7 @@
 pragma solidity >= 0.6.0 < 0.7.0;
 
 import "./ERC721.sol";
+import "./Interfaces.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {TokenAccessRoles} from "./TokenAccessRoles.sol";
@@ -18,12 +19,11 @@ contract SecurityAssetToken is ERC721, AccessControl {
         mapping(address => bool) approvals;
     }
 
-    mapping(uint256 => uint256) _values; // tokens values
-    mapping(uint256 => uint256) _maturities; // tokens maturities
+    mapping(uint256 => uint256) private _values; // tokens values
+    mapping(address => bool) private _allowList; // list of accounts, which are allowed to get transfers
+
     uint256 private _totalValue; // value of all tokens summarized
-    mapping(address => bool) _allowList; // list of accounts, which are allowed to get transfers
-    mapping(uint256 => address) _approved; // tokenId => `to` address
-    mapping(address => _ApprovalForAll) _approvalsForAll; // owner => (`to address`, `is approved`)
+    address private bondAddress;
 
     constructor(string memory baseURI, address miris, address bondToken) public ERC721("SecurityAssetToken", "SAT") {
         _setBaseURI(baseURI);
@@ -31,6 +31,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         _setupRole(TokenAccessRoles.minter(), miris);
         _setupRole(TokenAccessRoles.burner(), miris);
         _setupRole(TokenAccessRoles.transferer(), miris);
+        bondAddress = bondToken;
     }
 
     //IERC721 EVENTS:
@@ -57,37 +58,50 @@ contract SecurityAssetToken is ERC721, AccessControl {
     // ownerOf(tokenId) // use default implementation
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
-        safeTransferFrom(from, to, tokenId);
+        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+            _msgSender().toString().append(" is not allowed to call transfer"));
+
+        // check if account is in allow list
+        require(_allowList[to], to.toString().append(" is not allowed to get tokens"));
+
+        require(_isApprovedOrOwner(from, tokenId), "ERC721: transfer caller is not owner nor approved");
+
+        _transfer(from, to, tokenId);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
-        address sender = msg.sender;
-        require(hasRole(TokenAccessRoles.transferer(), sender),
-            sender.toString().append(" is not allowed to call transfer"));
-        super.safeTransferFrom(from, to, tokenId);
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public override {
+        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+            _msgSender().toString().append(" is not allowed to call transfer"));
+
+        // check if account is in allow list
+        require(_allowList[to], to.toString().append(" is not allowed to get tokens"));
+
+        require(_isApprovedOrOwner(from, tokenId), "ERC721: transfer caller is not owner nor approved");
+
+        super.safeTransferFrom(from, to, tokenId, _data);
     }
 
-    function approve(address to, uint256 tokenId) public override {
-        _approved[tokenId] = to;
-    }
+//    function approve(address to, uint256 tokenId) public override {
+//        _approved[tokenId] = to;
+//    }
 
     /// @return returns address(0) if not approved
-    function getApproved(uint256 tokenId) public view override returns (address) {
-        return _approved[tokenId];
-    }
+//    function getApproved(uint256 tokenId) public view override returns (address) {
+//        return _approved[tokenId];
+//    }
 
-    function setApprovalForAll(address operator, bool approved) public override {
-        // TODO: discuss and implement
-    }
-
-    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
-        _ApprovalForAll storage approval = _approvalsForAll[owner];
-        if (!approval.isDefined) {
-            return false;
-        }
-
-        return approval.approvals[owner];
-    }
+//    function setApprovalForAll(address operator, bool approved) public override {
+//        // TODO: discuss and implement
+//    }
+//
+//    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
+//        _ApprovalForAll storage approval = _approvalsForAll[owner];
+//        if (!approval.isDefined) {
+//            return false;
+//        }
+//
+//        return approval.approvals[owner];
+//    }
 
     /// Only miris is allowed to mint tokens
     function mint(address to, uint256 tokenId, uint256 value, uint256 maturity) external {
@@ -96,6 +110,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         require(hasRole(TokenAccessRoles.minter(), sender),
             sender.toString().append(" is not allowed to mint SAT tokens"));
 
+        require(value > 0, string("token ").append(tokenId.toString()).append(" doesn't exist"));
         // check if account is in allow list
         require(_allowList[to], to.toString().append(" is not allowed to get tokens"));
 
@@ -107,7 +122,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         // TODO: reconcile who should create BOND NFT token
         // TODO: check if Transfer event is emitted automatically
         // TODO: create BOND NFT
-        // IBondNFT(tokenId, ...).mint(to, value.mul(3).div(4), maturity);
+         IBondNFT(bondAddress).mint(to, tokenId, value.mul(3).div(4), maturity);
     }
 
     /// Only miris is allowed to burn tokens
@@ -117,17 +132,18 @@ contract SecurityAssetToken is ERC721, AccessControl {
             sender.toString().append(" is not allowed to burn SAT tokens").append(tokenId.toString())
         );
 
-        // get token properties
-        uint256 value = _values[tokenId];
-        // cannot burn non-existent token
-        require(value > 0, string("token ").append(tokenId.toString()).append(" doesn't exist"));
+        ownerOf(tokenId);
+//        // get token properties
+//        uint256 value = _values[tokenId];
+//        // cannot burn non-existent token
+//        require(value > 0, string("token ").append(tokenId.toString()).append(" doesn't exist"));
 
         // remove from _values and _maturities
         delete _values[tokenId];
-        delete _maturities[tokenId];
+//        delete _maturities[tokenId];
 
         // decrease total totalSupply
-        _totalValue = _totalValue.sub(value);
+        _totalValue = _totalValue.sub(_values[tokenId]);
 
         // TODO: check whether BOND token was burned
         _burn(tokenId);
