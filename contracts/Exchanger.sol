@@ -33,12 +33,12 @@ contract Exchanger {
         );
 
         uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
-        require(allowance >= amount, "No coins available");
+        require(allowance >= amount, "No coins available"); // TODO: overcheck
 
         uint256 eur = amount.mul(23).div(27);
 
-        IERC20(from).transferFrom(msg.sender, address(this), amount);
+        IERC20(from).transferFrom(msg.sender, address(this), amount); // TODO: _tUSDT may not contains IERC20.transferFrom
         IERC20(_tEURxb).transfer(msg.sender, eur);
-        return true;
+        return true;  // TODO: remove unnecessary value
     }
 }

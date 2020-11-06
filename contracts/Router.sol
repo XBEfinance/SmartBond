@@ -33,7 +33,7 @@ contract Router is Ownable {
 
     function addLiquidity(address from, uint256 amount) public returns (bool) {
         uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
-        require(allowance >= amount, "No coins available");
+        require(allowance >= amount, "No coins available"); // TODO: overcheck
 
         IERC20(from).transferFrom(msg.sender, address(this), amount);
 
@@ -41,14 +41,14 @@ contract Router is Ownable {
         uint256 amountEUR = exchangeTokens.mul(23).div(27);
 
         IERC20(from).approve(_exchanger, exchangeTokens);
-        (bool success, bytes memory _data) = _exchanger.call(
+        (bool success, bytes memory _data) = _exchanger.call( // TODO: create IExchanger interface
             abi.encodeWithSignature(
                 "exchange(address,uint256)",
                 from,
                 exchangeTokens
             )
         );
-        require(success, "Exchange failed");
+        require(success, "Exchange failed"); // TODO: overcheck
 
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
