@@ -6,15 +6,15 @@ library StringUtil {
         return toString(abi.encodePacked(account));
     }
 
-//    function toString(uint256 value) public pure returns(string memory) {
-//        return toString(abi.encodePacked(value));
-//    }
-//
     function toString(bytes32 value) public pure returns(string memory) {
         return toString(abi.encodePacked(value));
     }
 
+    /**
+     * @dev temporary solution for address formatting
+    */
     function toString(bytes memory data) public pure returns(string memory) {
+        // TODO: simplify
         bytes memory alphabet = "0123456789abcdef";
 
         bytes memory str = new bytes(2 + data.length * 2);
