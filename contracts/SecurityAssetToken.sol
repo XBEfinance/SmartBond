@@ -1,11 +1,12 @@
 pragma solidity >= 0.6.0 < 0.7.0;
 
 import "./ERC721.sol";
+import "./IBondNFToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {TokenAccessRoles} from "./TokenAccessRoles.sol";
-import {StringUtil} from "./StringUtil.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import{TokenAccessRoles} from "./TokenAccessRoles.sol";
+import{StringUtil} from "./StringUtil.sol";
+import{Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SecurityAssetToken is ERC721, AccessControl {
     using SafeMath for uint256;
@@ -13,30 +14,27 @@ contract SecurityAssetToken is ERC721, AccessControl {
     using StringUtil for address;
     using StringUtil for string;
 
-    struct _ApprovalForAll {
-        bool isDefined;
-        mapping(address => bool) approvals;
-    }
-
     mapping(uint256 => uint256) _values; // tokens values
-    mapping(uint256 => uint256) _maturities; // tokens maturities
-    uint256 private _totalValue; // value of all tokens summarized
-    mapping(address => bool) _allowList; // list of accounts, which are allowed to get transfers
-    mapping(uint256 => address) _approved; // tokenId => `to` address
-    mapping(address => _ApprovalForAll) _approvalsForAll; // owner => (`to address`, `is approved`)
+    mapping(address => bool)
+        _allowList; // list of accounts, which are allowed to get transfers
 
-    constructor(string memory baseURI, address miris, address bondToken) public ERC721("SecurityAssetToken", "SAT") {
-        _setBaseURI(baseURI);
-        // set roles
-        _setupRole(TokenAccessRoles.minter(), miris);
-        _setupRole(TokenAccessRoles.burner(), miris);
-        _setupRole(TokenAccessRoles.transferer(), miris);
+    uint256 private _totalValue; // value of all tokens summarized
+    address _bondToken;          // bond token contract address
+
+    constructor(string memory baseURI, address miris,
+                address bondToken) public ERC721("SecurityAssetToken", "SAT") {
+      _setBaseURI(baseURI);
+      _bondToken = bondToken;
+
+      // set roles
+      _setupRole(TokenAccessRoles.minter(), miris);
+      _setupRole(TokenAccessRoles.burner(), miris);
+      _setupRole(TokenAccessRoles.transferer(), miris);
     }
 
-    //IERC721 EVENTS:
+    // IERC721 EVENTS:
 
-    /* event Transfer(from, to, tokenId)
-     * args: owner, approved, tokenId
+    /* event Transfer(address from, address to, uint256  tokenId)
      * is emitted
      * when miris mints new token
      * when miris burns token
@@ -44,109 +42,76 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * when BOND NFT token transfers SAT token from one account to another
      */
 
-    /* event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-     * args: owner, operator, approved
-     * is emitted when current owner specifies whom is he willing to transfer token to
+    /* event Approval(address indexed owner, address indexed approved, uint256
+     * indexed tokenId); is emitted when current owner specifies whom is he
+     * willing to transfer token to
      */
 
-    /* event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-     * is emitted when current owner specifies whom is he willing to transfer all his tokens to
+    /* event ApprovalForAll(address indexed owner, address indexed operator,
+     * bool approved); is emitted when current owner specifies whom is he
+     * willing to transfer all his tokens to
      */
 
-    // balanceOf(owner) // use default implementation
-    // ownerOf(tokenId) // use default implementation
-
-    function transferFrom(address from, address to, uint256 tokenId) public override {
-        safeTransferFrom(from, to, tokenId);
+    function transferFrom(address from, address to,
+                          uint256 tokenId) public override {
+      safeTransferFrom(from, to, tokenId);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
-        address sender = msg.sender;
-        require(hasRole(TokenAccessRoles.transferer(), sender),
-            sender.toString().append(" is not allowed to call transfer"));
-        super.safeTransferFrom(from, to, tokenId);
-    }
+    function safeTransferFrom(address from, address to,
+                              uint256 tokenId) public override {
+      address sender = _msgSender();
+      require(
+          hasRole(TokenAccessRoles.transferer(), sender),
+          sender.toString().append(" is not allowed to call transfer"));
 
-    function approve(address to, uint256 tokenId) public override {
-        _approved[tokenId] = to;
-    }
-
-    /// @return returns address(0) if not approved
-    function getApproved(uint256 tokenId) public view override returns (address) {
-        return _approved[tokenId];
-    }
-
-    function setApprovalForAll(address operator, bool approved) public override {
-        // TODO: discuss and implement
-    }
-
-    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
-        _ApprovalForAll storage approval = _approvalsForAll[owner];
-        if (!approval.isDefined) {
-            return false;
-        }
-
-        return approval.approvals[owner];
+      super.safeTransferFrom(from, to, tokenId, "");
     }
 
     /// Only miris is allowed to mint tokens
-    function mint(address to, uint256 tokenId, uint256 value, uint256 maturity) external {
-        // check role
-        address sender = msg.sender;
-        require(hasRole(TokenAccessRoles.minter(), sender),
-            sender.toString().append(" is not allowed to mint SAT tokens"));
+    function mint(address to, uint256 tokenId, uint256 value, uint256 maturity)
+        external {
+      // check role
+      address sender = _msgSender();
+      require(hasRole(TokenAccessRoles.minter(), sender),
+              sender.toString().append(" is not allowed to mint SAT tokens"));
 
-        // check if account is in allow list
-        require(_allowList[to], to.toString().append(" is not allowed to get tokens"));
+      // check if account is in allow list
+      require(_allowList[to],
+              to.toString().append(" is not allowed to get tokens"));
 
-        _values[tokenId] = value;
-        _totalValue = _totalValue.add(value);
+      _values[tokenId] = value;
+      _totalValue = _totalValue.add(value);
 
-        _mint(to, tokenId);
+      _mint(to, tokenId);
 
-        // TODO: reconcile who should create BOND NFT token
-        // TODO: check if Transfer event is emitted automatically
-        // TODO: create BOND NFT
-        // IBondNFT(tokenId, ...).mint(to, value.mul(3).div(4), maturity);
+       IBondNFT(_bondToken).mint(tokenId, to, value.mul(3).div(4), maturity);
     }
 
     /// Only miris is allowed to burn tokens
-    function burn(uint256 tokenId) public {
-        address sender = msg.sender;
-        require(hasRole(TokenAccessRoles.burner(), sender),
-            sender.toString().append(" is not allowed to burn SAT tokens").append(tokenId.toString())
-        );
+    function burn(uint256 tokenId) external {
+      address sender = msg.sender;
+      require(hasRole(TokenAccessRoles.burner(), sender),
+              sender.toString()
+                  .append(" is not allowed to burn SAT tokens")
+                  .append(tokenId.toString()));
 
-        // get token properties
-        uint256 value = _values[tokenId];
-        // cannot burn non-existent token
-        require(value > 0, string("token ").append(tokenId.toString()).append(" doesn't exist"));
+      // get token properties
+      uint256 value = _values[tokenId];
+      // cannot burn non-existent token
+      require(
+          value > 0,
+          string("token ").append(tokenId.toString()).append(" doesn't exist"));
 
-        // remove from _values and _maturities
-        delete _values[tokenId];
-        delete _maturities[tokenId];
+      // remove from _values and _maturities
+      delete _values[tokenId];
 
-        // decrease total totalSupply
-        _totalValue = _totalValue.sub(value);
+      // decrease total totalSupply
+      _totalValue = _totalValue.sub(value);
 
-        // TODO: check whether BOND token was burned
-        _burn(tokenId);
+      // TODO: check whether BOND token was burned
+      _burn(tokenId);
     }
-
-    // IERC721Metadata FUNCTIONS:
-    // name() // use default implementation
-    // symbol() // use default implementation
-    // tokenURI() // use default implementation
-
-    // IERC721Enumerable FUNCTIONS:
-    // totalSupply() // use default implementation
 
     /// @return total value of all existing tokens
-    function totalValue() public view returns (uint256) {
-        return _totalValue;
-    }
-
-    // tokenOfOwnerByIndex(owner, index) // use default implementation
-    // tokenByIndex(index) // use default implementation
-
+    function totalValue() public view returns(uint256) { return _totalValue; }
 }
