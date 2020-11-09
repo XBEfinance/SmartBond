@@ -13,10 +13,15 @@ interface PoolInterface {
     function getBalance(address token) external view returns (uint256);
 }
 
+interface StakingInterface {
+    function addStaker(address staker, uint256 amount) external;
+}
+
 contract Router is Ownable {
     using SafeMath for uint256;
 
     address private _balancer;
+    address private _stakingManager;
     address private _tUSDT;
     address private _tUSDC;
     address private _tBUSD;
@@ -25,6 +30,7 @@ contract Router is Ownable {
 
     constructor(
         address balancer,
+        address stakingManager,
         address tUSDT,
         address tUSDC,
         address tBUSD,
@@ -32,6 +38,7 @@ contract Router is Ownable {
         address tEURxb
     ) public {
         _balancer = balancer;
+        _stakingManager = stakingManager;
         _tUSDT = tUSDT;
         _tUSDC = tUSDC;
         _tBUSD = tBUSD;
@@ -57,7 +64,6 @@ contract Router is Ownable {
     function addLiquidity(address from, uint256 amount) public {
         uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
         require(allowance >= amount, "No coins available"); // TODO: overcheck
-
         IERC20(from).transferFrom(msg.sender, address(this), amount);
 
         uint256 exchangeTokens = amount.div(2);
@@ -80,5 +86,9 @@ contract Router is Ownable {
         data[0] = exchangeTokens;
         data[1] = amountEUR;
         balancer.joinPool(amountBPT, data);
+
+        StakingInterface stakingManager = StakingInterface(_stakingManager);
+        IERC20(_balancer).approve(_stakingManager, amountBPT);
+        stakingManager.addStaker(msg.sender, amountBPT);
     }
 }

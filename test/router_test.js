@@ -4,7 +4,7 @@ const Router = artifacts.require('Router');
 // const BPool = artifacts.require('BPool');
 const MockToken = artifacts.require('MockToken');
 
-contract('Exchanger', (accounts) => {
+contract('Router', (accounts) => {
   const recipient = accounts[1];
   const balancer = accounts[2];
 
