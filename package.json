@@ -11,7 +11,8 @@
     "eslint": "eslint test/",
     "solium": "solium --dir contracts",
     "coverage": "truffle run coverage",
-    "build": "truffle compile",
+    "build": "bash ./scripts/build.sh",
+    "truffle-build": "truffle compile",
     "test": "truffle test",
     "truffle": "truffle",
     "flatten": "truffle-flattener $PROJECT_NAME.sol >> contracts/Flattened.sol"
