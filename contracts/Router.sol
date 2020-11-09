@@ -4,6 +4,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+/**
+ * @title PoolInterface
+ * @dev Pool balancer interface
+ */
 interface PoolInterface {
     function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
         external;
@@ -13,10 +17,18 @@ interface PoolInterface {
     function getBalance(address token) external view returns (uint256);
 }
 
+/**
+ * @title StakingInterface
+ * @dev Staking manager interface
+ */
 interface StakingInterface {
     function addStaker(address staker, uint256 amount) external;
 }
 
+/**
+ * @title Router
+ * @dev Liquidity management contract
+ */
 contract Router is Ownable {
     using SafeMath for uint256;
 
@@ -46,6 +58,11 @@ contract Router is Ownable {
         _tEURxb = tEURxb;
     }
 
+    /**
+     * @dev Exchange of tokens for EURxb
+     * @param from token address
+     * @param amount number of tokens
+     */
     function exchange(address from, uint256 amount) public {
         require(
             from == _tUSDT || from == _tUSDC || from == _tBUSD || from == _tDAI,
@@ -61,6 +78,11 @@ contract Router is Ownable {
         IERC20(_tEURxb).transfer(msg.sender, amountEUR);
     }
 
+    /**
+     * @dev Adding liquidity
+     * @param from token address
+     * @param amount number of tokens
+     */
     function addLiquidity(address from, uint256 amount) public {
         uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
         require(allowance >= amount, "No coins available"); // TODO: overcheck

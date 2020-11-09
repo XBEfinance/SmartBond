@@ -1,4 +1,5 @@
 const Router = artifacts.require('./Router');
+const StakingManager = artifacts.require('./StakingManager');
 const BFactory = artifacts.require('./BFactory');
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
@@ -8,10 +9,12 @@ const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
 const BPool = "0x0000000000000000000000000000000000000000";
 const EURxb = "0x0000000000000000000000000000000000000000";
+const gEuro = "0x0000000000000000000000000000000000000000";
 
 module.exports = function (deployer) {
   deployer.then(async () => {
     await deployer.deploy(BFactory);
-    await deployer.deploy(Router, BPool, USDT, USDC, BUSD, DAI, EURxb);
+    await deployer.deploy(StakingManager, BPool, gEuro);
+    await deployer.deploy(Router, BPool, StakingManager.address, USDT, USDC, BUSD, DAI, EURxb);
   });
 };

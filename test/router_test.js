@@ -7,7 +7,8 @@ const MockToken = artifacts.require('MockToken');
 
 contract('Router', (accounts) => {
   const recipient = accounts[1];
-  const balancerAddr = accounts[2];
+  const balancerMock = accounts[2];
+  const stakingMock = accounts[3];
 
   let USDT;
   let USDC;
@@ -38,7 +39,8 @@ contract('Router', (accounts) => {
     // await balancer.finalize();
 
     router = await Router.new(
-      balancerAddr, USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
+      balancerMock, stakingMock,
+      USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
     await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
   });
@@ -49,7 +51,8 @@ contract('Router', (accounts) => {
     const balancer = await BPool.at(balancerAddress); // get deployed balancer contract
     await EURxb.approve(balancer.address, web3.utils.toWei('100', 'ether'));
     await USDT.approve(balancer.address, web3.utils.toWei('100', 'ether'));
-    // await balancer.bind(EURxb.address, web3.utils.toWei('100', 'ether'), 50); // TODO: Fix that: revert ERR_MIN_WEIGHT -- Reason given: ERR_MIN_WEIGHT
+    // await balancer.bind(EURxb.address, web3.utils.toWei('100', 'ether'), 50);
+    // TODO: Fix that: revert ERR_MIN_WEIGHT -- Reason given: ERR_MIN_WEIGHT
     // await balancer.bind(USDT.address, web3.utils.toWei('100', 'ether'), 50);
     // await balancer.setSwapFee(web3.utils.toWei('1', 'ether'));
     // await balancer.finalize();

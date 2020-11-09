@@ -4,6 +4,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+/**
+ * @title StakingManager
+ * @dev Staking manager contract
+ */
 contract StakingManager is Ownable {
     using SafeMath for uint256;
 
@@ -36,6 +40,9 @@ contract StakingManager is Ownable {
         _tGEuro = tGEuro;
     }
 
+    /**
+     * @dev Unfreeze BPT tokens
+     */
     function unfreezeTokens() public onlyOwner {
         require(_createTime + 7 days > now, "Time is not over");
         _isFrozen = false;
@@ -58,6 +65,11 @@ contract StakingManager is Ownable {
         }
     }
 
+    /**
+     * @dev Add staker
+     * @param staker user address
+     * @param amount number of BPT tokens
+     */
     function addStaker(address staker, uint256 amount) public onlyOwner {
         IERC20(_tBPT).transferFrom(msg.sender, address(this), amount);
         _stakers.push(Staker(msg.sender, now, amount));
@@ -70,6 +82,9 @@ contract StakingManager is Ownable {
         }
     }
 
+    /**
+     * @dev Pick up BPT
+     */
     function claimBPT() public {
         require(!_isFrozen, "Tokens frozen");
         uint256 amountBPT = _stakesBPT[msg.sender];
