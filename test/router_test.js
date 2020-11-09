@@ -1,12 +1,13 @@
 const { assert } = require('chai');
 
 const Router = artifacts.require('Router');
-// const BPool = artifacts.require('BPool');
+const BPool = artifacts.require('BPool');
+const BFactory = artifacts.require('BFactory');
 const MockToken = artifacts.require('MockToken');
 
 contract('Exchanger', (accounts) => {
   const recipient = accounts[1];
-  const balancer = accounts[2];
+  const balancerAddr = accounts[2];
 
   let USDT;
   let USDC;
@@ -24,6 +25,7 @@ contract('Exchanger', (accounts) => {
     DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('400', 'ether'));
 
     await USDT.transfer(recipient, web3.utils.toWei('100', 'ether'));
+    this.bFactory = await BFactory.deployed();
 
     EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('400', 'ether'));
 
@@ -36,9 +38,21 @@ contract('Exchanger', (accounts) => {
     // await balancer.finalize();
 
     router = await Router.new(
-      balancer, USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
+      balancerAddr, USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
     await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
+  });
+
+  it('should create new balance pool', async () => {
+    await this.bFactory.newBPool(); // deploy new BPool contract
+    const balancerAddress = await this.bFactory.getLastBPool(); // get deployed balancer address
+    const balancer = await BPool.at(balancerAddress); // get deployed balancer contract
+    await EURxb.approve(balancer.address, web3.utils.toWei('100', 'ether'));
+    await USDT.approve(balancer.address, web3.utils.toWei('100', 'ether'));
+    // await balancer.bind(EURxb.address, web3.utils.toWei('100', 'ether'), 50); // TODO: Fix that: revert ERR_MIN_WEIGHT -- Reason given: ERR_MIN_WEIGHT
+    // await balancer.bind(USDT.address, web3.utils.toWei('100', 'ether'), 50);
+    // await balancer.setSwapFee(web3.utils.toWei('1', 'ether'));
+    // await balancer.finalize();
   });
 
   it('should return correct balance EURxb values', async () => {

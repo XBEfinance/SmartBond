@@ -13,8 +13,8 @@
     "coverage": "truffle run coverage",
     "build": "bash ./scripts/build.sh",
     "truffle-build": "truffle compile",
-    "test": "truffle test",
-    "truffle": "truffle",
+    "test": "bash ./scripts/test.sh",
+    "truffle-test": "truffle test",
     "flatten": "truffle-flattener $PROJECT_NAME.sol >> contracts/Flattened.sol"
   },
   "keywords": [],

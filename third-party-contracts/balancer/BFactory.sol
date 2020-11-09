@@ -44,13 +44,22 @@ contract BFactory is BBronze {
         _isBPool[address(bpool)] = true;
         emit LOG_NEW_POOL(msg.sender, address(bpool));
         bpool.setController(msg.sender);
+        _lastBPool = address(bpool);
         return bpool;
     }
 
     address private _blabs;
+    address private _lastBPool;
 
     constructor() public {
         _blabs = msg.sender;
+    }
+
+    function getLastBPool()
+        external view
+        returns (address)
+    {
+        return _lastBPool;
     }
 
     function getBLabs()
