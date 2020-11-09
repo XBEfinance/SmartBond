@@ -14,12 +14,12 @@ contract SecurityAssetToken is ERC721, AccessControl {
     using StringUtil for address;
     using StringUtil for string;
 
-    mapping(uint256 => uint256) _values; // tokens values
-    mapping(address => bool)
-        _allowList; // list of accounts, which are allowed to get transfers
+    mapping(uint256 => uint256) private _values; // tokens values
+    mapping(address => bool) private _allowList; // list of accounts, which are
+                                                  // allowed to get transfers
 
     uint256 private _totalValue; // value of all tokens summarized
-    address _bondToken;          // bond token contract address
+    address private _bondToken;  // bond token contract address
 
     constructor(string memory baseURI, address miris,
                 address bondToken) public ERC721("SecurityAssetToken", "SAT") {
@@ -60,9 +60,8 @@ contract SecurityAssetToken is ERC721, AccessControl {
     function safeTransferFrom(address from, address to,
                               uint256 tokenId) public override {
       address sender = _msgSender();
-      require(
-          hasRole(TokenAccessRoles.transferer(), sender),
-          sender.toString().append(" is not allowed to call transfer"));
+      require(hasRole(TokenAccessRoles.transferer(), sender),
+              sender.toString().append(" is not allowed to call transfer"));
 
       super.safeTransferFrom(from, to, tokenId, "");
     }
@@ -84,7 +83,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
       _mint(to, tokenId);
 
-       IBondNFT(_bondToken).mint(tokenId, to, value.mul(3).div(4), maturity);
+      IBondNFT(_bondToken).mint(tokenId, to, value.mul(3).div(4), maturity);
     }
 
     /// Only miris is allowed to burn tokens
