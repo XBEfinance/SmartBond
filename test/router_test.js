@@ -1,14 +1,14 @@
 const { assert } = require('chai');
 
-const Router = artifacts.require('Router');
-const BPool = artifacts.require('BPool');
-const BFactory = artifacts.require('BFactory');
 const MockToken = artifacts.require('MockToken');
+const BFactory = artifacts.require('BFactory');
+const BPool = artifacts.require('BPool');
+
+const Router = artifacts.require('Router');
+const StakingManager = artifacts.require('StakingManager');
 
 contract('Router', (accounts) => {
   const recipient = accounts[1];
-  const balancerMock = accounts[2];
-  const stakingMock = accounts[3];
 
   let USDT;
   let USDC;
@@ -16,7 +16,11 @@ contract('Router', (accounts) => {
   let DAI;
   let EURxb;
 
-  // let balancer;
+  let BPT;
+  let gEURO;
+
+  let balancer;
+  let staking;
   let router;
 
   beforeEach(async () => {
@@ -25,37 +29,40 @@ contract('Router', (accounts) => {
     BUSD = await MockToken.new('BUSD', 'BUSD', web3.utils.toWei('400', 'ether'));
     DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('400', 'ether'));
 
-    await USDT.transfer(recipient, web3.utils.toWei('100', 'ether'));
-    this.bFactory = await BFactory.deployed();
-
     EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('400', 'ether'));
 
-    // balancer = await BPool.new();
-    // await EURxb.approve(balancer.address, web3.utils.toWei('100', 'ether'));
-    // await USDT.approve(balancer.address, web3.utils.toWei('100', 'ether'));
-    // await balancer.bind(EURxb.address, web3.utils.toWei('100', 'ether'), 50);
-    // await balancer.bind(USDT.address, web3.utils.toWei('100', 'ether'), 50);
-    // await balancer.setSwapFee(web3.utils.toWei('1', 'ether'));
-    // await balancer.finalize();
+    BPT = await MockToken.new('BPT', 'BPT', web3.utils.toWei('400', 'ether'));
+    gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('400', 'ether'));
+
+    await USDT.transfer(recipient, web3.utils.toWei('200', 'ether'));
+    this.bFactory = await BFactory.deployed();
+
+    await this.bFactory.newBPool();
+    const balancerAddress = await this.bFactory.getLastBPool();
+    balancer = await BPool.at(balancerAddress);
+
+    await EURxb.approve(balancer.address, web3.utils.toWei('46', 'ether'));
+    await USDT.approve(balancer.address, web3.utils.toWei('54', 'ether'));
+    await balancer.bind(EURxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
+    await balancer.bind(USDT.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+    await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
+    await balancer.finalize();
+
+    staking = await StakingManager.new(BPT.address, gEURO.address, 1604993292, 60);
 
     router = await Router.new(
-      balancerMock, stakingMock,
+      balancer.address, staking.address,
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
+    await staking.setOperatorAddress(router.address);
     await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
   });
 
-  it('should create new balance pool', async () => {
-    await this.bFactory.newBPool(); // deploy new BPool contract
-    const balancerAddress = await this.bFactory.getLastBPool(); // get deployed balancer address
-    const balancer = await BPool.at(balancerAddress); // get deployed balancer contract
-    await EURxb.approve(balancer.address, web3.utils.toWei('100', 'ether'));
-    await USDT.approve(balancer.address, web3.utils.toWei('100', 'ether'));
-    // await balancer.bind(EURxb.address, web3.utils.toWei('100', 'ether'), 50);
-    // TODO: Fix that: revert ERR_MIN_WEIGHT -- Reason given: ERR_MIN_WEIGHT
-    // await balancer.bind(USDT.address, web3.utils.toWei('100', 'ether'), 50);
-    // await balancer.setSwapFee(web3.utils.toWei('1', 'ether'));
-    // await balancer.finalize();
+  it('should return correct pool values', async () => {
+    assert.equal(await balancer.getNumTokens(), 2);
+    assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
+    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('54', 'ether'));
+    assert.equal(await balancer.getSwapFee(), web3.utils.toWei('1', 'finney'));
   });
 
   it('should return correct balance EURxb values', async () => {
@@ -63,5 +70,13 @@ contract('Router', (accounts) => {
     await router.exchange(USDT.address, web3.utils.toWei('54', 'ether'), { from: recipient });
     const balance = await EURxb.balanceOf(recipient);
     assert.equal(web3.utils.fromWei(balance, 'ether'), 46);
+  });
+
+  it('should return correct pool values when adding liquidity through a contract', async () => {
+    await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
+    await router.addLiquidity(USDT.address, web3.utils.toWei('108', 'ether'), { from: recipient });
+
+    assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('92', 'ether'));
+    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('108', 'ether'));
   });
 });

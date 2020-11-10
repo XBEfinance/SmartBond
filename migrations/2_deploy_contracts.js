@@ -14,7 +14,7 @@ const gEuro = "0x0000000000000000000000000000000000000000";
 module.exports = function (deployer) {
   deployer.then(async () => {
     await deployer.deploy(BFactory);
-    await deployer.deploy(StakingManager, BPool, gEuro);
+    await deployer.deploy(StakingManager, BPool, gEuro, 1604993292, 60); // TODO: set real values
     await deployer.deploy(Router, BPool, StakingManager.address, USDT, USDC, BUSD, DAI, EURxb);
   });
 };

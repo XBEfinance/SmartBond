@@ -56,22 +56,29 @@ contract StakingManager is Ownable {
     /**
      * @return are the tokens frozen
      */
-    function isFrozen() public view returns (bool) {
+    function isFrozen() external view returns (bool) {
         return _isFrozen;
     }
 
     /**
      * @return start time
      */
-    function startTime() public view returns (uint256) {
+    function startTime() external view returns (uint256) {
         return _startTime;
     }
 
     /**
-     * @return get operator address
+     * @return percents
      */
-    function percents() public view returns (uint256[2] memory) {
+    function percents() external view returns (uint256[2] memory) {
         return [_percentFirst3Days, 100 - _percentFirst3Days];
+    }
+
+    /**
+     * @return number of BPR tokens from the staker
+     */
+    function getNumberBPTTokens(address staker) external view returns (uint256) {
+        return _stakesBPT[staker];
     }
 
     /**
