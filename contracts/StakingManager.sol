@@ -54,7 +54,28 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @dev Get operator address
+     * @return are the tokens frozen
+     */
+    function isFrozen() public view returns (bool) {
+        return _isFrozen;
+    }
+
+    /**
+     * @return start time
+     */
+    function startTime() public view returns (uint256) {
+        return _startTime;
+    }
+
+    /**
+     * @return get operator address
+     */
+    function percents() public view returns (uint256[2] memory) {
+        return [_percentFirst3Days, 100 - _percentFirst3Days];
+    }
+
+    /**
+     * @return operator address
      */
     function operatorAddress() external view returns (address) {
         return _operatorAddress;
@@ -62,6 +83,7 @@ contract StakingManager is Ownable {
 
     /**
      * @dev set operator address
+     * @param operator address
      */
     function setOperatorAddress(address operator) external onlyOwner {
         require(operator != address(0), "The zero operator address");

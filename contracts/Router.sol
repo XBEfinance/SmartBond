@@ -119,8 +119,8 @@ contract Router is Ownable {
         uint256 amountBPT = totalSupply.mul(ratio);
 
         uint256[] memory data = new uint256[](2);
-        data[0] = exchangeTokens;
-        data[1] = amountEUR;
+        data[0] = amountEUR;
+        data[1] = exchangeTokens;
         balancer.joinPool(amountBPT, data);
 
         StakingInterface manager = StakingInterface(_stakingManager);
