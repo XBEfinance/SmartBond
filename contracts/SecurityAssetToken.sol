@@ -8,6 +8,10 @@ import{TokenAccessRoles} from "./TokenAccessRoles.sol";
 import{StringUtil} from "./StringUtil.sol";
 import{Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+/**
+ * SecurityAssetToken represents an asset or deposit token, which has a
+ * declared value
+ */
 contract SecurityAssetToken is ERC721, AccessControl {
     using SafeMath for uint256;
     using Strings for uint256;
@@ -16,41 +20,51 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
     mapping(uint256 => uint256) private _values; // tokens values
     mapping(address => bool) private _allowList; // list of accounts, which are
-                                                  // allowed to get transfers
+                                                 // allowed to get transfers
 
     uint256 private _totalValue; // value of all tokens summarized
-    address private _bondToken;  // bond token contract address
+    address private _bond;       // bond token contract address
 
+    event SecurityAssetTokenMinted(address to, uint256 tokenId, uint256 value,
+                                   uint256 maturity);
+
+    event SecurityAssetTokenBurned(uint256 tokenId);
+
+    /**
+     * @param baseURI token base URI
+     * @param miris external miris manager account
+     * @param bond BondToken contract address
+     */
     constructor(string memory baseURI, address miris,
-                address bondToken) public ERC721("SecurityAssetToken", "SAT") {
+                address bond) public ERC721("SecurityAssetToken", "SAT") {
       _setBaseURI(baseURI);
-      _bondToken = bondToken;
+      _bond = bond;
 
-      // set roles
+      // setup roles
       _setupRole(TokenAccessRoles.minter(), miris);
       _setupRole(TokenAccessRoles.burner(), miris);
       _setupRole(TokenAccessRoles.transferer(), miris);
+      _setupRole(TokenAccessRoles.administrator(), miris);
+      _setupRole(TokenAccessRoles.transferer(), bond);
     }
 
-    // IERC721 EVENTS:
-
-    /* event Transfer(address from, address to, uint256  tokenId)
-     * is emitted
-     * when miris mints new token
-     * when miris burns token
-     * when transfers token from one account to another
-     * when BOND NFT token transfers SAT token from one account to another
+    /**
+     * @return total value of all existing tokens
      */
+    function totalValue() public view returns(uint256) { return _totalValue; }
 
-    /* event Approval(address indexed owner, address indexed approved, uint256
-     * indexed tokenId); is emitted when current owner specifies whom is he
-     * willing to transfer token to
-     */
+    function allowAccount(address account) public {
+      require(hasRole(TokenAccessRoles.administrator(), msg.sender),
+              "only administrator can modify allow list");
+      _allowList[account] = true;
+    }
 
-    /* event ApprovalForAll(address indexed owner, address indexed operator,
-     * bool approved); is emitted when current owner specifies whom is he
-     * willing to transfer all his tokens to
-     */
+    function disallowAccount(address account) public {
+      require(hasRole(TokenAccessRoles.administrator(), msg.sender),
+              "only administrator can modify allow list");
+
+      delete _allowList[account];
+    }
 
     function transferFrom(address from, address to,
                           uint256 tokenId) public override {
@@ -66,11 +80,19 @@ contract SecurityAssetToken is ERC721, AccessControl {
       super.safeTransferFrom(from, to, tokenId, "");
     }
 
-    /// Only miris is allowed to mint tokens
+    /**
+     * mints a new SAT token and it's NFT bond token accordingly
+     * @param to token owner
+     * @param tokenId unique token id
+     * @param value collateral value
+     * @param maturity datetime stamp when token's deposit value must be
+     * returned
+     */
     function mint(address to, uint256 tokenId, uint256 value, uint256 maturity)
         external {
       // check role
       address sender = _msgSender();
+      // only external account having minter role is allowed to mint tokens
       require(hasRole(TokenAccessRoles.minter(), sender),
               sender.toString().append(" is not allowed to mint SAT tokens"));
 
@@ -83,17 +105,21 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
       _mint(to, tokenId);
 
-      IBondNFT(_bondToken).mint(tokenId, to, value.mul(3).div(4), maturity);
+      IBondNFToken(_bond).mint(tokenId, to, value.mul(3).div(4), maturity);
+
+      emit SecurityAssetTokenMinted(to, tokenId, value, maturity);
     }
 
-    /// Only miris is allowed to burn tokens
+    /**
+     * burns security asset token
+     */
     function burn(uint256 tokenId) external {
       address sender = msg.sender;
+
       require(hasRole(TokenAccessRoles.burner(), sender),
               sender.toString()
                   .append(" is not allowed to burn SAT tokens")
                   .append(tokenId.toString()));
-
       // get token properties
       uint256 value = _values[tokenId];
       // cannot burn non-existent token
@@ -101,16 +127,17 @@ contract SecurityAssetToken is ERC721, AccessControl {
           value > 0,
           string("token ").append(tokenId.toString()).append(" doesn't exist"));
 
-      // remove from _values and _maturities
+      // TODO: maybe add check for bond token existence
+
+      // remove from _values
       delete _values[tokenId];
 
-      // decrease total totalSupply
+      // decrease total totalSupply (check for going below zero is conducted
+      // inside of SafeMath's sub method)
       _totalValue = _totalValue.sub(value);
 
-      // TODO: check whether BOND token was burned
       _burn(tokenId);
-    }
 
-    /// @return total value of all existing tokens
-    function totalValue() public view returns(uint256) { return _totalValue; }
+      emit SecurityAssetTokenBurned(tokenId);
+    }
 }
