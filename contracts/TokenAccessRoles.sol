@@ -6,8 +6,7 @@ library TokenAccessRoles {
     bytes32 private constant MINTER_ROLE = keccak256("NFT_MINTER_ROLE");
     bytes32 private constant BURNER_ROLE = keccak256("NFT_BURNER_ROLE");
     bytes32 private constant TRANSFERER_ROLE = keccak256("NFT_TRANSFERER_ROLE");
-    // TODO: discuss necessity of this role
-    bytes32 private constant BOND_CREATOR_ROLE = keccak256("NFT_BOND_CREATOR_ROLE");
+    bytes32 private constant ADMINISTRATOR_ROLE = keccak256("NFT_ADMINISTRATOR_ROLE");
 
     function minter() public pure returns (bytes32) {
         return MINTER_ROLE;
@@ -21,7 +20,7 @@ library TokenAccessRoles {
         return TRANSFERER_ROLE;
     }
 
-    function bondCreator() public pure returns (bytes32) {
-        return BOND_CREATOR_ROLE;
+    function administrator() public pure returns (bytes32) {
+        return ADMINISTRATOR_ROLE;
     }
 }
