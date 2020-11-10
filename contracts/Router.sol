@@ -32,7 +32,7 @@ interface StakingInterface {
 contract Router is Ownable {
     using SafeMath for uint256;
 
-    address private _balancer;
+    address private _balancerPool;
     address private _stakingManager;
     address private _tUSDT;
     address private _tUSDC;
@@ -41,7 +41,7 @@ contract Router is Ownable {
     address private _tEURxb;
 
     constructor(
-        address balancer,
+        address balancerPool,
         address stakingManager,
         address tUSDT,
         address tUSDC,
@@ -49,13 +49,27 @@ contract Router is Ownable {
         address tDAI,
         address tEURxb
     ) public {
-        _balancer = balancer;
+        _balancerPool = balancerPool;
         _stakingManager = stakingManager;
         _tUSDT = tUSDT;
         _tUSDC = tUSDC;
         _tBUSD = tBUSD;
         _tDAI = tDAI;
         _tEURxb = tEURxb;
+    }
+
+    /**
+     * @return balancer pool address
+     */
+    function balancerPool() public view returns (address) {
+        return _balancerPool;
+    }
+
+    /**
+     * @return staking manager address
+     */
+    function stakingManager() public view returns (address) {
+        return _stakingManager;
     }
 
     /**
@@ -95,10 +109,10 @@ contract Router is Ownable {
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
 
-        IERC20(from).approve(_balancer, exchangeTokens);
-        IERC20(_tEURxb).approve(_balancer, amountEUR);
+        IERC20(from).approve(_balancerPool, exchangeTokens);
+        IERC20(_tEURxb).approve(_balancerPool, amountEUR);
 
-        PoolInterface balancer = PoolInterface(_balancer);
+        PoolInterface balancer = PoolInterface(_balancerPool);
         uint256 totalSupply = balancer.totalSupply();
         uint256 balance = balancer.getBalance(_tEURxb);
         uint256 ratio = amountEUR.div(balance);
@@ -109,8 +123,8 @@ contract Router is Ownable {
         data[1] = amountEUR;
         balancer.joinPool(amountBPT, data);
 
-        StakingInterface stakingManager = StakingInterface(_stakingManager);
-        IERC20(_balancer).approve(_stakingManager, amountBPT);
-        stakingManager.addStaker(msg.sender, amountBPT);
+        StakingInterface manager = StakingInterface(_stakingManager);
+        IERC20(_balancerPool).approve(_stakingManager, amountBPT);
+        manager.addStaker(msg.sender, amountBPT);
     }
 }
