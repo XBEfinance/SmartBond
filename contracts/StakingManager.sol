@@ -25,41 +25,47 @@ contract StakingManager is Ownable {
     uint256 private _startTime;
     address private _tBPT;
     address private _tGEuro;
-    address private _operator;
+    address private _operatorAddress;
 
-    uint256 private _totalGEuro = 10000 ether; // TODO
-    uint256 private _percentFirst3Days = 60; // TODO
-    uint256 private _gEuroFirst3Days = _totalGEuro.mul(_percentFirst3Days).div(100);
-    uint256 private _lastDaysGEuro = _totalGEuro.sub(_gEuroFirst3Days);
+    uint256 private _totalGEuro = 10000 ether;
+    uint256 private _percentFirst3Days;
     uint256 private _first3DaysStake;
     uint256 private _otherDaysStake;
 
     modifier onlyOperator() {
-        require(_msgSender() == owner() || _msgSender() == _operator,
-            "Caller is not the operator");
+        require(
+            _msgSender() == owner() || _msgSender() == _operatorAddress,
+            "Caller is not the operator"
+        );
         _;
     }
 
-    constructor(address tBPT, address tGEuro, uint256 startTime) public {
+    constructor(
+        address tBPT,
+        address tGEuro,
+        uint256 startTime,
+        uint256 percent
+    ) public {
         _isFrozen = true;
         _startTime = startTime;
         _tBPT = tBPT;
         _tGEuro = tGEuro;
+        _percentFirst3Days = percent;
     }
 
     /**
-     * @dev
+     * @dev Get operator address
      */
-    function getOperatorAddress() external returns (address) {
-        return _operator;
+    function operatorAddress() external view returns (address) {
+        return _operatorAddress;
     }
 
     /**
-     * @dev
+     * @dev set operator address
      */
     function setOperatorAddress(address operator) external onlyOwner {
         require(operator != address(0), "The zero operator address");
-        _operator = operator;
+        _operatorAddress = operator;
     }
 
     /**
@@ -67,21 +73,29 @@ contract StakingManager is Ownable {
      */
     function unfreezeTokens() external onlyOwner {
         require(_startTime + 7 days > now, "Time is not over");
-        require(IERC20(tGEuro).balanceOf(address(this)) >= _totalGEuro,
-            "insufficient gEuro balance");
+        require(
+            IERC20(_tGEuro).balanceOf(address(this)) >= _totalGEuro,
+            "insufficient gEuro balance"
+        );
+
         _isFrozen = false;
+        uint256 gEuroFirst3Days = _totalGEuro.mul(_percentFirst3Days).div(100);
+        uint256 lastDaysGEuro = _totalGEuro.sub(gEuroFirst3Days);
+
         for (uint256 i = 0; i < _stakers.length; i++) {
             if (_stakers[i].time <= _startTime + 3 days) {
-                uint256 percent = _stakers[i].bpt.mul(10 ** 18).div(
+                uint256 percent = _stakers[i].bptBalance.mul(10**18).div(
                     _first3DaysStake
                 );
-                uint256 amountGEuro = percent.mul(_gEuroFirst3Days).div(10 ** 18);
+                uint256 amountGEuro = percent.mul(gEuroFirst3Days).div(10**18);
                 _rewardsGEuro[_stakers[i].user] = _rewardsGEuro[_stakers[i]
                     .user]
                     .add(amountGEuro);
             } else {
-                uint256 percent = _stakers[i].bpt.mul(10 ** 18).div(_otherDaysStake);
-                uint256 amountGEuro = percent.mul(_lastDaysGEuro).div(10 ** 18);
+                uint256 percent = _stakers[i].bptBalance.mul(10**18).div(
+                    _otherDaysStake
+                );
+                uint256 amountGEuro = percent.mul(lastDaysGEuro).div(10**18);
                 _rewardsGEuro[_stakers[i].user] = _rewardsGEuro[_stakers[i]
                     .user]
                     .add(amountGEuro);
