@@ -85,21 +85,32 @@ contract SecurityAssetToken is ERC721, AccessControl {
      */
     function transferFrom(address from, address to,
                           uint256 tokenId) public override {
-        require(isAllowedAccount(to), "user is not allowed to receive tokens");
-        _safeTransfer(from, to, tokenId, "");
+      require(isAllowedAccount(to), "user is not allowed to receive tokens");
+      _safeTransfer(from, to, tokenId, "");
     }
 
     function safeTransferFrom(address from, address to,
                               uint256 tokenId) public override {
-        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
-            "sender is not allowed to call transfer");
-        _safeTransfer(from, to, tokenId, "");
+      require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+              "sender is not allowed to call transfer");
+      _safeTransfer(from, to, tokenId, "");
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public override {
-        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
-            "sender is not allowed to call transfer");
-        _safeTransfer(from, to, tokenId, _data);
+    function _isApproved(address spender, uint256 tokenId) internal view
+    returns(bool) {
+      require(_exists(tokenId), "ERC721: operator query for nonexistent token");
+      address owner = ownerOf(tokenId);
+      return (getApproved(tokenId) == spender ||
+              isApprovedForAll(owner, spender));
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId,
+                              bytes memory _data) public override {
+      require(_isApproved(to, tokenId), "transfer was not approved");
+      require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+              "sender is not allowed to call transfer");
+
+      _safeTransfer(from, to, tokenId, _data);
     }
 
     /**
