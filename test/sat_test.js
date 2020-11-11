@@ -4,7 +4,6 @@ const { time, BN, expectRevert, expectEvent } =
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('NFBondTokenMock');
-const roles = artifacts.require('TokenAccessRoles'); // TODO: unused
 
 const baseURI = '127.0.0.1/';
 
