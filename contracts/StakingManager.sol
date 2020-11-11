@@ -153,7 +153,7 @@ contract StakingManager is Ownable {
      */
     function addStaker(address staker, uint256 amount) external onlyOperator {
         IERC20(_tBPT).transferFrom(msg.sender, address(this), amount);
-        _stakers.push(Staker(msg.sender, now, amount));
+        _stakers.push(Staker(staker, now, amount));
         _stakesBPT[staker] = _stakesBPT[staker].add(amount);
 
         if (now <= _startTime + 3 days) {
