@@ -85,17 +85,21 @@ contract SecurityAssetToken is ERC721, AccessControl {
      */
     function transferFrom(address from, address to,
                           uint256 tokenId) public override {
-      require(isAllowedAccount(to), "user is not allowed to receive tokens");
-      safeTransferFrom(from, to, tokenId);
+        require(isAllowedAccount(to), "user is not allowed to receive tokens");
+        _safeTransfer(from, to, tokenId, "");
     }
 
     function safeTransferFrom(address from, address to,
                               uint256 tokenId) public override {
-      address sender = _msgSender();
-      require(hasRole(TokenAccessRoles.transferer(), sender),
-              "sender is not allowed to call transfer");
+        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+            "sender is not allowed to call transfer");
+        _safeTransfer(from, to, tokenId, "");
+    }
 
-      super.safeTransferFrom(from, to, tokenId, "");
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public override {
+        require(hasRole(TokenAccessRoles.transferer(), _msgSender()),
+            "sender is not allowed to call transfer");
+        _safeTransfer(from, to, tokenId, _data);
     }
 
     /**
