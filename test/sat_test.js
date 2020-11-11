@@ -5,7 +5,7 @@ const {time, BN, expectRevert, expectEvent} =
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('NFBondTokenMock');
 
-const baseURI = '127.0.0.1/';
+const baseURI = "127.0.0.1/";
 
 contract('SecurityAssetTokenTest', accounts => {
   const miris = accounts[1];
