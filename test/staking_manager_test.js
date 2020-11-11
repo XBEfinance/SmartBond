@@ -7,7 +7,6 @@ const StakingManager = artifacts.require('StakingManager');
 contract('StakingManager', (accounts) => {
   const recipient = accounts[1];
   const staker = accounts[2];
-  const operator = accounts[3];
 
   let BPT;
   let gEURO;
@@ -20,13 +19,6 @@ contract('StakingManager', (accounts) => {
     const timestamp = await currentTimestamp();
     staking = await StakingManager.new(BPT.address, gEURO.address, timestamp, 60);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
-  });
-
-  it('should correct change operator', async () => {
-    const oldOperator = await staking.operatorAddress();
-    await staking.setOperatorAddress(operator);
-    assert.equal(await staking.operatorAddress(), operator);
-    assert.notEqual(await staking.operatorAddress(), oldOperator);
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {

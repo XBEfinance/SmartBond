@@ -25,20 +25,11 @@ contract StakingManager is Ownable {
     uint256 private _startTime;
     address private _tBPT;
     address private _tGEuro;
-    address private _operatorAddress;
 
     uint256 private _totalGEuro = 10000 ether;
     uint256 private _percentFirst3Days;
     uint256 private _first3DaysStake;
     uint256 private _otherDaysStake;
-
-    modifier onlyOperator() {
-        require(
-            _msgSender() == owner() || _msgSender() == _operatorAddress,
-            "Caller is not the operator"
-        );
-        _;
-    }
 
     constructor(
         address tBPT,
@@ -96,22 +87,6 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @return operator address
-     */
-    function operatorAddress() external view returns (address) {
-        return _operatorAddress;
-    }
-
-    /**
-     * @dev set operator address
-     * @param operator address
-     */
-    function setOperatorAddress(address operator) external onlyOwner {
-        require(operator != address(0), "The zero operator address");
-        _operatorAddress = operator;
-    }
-
-    /**
      * @dev Unfreeze BPT tokens
      */
     function unfreezeTokens() external onlyOwner {
@@ -151,7 +126,7 @@ contract StakingManager is Ownable {
      * @param staker user address
      * @param amount number of BPT tokens
      */
-    function addStaker(address staker, uint256 amount) external onlyOperator {
+    function addStaker(address staker, uint256 amount) external {
         IERC20(_tBPT).transferFrom(msg.sender, address(this), amount);
         _stakers.push(Staker(staker, now, amount));
         _stakesBPT[staker] = _stakesBPT[staker].add(amount);

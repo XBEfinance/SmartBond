@@ -32,6 +32,7 @@ interface StakingInterface {
 contract Router is Ownable {
     using SafeMath for uint256;
 
+    address private _teamAddress;
     address private _balancerPool;
     address private _stakingManager;
     address private _tUSDT;
@@ -41,6 +42,7 @@ contract Router is Ownable {
     address private _tEURxb;
 
     constructor(
+        address teamAddress,
         address balancerPool,
         address stakingManager,
         address tUSDT,
@@ -49,6 +51,7 @@ contract Router is Ownable {
         address tDAI,
         address tEURxb
     ) public {
+        _teamAddress = teamAddress;
         _balancerPool = balancerPool;
         _stakingManager = stakingManager;
         _tUSDT = tUSDT;
@@ -83,33 +86,28 @@ contract Router is Ownable {
             "Token not found"
         );
 
-        uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
-        require(allowance >= amount, "No coins available"); // TODO: overcheck
-
         uint256 amountEUR = amount.mul(23).div(27);
 
-        IERC20(from).transferFrom(msg.sender, address(this), amount); // TODO: _tUSDT may not contains IERC20.transferFrom
+        IERC20(from).transferFrom(msg.sender, _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
         IERC20(_tEURxb).transfer(msg.sender, amountEUR);
     }
 
     /**
      * @dev Adding liquidity
-     * @param from token address
+     * @param token address
      * @param amount number of tokens
      */
-    function addLiquidity(address from, uint256 amount) public {
-        uint256 allowance = IERC20(from).allowance(msg.sender, address(this));
-        require(allowance >= amount, "No coins available"); // TODO: overcheck
-        IERC20(from).transferFrom(msg.sender, address(this), amount);
+    function addLiquidity(address token, uint256 amount) public {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         uint256 exchangeTokens = amount.div(2);
         uint256 amountEUR = exchangeTokens.mul(23).div(27);
-        exchange(from, exchangeTokens);
+        exchange(token, exchangeTokens);
 
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
 
-        IERC20(from).approve(_balancerPool, exchangeTokens);
+        IERC20(token).approve(_balancerPool, exchangeTokens);
         IERC20(_tEURxb).approve(_balancerPool, amountEUR);
 
         PoolInterface balancer = PoolInterface(_balancerPool);

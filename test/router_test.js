@@ -10,6 +10,7 @@ const StakingManager = artifacts.require('StakingManager');
 
 contract('Router', (accounts) => {
   const recipient = accounts[1];
+  const team = accounts[2];
 
   let USDT;
   let USDC;
@@ -49,10 +50,9 @@ contract('Router', (accounts) => {
     staking = await StakingManager.new(balancer.address, gEURO.address, timestamp, 60);
 
     router = await Router.new(
-      balancer.address, staking.address,
+      team, balancer.address, staking.address,
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
-    await staking.setOperatorAddress(router.address);
     await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
   });
 
