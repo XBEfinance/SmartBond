@@ -75,10 +75,24 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @return number of BPR tokens from the staker
+     * @return stakes by days
+     */
+    function stakesByDays() external view returns (uint256[2] memory) {
+        return [_first3DaysStake, _otherDaysStake];
+    }
+
+    /**
+     * @return number of BPT tokens from the staker
      */
     function getNumberBPTTokens(address staker) external view returns (uint256) {
         return _stakesBPT[staker];
+    }
+
+    /**
+     * @return number of gEuro tokens from the staker
+     */
+    function getNumberGEuroTokens(address staker) external view returns (uint256) {
+        return _rewardsGEuro[staker];
     }
 
     /**
@@ -101,7 +115,7 @@ contract StakingManager is Ownable {
      * @dev Unfreeze BPT tokens
      */
     function unfreezeTokens() external onlyOwner {
-        require(_startTime + 7 days > now, "Time is not over");
+        require(_startTime + 7 days < now, "Time is not over");
         require(
             IERC20(_tGEuro).balanceOf(address(this)) >= _totalGEuro,
             "insufficient gEuro balance"
@@ -143,9 +157,9 @@ contract StakingManager is Ownable {
         _stakesBPT[staker] = _stakesBPT[staker].add(amount);
 
         if (now <= _startTime + 3 days) {
-            _first3DaysStake.add(amount);
+            _first3DaysStake = _first3DaysStake.add(amount);
         } else {
-            _otherDaysStake.add(amount);
+            _otherDaysStake = _otherDaysStake.add(amount);
         }
     }
 

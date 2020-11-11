@@ -1,4 +1,5 @@
 const { assert } = require('chai');
+const { currentTimestamp } = require('./common');
 
 const MockToken = artifacts.require('MockToken');
 const BFactory = artifacts.require('BFactory');
@@ -44,7 +45,8 @@ contract('Router', (accounts) => {
     await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
     await balancer.finalize();
 
-    staking = await StakingManager.new(balancer.address, gEURO.address, 1604993292, 60);
+    const timestamp = await currentTimestamp();
+    staking = await StakingManager.new(balancer.address, gEURO.address, timestamp, 60);
 
     router = await Router.new(
       balancer.address, staking.address,

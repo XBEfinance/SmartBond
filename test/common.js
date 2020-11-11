@@ -1,3 +1,4 @@
+/* eslint-disable */
 function increaseTime(duration) {
   const id = Date.now();
   return new Promise((resolve, reject) => {
@@ -20,8 +21,15 @@ function increaseTime(duration) {
     });
   });
 }
+/* eslint-enable */
+
+async function currentTimestamp() {
+  const timestamp = Date.now();
+  return Math.trunc(timestamp / 1000);
+}
 
 module.exports = {
   increaseTime,
+  currentTimestamp,
   DAY: 3600 * 24,
 };

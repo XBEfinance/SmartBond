@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const { increaseTime, DAY } = require('./common');
+const { increaseTime, currentTimestamp, DAY } = require('./common');
 
 const MockToken = artifacts.require('MockToken');
 const StakingManager = artifacts.require('StakingManager');
@@ -16,7 +16,8 @@ contract('StakingManager', (accounts) => {
     BPT = await MockToken.new('BPT', 'BPT', web3.utils.toWei('400', 'ether'));
     gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('10000', 'ether'));
 
-    staking = await StakingManager.new(BPT.address, gEURO.address, 1604993292, 60);
+    const timestamp = await currentTimestamp();
+    staking = await StakingManager.new(BPT.address, gEURO.address, timestamp, 60);
     await BPT.transfer(recipient, web3.utils.toWei('200', 'ether'));
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
   });
@@ -36,7 +37,7 @@ contract('StakingManager', (accounts) => {
 
   it('should correct unfreeze tokens', async () => {
     assert.equal(await staking.isFrozen(), true);
-    await increaseTime(DAY + 7);
+    await increaseTime(DAY * 8);
     await staking.unfreezeTokens();
     assert.equal(await staking.isFrozen(), false);
   });
@@ -45,7 +46,7 @@ contract('StakingManager', (accounts) => {
     await BPT.approve(staking.address, web3.utils.toWei('100', 'ether'));
     await staking.addStaker(recipient, web3.utils.toWei('100', 'ether'));
 
-    await increaseTime(DAY + 7);
+    await increaseTime(DAY * 8);
     await staking.unfreezeTokens();
 
     await staking.claimBPT({ from: recipient });
