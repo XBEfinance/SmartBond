@@ -7,7 +7,6 @@ const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('NFBondTokenMock');
 const util = artifacts.require('StringUtil');
 const roles = artifacts.require('TokenAccessRoles');
-// const access = artifacts.require('AccessControl');
 
 const baseURI = "127.0.0.1/";
 
@@ -121,6 +120,14 @@ contract('SecurityAssetTokenTest', accounts => {
   });
 
   // ----------- check transfers -----------
+  it('transfer token from alice to bob', async () => {
+    await this.sat.allowAccount(alice, {from : miris});
+    await this.sat.allowAccount(bob, {from: miris});
+
+    await this.sat.mint(alice, "1", "100", "100", {from : miris});
+    await this.sat.approve(bob, "1", {from: alice});
+    await this.sat.transferFrom(alice, bob, "1", {from: miris});
+  });
 
   // ----------- check total value -----------
   it('total value = 0 in the beginning', async () => {
