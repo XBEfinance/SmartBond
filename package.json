@@ -10,7 +10,7 @@
     "lint": "npm run eslint && npm run solium",
     "eslint": "eslint test/",
     "solium": "solium --dir contracts",
-    "coverage": "truffle run coverage",
+    "coverage": "bash ./scripts/coverage.sh",
     "build": "bash ./scripts/build.sh",
     "truffle-build": "truffle compile",
     "test": "bash ./scripts/test.sh",
