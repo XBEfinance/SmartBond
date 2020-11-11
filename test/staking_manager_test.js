@@ -17,7 +17,7 @@ contract('StakingManager', (accounts) => {
     gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('10000', 'ether'));
 
     const timestamp = await currentTimestamp();
-    staking = await StakingManager.new(BPT.address, gEURO.address, timestamp, 60);
+    staking = await StakingManager.new(BPT.address, gEURO.address, timestamp, 150);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
   });
 

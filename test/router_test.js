@@ -47,7 +47,7 @@ contract('Router', (accounts) => {
     await balancer.finalize();
 
     const timestamp = await currentTimestamp();
-    staking = await StakingManager.new(balancer.address, gEURO.address, timestamp, 60);
+    staking = await StakingManager.new(balancer.address, gEURO.address, timestamp, 150);
 
     router = await Router.new(
       team, balancer.address, staking.address,

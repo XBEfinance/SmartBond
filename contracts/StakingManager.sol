@@ -11,37 +11,39 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract StakingManager is Ownable {
     using SafeMath for uint256;
 
-    struct Staker {
+    struct Weight {
         address user;
-        uint256 time;
+        uint256 weight;
         uint256 bptBalance;
     }
+    Weight[] private _weightStakers;
 
-    Staker[] private _stakers;
-    mapping(address => uint256) private _stakesBPT;
-    mapping(address => uint256) private _rewardsGEuro;
+    struct Staker {
+        uint256 bptBalance;
+        uint256 rewardsGEuro;
+    }
+    mapping(address => Staker) private _stakers;
 
     bool private _isFrozen;
-    uint256 private _startTime;
     address private _tBPT;
     address private _tGEuro;
+    uint256 private _startTime;
+    uint256 private _weight;
 
     uint256 private _totalGEuro = 10000 ether;
-    uint256 private _percentFirst3Days;
-    uint256 private _first3DaysStake;
-    uint256 private _otherDaysStake;
+    uint256 private _totalBPTWeight;
 
     constructor(
         address tBPT,
         address tGEuro,
         uint256 startTime,
-        uint256 percent
+        uint256 weight
     ) public {
         _isFrozen = true;
-        _startTime = startTime;
         _tBPT = tBPT;
         _tGEuro = tGEuro;
-        _percentFirst3Days = percent;
+        _startTime = startTime;
+        _weight = weight;
     }
 
     /**
@@ -59,31 +61,32 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @return percents
+     * @return weight
      */
-    function percents() external view returns (uint256[2] memory) {
-        return [_percentFirst3Days, 100 - _percentFirst3Days];
-    }
-
-    /**
-     * @return stakes by days
-     */
-    function stakesByDays() external view returns (uint256[2] memory) {
-        return [_first3DaysStake, _otherDaysStake];
+    function weight() external view returns (uint256) {
+        return _weight;
     }
 
     /**
      * @return number of BPT tokens from the staker
      */
-    function getNumberBPTTokens(address staker) external view returns (uint256) {
-        return _stakesBPT[staker];
+    function getNumberBPTTokens(address staker)
+        external
+        view
+        returns (uint256)
+    {
+        return _stakers[staker].bptBalance;
     }
 
     /**
      * @return number of gEuro tokens from the staker
      */
-    function getNumberGEuroTokens(address staker) external view returns (uint256) {
-        return _rewardsGEuro[staker];
+    function getNumberGEuroTokens(address staker)
+        external
+        view
+        returns (uint256)
+    {
+        return _stakers[staker].rewardsGEuro;
     }
 
     /**
@@ -97,27 +100,20 @@ contract StakingManager is Ownable {
         );
 
         _isFrozen = false;
-        uint256 gEuroFirst3Days = _totalGEuro.mul(_percentFirst3Days).div(100);
-        uint256 lastDaysGEuro = _totalGEuro.sub(gEuroFirst3Days);
 
-        for (uint256 i = 0; i < _stakers.length; i++) {
-            if (_stakers[i].time <= _startTime + 3 days) {
-                uint256 percent = _stakers[i].bptBalance.mul(10**18).div(
-                    _first3DaysStake
-                );
-                uint256 amountGEuro = percent.mul(gEuroFirst3Days).div(10**18);
-                _rewardsGEuro[_stakers[i].user] = _rewardsGEuro[_stakers[i]
-                    .user]
-                    .add(amountGEuro);
-            } else {
-                uint256 percent = _stakers[i].bptBalance.mul(10**18).div(
-                    _otherDaysStake
-                );
-                uint256 amountGEuro = percent.mul(lastDaysGEuro).div(10**18);
-                _rewardsGEuro[_stakers[i].user] = _rewardsGEuro[_stakers[i]
-                    .user]
-                    .add(amountGEuro);
-            }
+        for (uint256 i = 0; i < _weightStakers.length; i++) {
+            uint256 weightStaker = _weightStakers[i].weight;
+            uint256 amountBPT = _weightStakers[i]
+                .bptBalance
+                .mul(weightStaker)
+                .div(100);
+            uint256 percent = amountBPT.mul(10**18).div(_totalBPTWeight);
+
+            uint256 amountGEuro = percent.mul(_totalGEuro).div(10**18);
+            _stakers[_weightStakers[i].user]
+                .rewardsGEuro = _stakers[_weightStakers[i].user]
+                .rewardsGEuro
+                .add(amountGEuro);
         }
     }
 
@@ -128,13 +124,14 @@ contract StakingManager is Ownable {
      */
     function addStaker(address staker, uint256 amount) external {
         IERC20(_tBPT).transferFrom(msg.sender, address(this), amount);
-        _stakers.push(Staker(staker, now, amount));
-        _stakesBPT[staker] = _stakesBPT[staker].add(amount);
+        _stakers[staker].bptBalance = _stakers[staker].bptBalance.add(amount);
 
         if (now <= _startTime + 3 days) {
-            _first3DaysStake = _first3DaysStake.add(amount);
+            _weightStakers.push(Weight(staker, _weight, amount));
+            _totalBPTWeight = _totalBPTWeight.add(amount.mul(_weight).div(100));
         } else {
-            _otherDaysStake = _otherDaysStake.add(amount);
+            _weightStakers.push(Weight(staker, 100, amount));
+            _totalBPTWeight = _totalBPTWeight.add(amount);
         }
     }
 
@@ -143,13 +140,13 @@ contract StakingManager is Ownable {
      */
     function claimBPT() external {
         require(!_isFrozen, "Tokens frozen");
-        uint256 amountBPT = _stakesBPT[msg.sender];
+        uint256 amountBPT = _stakers[msg.sender].bptBalance;
         require(amountBPT > 0, "Staker doesn't exist");
-        _stakesBPT[msg.sender] = 0;
+        _stakers[msg.sender].bptBalance = 0;
         IERC20(_tBPT).transfer(msg.sender, amountBPT);
 
-        uint256 amountGEuro = _rewardsGEuro[msg.sender];
-        _rewardsGEuro[msg.sender] = 0;
+        uint256 amountGEuro = _stakers[msg.sender].rewardsGEuro;
+        _stakers[msg.sender].rewardsGEuro = 0;
         if (amountGEuro > 0) {
             IERC20(_tGEuro).transfer(msg.sender, amountGEuro);
         }
