@@ -1,5 +1,5 @@
-const { assert } = require('chai');
-const { time, BN, expectRevert, expectEvent } =
+const {assert} = require('chai');
+const {time, BN, expectRevert, expectEvent} =
     require('openzeppelin-test-helpers');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
@@ -117,14 +117,59 @@ contract('SecurityAssetTokenTest', accounts => {
   });
 
   // ----------- check transfers -----------
-  it('transfer token from alice to bob', async () => {
-    await this.sat.allowAccount(alice, { from: miris });
-    await this.sat.allowAccount(bob, { from: miris });
+  it('transfer token from alice to bob (single approval)', async () => {
+    await this.sat.allowAccount(alice, {from : miris});
+    await this.sat.allowAccount(bob, {from : miris});
 
-    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'), { from: miris });
-    await this.sat.approve(bob, new BN('1'), { from: alice });
-    await this.sat.transferFrom(alice, bob, new BN('1'), { from: miris });
+    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
+                        {from : miris});
+    await this.sat.approve(bob, new BN('1'), {from : alice});
+    await this.sat.transferFrom(alice, bob, new BN('1'), {from : miris});
   });
+
+  it('transfer token from alice to bob (approve for all)', async () => {
+    await this.sat.allowAccount(alice, {from : miris});
+    await this.sat.allowAccount(bob, {from : miris});
+
+    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
+                        {from : miris});
+    await this.sat.setApprovalForAll(bob, true, {from : alice});
+    await this.sat.transferFrom(alice, bob, new BN('1'), {from : miris});
+  });
+
+  it('transfer token from alice to bob: no approval failure', async () => {
+    await this.sat.allowAccount(alice, {from : miris});
+    await this.sat.allowAccount(bob, {from : miris});
+
+    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
+                        {from : miris});
+    expectRevert(this.sat.transferFrom(alice, bob, new BN('1'), {from : miris}),
+                 "transfer was not approved");
+  });
+
+  it('transfer token from alice to bob: no transferer role failure ',
+     async () => {
+       await this.sat.allowAccount(alice, {from : miris});
+       await this.sat.allowAccount(bob, {from : miris});
+
+       await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
+                           {from : miris});
+       await this.sat.setApprovalForAll(bob, true, {from : alice});
+       expectRevert(
+           this.sat.transferFrom(alice, bob, new BN('1'), {from : alice}),
+           "sender is not allowed to call transfer");
+     });
+
+  it('transfer token from alice to bob: not allowed account failure ',
+     async () => {
+       await this.sat.allowAccount(alice, {from : miris});
+       await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
+                           {from : miris});
+       await this.sat.setApprovalForAll(bob, true, {from : alice});
+       expectRevert(
+           this.sat.transferFrom(alice, bob, new BN('1'), {from : miris}),
+           "user is not allowed to receive tokens");
+     });
 
   // ----------- check total value -----------
   it('total value = 0 in the beginning', async () => {
