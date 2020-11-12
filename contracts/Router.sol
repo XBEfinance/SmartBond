@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title PoolInterface
  * @dev Pool balancer interface
  */
-interface PoolInterface {
+interface PoolInterface { // TODO: Do refactor to IBalancerPool and move code to IBalancerPool.sol
     function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
         external;
 
@@ -21,7 +21,7 @@ interface PoolInterface {
  * @title StakingInterface
  * @dev Staking manager interface
  */
-interface StakingInterface {
+interface StakingInterface { // TODO: Do refactor to IStakingManager and move code to IStakingManager.sol
     function addStaker(
         address staker,
         address pool,
@@ -44,7 +44,7 @@ contract Router is Ownable {
     address private _tDAI;
     address private _tEURxb;
 
-    mapping(address => address) _balancerPools;
+    mapping(address => address) private _balancerPools; // token address => balancer pool address
 
     constructor(
         address teamAddress,
@@ -67,7 +67,7 @@ contract Router is Ownable {
     /**
      * @return staking manager address
      */
-    function stakingManager() public view returns (address) {
+    function stakingManager() external view returns (address) {
         return _stakingManager;
     }
 
@@ -76,8 +76,41 @@ contract Router is Ownable {
      * @param token address
      * @param pool address
      */
-    function setBalancerPool(address token, address pool) public onlyOwner {
+    function setBalancerPool(address token, address pool) external onlyOwner {
         _balancerPools[token] = pool;
+    }
+
+    /**
+     * @dev Adding liquidity
+     * @param token address
+     * @param amount number of tokens
+     */
+    function addLiquidity(address token, uint256 amount) external {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+
+        uint256 exchangeTokens = amount.div(2);
+        exchange(token, exchangeTokens); // TODO: transfer tokens from this contract to this contract :(
+
+        uint256 amountEUR = exchangeTokens.mul(23).div(27);
+        address balancerPool = _balancerPools[token];
+
+        IERC20(token).approve(balancerPool, exchangeTokens);
+        IERC20(_tEURxb).approve(balancerPool, amountEUR);
+
+        PoolInterface balancer = PoolInterface(balancerPool);
+        uint256 totalSupply = balancer.totalSupply();
+        uint256 balance = balancer.getBalance(_tEURxb);
+        uint256 ratio = amountEUR.div(balance); // TODO: if amountEUR < balance then ratio == 0
+        uint256 amountBPT = totalSupply.mul(ratio);
+
+        uint256[] memory data = new uint256[](2);
+        data[0] = amountEUR;
+        data[1] = exchangeTokens;
+        balancer.joinPool(amountBPT, data);
+
+        StakingInterface manager = StakingInterface(_stakingManager);
+        IERC20(balancerPool).approve(_stakingManager, amountBPT);
+        manager.addStaker(msg.sender, balancerPool, amountBPT);
     }
 
     /**
@@ -93,43 +126,10 @@ contract Router is Ownable {
 
         uint256 amountEUR = amount.mul(23).div(27);
 
-        IERC20(from).transferFrom(msg.sender, _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
-        IERC20(_tEURxb).transfer(msg.sender, amountEUR);
-    }
-
-    /**
-     * @dev Adding liquidity
-     * @param token address
-     * @param amount number of tokens
-     */
-    function addLiquidity(address token, uint256 amount) public {
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
-
-        uint256 exchangeTokens = amount.div(2);
-        uint256 amountEUR = exchangeTokens.mul(23).div(27);
-        exchange(token, exchangeTokens);
-
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
 
-        address balancerPool = _balancerPools[token];
-
-        IERC20(token).approve(balancerPool, exchangeTokens);
-        IERC20(_tEURxb).approve(balancerPool, amountEUR);
-
-        PoolInterface balancer = PoolInterface(balancerPool);
-        uint256 totalSupply = balancer.totalSupply();
-        uint256 balance = balancer.getBalance(_tEURxb);
-        uint256 ratio = amountEUR.div(balance);
-        uint256 amountBPT = totalSupply.mul(ratio);
-
-        uint256[] memory data = new uint256[](2);
-        data[0] = amountEUR;
-        data[1] = exchangeTokens;
-        balancer.joinPool(amountBPT, data);
-
-        StakingInterface manager = StakingInterface(_stakingManager);
-        IERC20(balancerPool).approve(_stakingManager, amountBPT);
-        manager.addStaker(msg.sender, balancerPool, amountBPT);
+        IERC20(from).transferFrom(msg.sender, _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
+        IERC20(_tEURxb).transfer(msg.sender, amountEUR);
     }
 }
