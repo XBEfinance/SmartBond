@@ -17,35 +17,35 @@ contract('StakingManager', (accounts) => {
     gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('10000', 'ether'));
 
     const timestamp = await currentTimestamp();
-    staking = await StakingManager.new(BPT.address, gEURO.address, timestamp, 150);
+    staking = await StakingManager.new(gEURO.address, timestamp, 150);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {
     await BPT.approve(staking.address, web3.utils.toWei('100', 'ether'));
-    await staking.addStaker(recipient, web3.utils.toWei('100', 'ether'));
-    assert.equal(await staking.getNumberBPTTokens(recipient), web3.utils.toWei('100', 'ether'));
+    await staking.addStaker(recipient, BPT.address, web3.utils.toWei('100', 'ether'));
+    assert.equal(await staking.getNumberBPTTokens(recipient, BPT.address), web3.utils.toWei('100', 'ether'));
   });
 
   it('should correct claim BPT tokens and unfreeze tokens', async () => {
     assert.equal(await staking.isFrozen(), true);
 
     await BPT.approve(staking.address, web3.utils.toWei('200', 'ether'));
-    await staking.addStaker(recipient, web3.utils.toWei('100', 'ether'));
+    await staking.addStaker(recipient, BPT.address, web3.utils.toWei('100', 'ether'));
     await increaseTime(DAY * 8);
-    await staking.addStaker(staker, web3.utils.toWei('100', 'ether'));
+    await staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether'));
 
-    assert.equal(await staking.getNumberBPTTokens(recipient), web3.utils.toWei('100', 'ether'));
-    assert.equal(await staking.getNumberBPTTokens(staker), web3.utils.toWei('100', 'ether'));
+    assert.equal(await staking.getNumberBPTTokens(recipient, BPT.address), web3.utils.toWei('100', 'ether'));
+    assert.equal(await staking.getNumberBPTTokens(staker, BPT.address), web3.utils.toWei('100', 'ether'));
 
     await staking.unfreezeTokens();
     assert.equal(await staking.isFrozen(), false);
 
-    await staking.claimBPT({ from: recipient });
-    await staking.claimBPT({ from: staker });
+    await staking.claimBPT(BPT.address, { from: recipient });
+    await staking.claimBPT(BPT.address, { from: staker });
     assert.equal(await BPT.balanceOf(recipient), web3.utils.toWei('100', 'ether'));
     assert.equal(await BPT.balanceOf(staker), web3.utils.toWei('100', 'ether'));
-    assert.equal(await gEURO.balanceOf(recipient), web3.utils.toWei('6000', 'ether'));
-    assert.equal(await gEURO.balanceOf(staker), web3.utils.toWei('4000', 'ether'));
+    assert.equal(await gEURO.balanceOf(recipient), web3.utils.toWei('1500', 'ether'));
+    assert.equal(await gEURO.balanceOf(staker), web3.utils.toWei('1000', 'ether'));
   });
 });

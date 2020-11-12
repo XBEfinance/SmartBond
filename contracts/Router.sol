@@ -22,7 +22,11 @@ interface PoolInterface {
  * @dev Staking manager interface
  */
 interface StakingInterface {
-    function addStaker(address staker, uint256 amount) external;
+    function addStaker(
+        address staker,
+        address pool,
+        uint256 amount
+    ) external;
 }
 
 /**
@@ -126,6 +130,6 @@ contract Router is Ownable {
 
         StakingInterface manager = StakingInterface(_stakingManager);
         IERC20(balancerPool).approve(_stakingManager, amountBPT);
-        manager.addStaker(msg.sender, amountBPT);
+        manager.addStaker(msg.sender, balancerPool, amountBPT);
     }
 }
