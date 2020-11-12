@@ -33,7 +33,6 @@ contract Router is Ownable {
     using SafeMath for uint256;
 
     address private _teamAddress;
-    address private _balancerPool;
     address private _stakingManager;
     address private _tUSDT;
     address private _tUSDC;
@@ -41,9 +40,10 @@ contract Router is Ownable {
     address private _tDAI;
     address private _tEURxb;
 
+    mapping(address => address) _balancerPools;
+
     constructor(
         address teamAddress,
-        address balancerPool,
         address stakingManager,
         address tUSDT,
         address tUSDC,
@@ -52,7 +52,6 @@ contract Router is Ownable {
         address tEURxb
     ) public {
         _teamAddress = teamAddress;
-        _balancerPool = balancerPool;
         _stakingManager = stakingManager;
         _tUSDT = tUSDT;
         _tUSDC = tUSDC;
@@ -62,17 +61,19 @@ contract Router is Ownable {
     }
 
     /**
-     * @return balancer pool address
-     */
-    function balancerPool() public view returns (address) {
-        return _balancerPool;
-    }
-
-    /**
      * @return staking manager address
      */
     function stakingManager() public view returns (address) {
         return _stakingManager;
+    }
+
+    /**
+     * @dev Set balancer pool
+     * @param token address
+     * @param pool address
+     */
+    function setBalancerPool(address token, address pool) public onlyOwner {
+        _balancerPools[token] = pool;
     }
 
     /**
@@ -107,10 +108,12 @@ contract Router is Ownable {
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
 
-        IERC20(token).approve(_balancerPool, exchangeTokens);
-        IERC20(_tEURxb).approve(_balancerPool, amountEUR);
+        address balancerPool = _balancerPools[token];
 
-        PoolInterface balancer = PoolInterface(_balancerPool);
+        IERC20(token).approve(balancerPool, exchangeTokens);
+        IERC20(_tEURxb).approve(balancerPool, amountEUR);
+
+        PoolInterface balancer = PoolInterface(balancerPool);
         uint256 totalSupply = balancer.totalSupply();
         uint256 balance = balancer.getBalance(_tEURxb);
         uint256 ratio = amountEUR.div(balance);
@@ -122,7 +125,7 @@ contract Router is Ownable {
         balancer.joinPool(amountBPT, data);
 
         StakingInterface manager = StakingInterface(_stakingManager);
-        IERC20(_balancerPool).approve(_stakingManager, amountBPT);
+        IERC20(balancerPool).approve(_stakingManager, amountBPT);
         manager.addStaker(msg.sender, amountBPT);
     }
 }

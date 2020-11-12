@@ -50,9 +50,10 @@ contract('Router', (accounts) => {
     staking = await StakingManager.new(balancer.address, gEURO.address, timestamp, 150);
 
     router = await Router.new(
-      team, balancer.address, staking.address,
+      team, staking.address,
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
+    await router.setBalancerPool(USDT.address, balancer.address);
     await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
   });
 
