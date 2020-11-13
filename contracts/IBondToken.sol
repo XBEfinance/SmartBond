@@ -5,7 +5,7 @@ pragma solidity >= 0.6.0 < 0.7.0;
  */
 interface IBondNFToken {
   function hasToken(uint256 tokenId) external view returns(bool);
-  function mint(uint256 tokenId, address to, uint256 value, uint256 maturity)
-      external;
+  function mint(uint256 tokenId, address to, uint256 value,
+                uint256 maturity) external;
   function burn(uint256 tokenId) external;
 }
