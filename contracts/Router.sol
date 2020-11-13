@@ -3,31 +3,8 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-
-/**
- * @title PoolInterface
- * @dev Pool balancer interface
- */
-interface PoolInterface { // TODO: Do refactor to IBalancerPool and move code to IBalancerPool.sol
-    function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
-        external;
-
-    function totalSupply() external view returns (uint256);
-
-    function getBalance(address token) external view returns (uint256);
-}
-
-/**
- * @title StakingInterface
- * @dev Staking manager interface
- */
-interface StakingInterface { // TODO: Do refactor to IStakingManager and move code to IStakingManager.sol
-    function addStaker(
-        address staker,
-        address pool,
-        uint256 amount
-    ) external;
-}
+import "./IBalancerPool.sol";
+import "./IStakingManager.sol";
 
 /**
  * @title Router
@@ -90,6 +67,7 @@ contract Router is Ownable {
 
         uint256 exchangeTokens = amount.div(2);
         exchange(token, exchangeTokens); // TODO: transfer tokens from this contract to this contract :(
+        // TODO: if error all send to balancer
 
         uint256 amountEUR = exchangeTokens.mul(23).div(27);
         address balancerPool = _balancerPools[token];
@@ -97,7 +75,7 @@ contract Router is Ownable {
         IERC20(token).approve(balancerPool, exchangeTokens);
         IERC20(_tEURxb).approve(balancerPool, amountEUR);
 
-        PoolInterface balancer = PoolInterface(balancerPool);
+        IBalancerPool balancer = IBalancerPool(balancerPool);
         uint256 totalSupply = balancer.totalSupply();
         uint256 balance = balancer.getBalance(_tEURxb);
         uint256 ratio = amountEUR.div(balance); // TODO: if amountEUR < balance then ratio == 0
@@ -108,7 +86,7 @@ contract Router is Ownable {
         data[1] = exchangeTokens;
         balancer.joinPool(amountBPT, data);
 
-        StakingInterface manager = StakingInterface(_stakingManager);
+        IStakingManager manager = IStakingManager(_stakingManager); // TODO: 7 days
         IERC20(balancerPool).approve(_stakingManager, amountBPT);
         manager.addStaker(msg.sender, balancerPool, amountBPT);
     }

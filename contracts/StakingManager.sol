@@ -11,40 +11,39 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 contract StakingManager is Ownable {
     using SafeMath for uint256;
 
-    struct Weight { // TODO: do rename to Stake
+    struct Stake {
         address user;
         address pool;
-        uint256 weight;
-        uint256 bptBalance;
+        uint256 weightedBPT;
     }
 
-    struct Staker { // TODO: do rename to Reward
+    struct Reward {
         uint256 bptBalance;
         uint256 rewardsGEuro;
     }
 
-    Weight[] private _weightStakers;
+    Stake[] private _weightStakers;
 
-    mapping(address => mapping(address => Staker)) private _stakers; // user address => pool address => reward
+    mapping(address => mapping(address => Reward)) private _stakers; // user address => pool address => reward
     mapping(address => uint256) private _poolBPTWeight; // pool address => weighted amount of BPT
 
     bool private _isFrozen;
     address private _tGEuro;
     uint256 private _startTime;
-    uint256 private _weight; // TODO: maybe refactor to bonusWeight
+    uint256 private _bonusWeight;
 
     uint256 private _totalGEuro = 10000 ether;
 
     constructor(
         address tGEuro,
         uint256 startTime,
-        uint256 weight
+        uint256 bonusWeight
     ) public {
-        // TODO: add require weight >= 100
+        require(bonusWeight >= 100, "Weight must be over 100");
         _isFrozen = true;
         _tGEuro = tGEuro;
         _startTime = startTime;
-        _weight = weight;
+        _bonusWeight = bonusWeight;
     }
 
     /**
@@ -62,32 +61,24 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @return weight
+     * @return bonus weight
      */
-    function weight() external view returns (uint256) {
-        return _weight;
+    function bonusWeight() external view returns (uint256) {
+        return _bonusWeight;
     }
 
     /**
-     * @return number of BPT tokens from the staker
+     * @dev return the number of tokens from the staker
+     * @param staker user address
+     * @param pool address
      */
-    function getNumberBPTTokens(address staker, address pool) // TODO: maybe refactor to getRewardInfo(address staker, address pool) returns (uint256 bptBalance, uint256 gEuroBalance)
+    function getRewardInfo(address staker, address pool)
         external
         view
-        returns (uint256)
+        returns (uint256 bptBalance, uint256 gEuroBalance)
     {
-        return _stakers[staker][pool].bptBalance;
-    }
-
-    /**
-     * @return number of gEuro tokens from the staker
-     */
-    function getNumberGEuroTokens(address staker, address pool)
-        external
-        view
-        returns (uint256)
-    {
-        return _stakers[staker][pool].rewardsGEuro;
+        bptBalance = _stakers[staker][pool].bptBalance;
+        gEuroBalance = _stakers[staker][pool].rewardsGEuro;
     }
 
     /**
@@ -100,15 +91,12 @@ contract StakingManager is Ownable {
             "Insufficient gEuro balance"
         );
 
-        for (uint256 i = 0; i < _weightStakers.length; i++) { // TODO: need pagination
+        for (uint256 i = 0; i < _weightStakers.length; i++) {
+            // TODO: need pagination
             address user = _weightStakers[i].user;
             address pool = _weightStakers[i].pool;
 
-            uint256 weightStaker = _weightStakers[i].weight;
-            uint256 weightedBPT = _weightStakers[i]
-                .bptBalance
-                .mul(weightStaker)
-                .div(100);
+            uint256 weightedBPT = _weightStakers[i].weightedBPT;
 
             uint256 poolBPTWeight = _poolBPTWeight[pool];
             uint256 percent = weightedBPT.mul(10**18).div(poolBPTWeight);
@@ -129,10 +117,12 @@ contract StakingManager is Ownable {
      * @param staker user address
      * @param amount number of BPT tokens
      */
-    function addStaker(address staker, address pool, uint256 amount)
-        external
-    {
-        // TODO: add require (now >= _startTime)
+    function addStaker(
+        address staker,
+        address pool,
+        uint256 amount
+    ) external {
+        require(now >= _startTime, "The time has not come yet");
         // TODO: add require (address pool == usdt_balancer_pool or usdc_balancer_pool or ... etc.)
         IERC20(pool).transferFrom(msg.sender, address(this), amount);
         _stakers[staker][pool].bptBalance = _stakers[staker][pool]
@@ -140,24 +130,11 @@ contract StakingManager is Ownable {
             .add(amount);
 
         if (now <= _startTime + 3 days) {
-            _weightStakers.push(
-                Weight(
-                    staker,
-                    pool,
-                    _weight, // TODO: maybe refactor to amount * _weight / 100
-                    amount)
-                );
-            _poolBPTWeight[pool] = _poolBPTWeight[pool].add(
-                amount.mul(_weight).div(100)
-            );
+            uint256 weightedBPT = amount.mul(_bonusWeight).div(100);
+            _weightStakers.push(Stake(staker, pool, weightedBPT));
+            _poolBPTWeight[pool] = _poolBPTWeight[pool].add(weightedBPT);
         } else {
-            _weightStakers.push(
-                Weight(
-                    staker,
-                    pool,
-                    100,
-                    amount)
-                );
+            _weightStakers.push(Stake(staker, pool, amount));
             _poolBPTWeight[pool] = _poolBPTWeight[pool].add(amount);
         }
     }
@@ -166,6 +143,7 @@ contract StakingManager is Ownable {
      * @dev Pick up BPT
      */
     function claimBPT(address pool) external {
+        // TODO: maybe remove the parameter
         require(!_isFrozen, "Tokens frozen");
         uint256 amountBPT = _stakers[msg.sender][pool].bptBalance;
         require(amountBPT > 0, "Staker doesn't exist");

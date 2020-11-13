@@ -24,7 +24,8 @@ contract('StakingManager', (accounts) => {
   it('should return correct pool values when adding liquidity through a contract', async () => {
     await BPT.approve(staking.address, web3.utils.toWei('100', 'ether'));
     await staking.addStaker(recipient, BPT.address, web3.utils.toWei('100', 'ether'));
-    assert.equal(await staking.getNumberBPTTokens(recipient, BPT.address), web3.utils.toWei('100', 'ether'));
+    const result = await staking.getRewardInfo(recipient, BPT.address);
+    assert.equal(result.bptBalance, web3.utils.toWei('100', 'ether'));
   });
 
   it('should correct claim BPT tokens and unfreeze tokens', async () => {
@@ -35,8 +36,10 @@ contract('StakingManager', (accounts) => {
     await increaseTime(DAY * 8);
     await staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether'));
 
-    assert.equal(await staking.getNumberBPTTokens(recipient, BPT.address), web3.utils.toWei('100', 'ether'));
-    assert.equal(await staking.getNumberBPTTokens(staker, BPT.address), web3.utils.toWei('100', 'ether'));
+    const resultRecipient = await staking.getRewardInfo(recipient, BPT.address);
+    const resultStaker = await staking.getRewardInfo(staker, BPT.address);
+    assert.equal(resultRecipient.bptBalance, web3.utils.toWei('100', 'ether'));
+    assert.equal(resultStaker.bptBalance, web3.utils.toWei('100', 'ether'));
 
     await staking.unfreezeTokens();
     assert.equal(await staking.isFrozen(), false);
