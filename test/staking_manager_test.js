@@ -19,6 +19,7 @@ contract('StakingManager', (accounts) => {
     const timestamp = await currentTimestamp();
     staking = await StakingManager.new(gEURO.address, timestamp, 150);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
+    await increaseTime(DAY);
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {

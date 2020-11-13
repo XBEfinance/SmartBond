@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const { currentTimestamp } = require('./common');
+const { increaseTime, currentTimestamp, DAY } = require('./common');
 
 const MockToken = artifacts.require('MockToken');
 const BFactory = artifacts.require('BFactory');
@@ -10,7 +10,8 @@ const StakingManager = artifacts.require('StakingManager');
 
 contract('Router', (accounts) => {
   const recipient = accounts[1];
-  const team = accounts[2];
+  const staker = accounts[2];
+  const team = accounts[3];
 
   let USDT;
   let USDC;
@@ -24,17 +25,18 @@ contract('Router', (accounts) => {
   let router;
 
   beforeEach(async () => {
-    USDT = await MockToken.new('USDT', 'USDT', web3.utils.toWei('400', 'ether'));
-    USDC = await MockToken.new('USDC', 'USDC', web3.utils.toWei('400', 'ether'));
-    BUSD = await MockToken.new('BUSD', 'BUSD', web3.utils.toWei('400', 'ether'));
-    DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('400', 'ether'));
+    USDT = await MockToken.new('USDT', 'USDT', web3.utils.toWei('500', 'ether'));
+    USDC = await MockToken.new('USDC', 'USDC', web3.utils.toWei('500', 'ether'));
+    BUSD = await MockToken.new('BUSD', 'BUSD', web3.utils.toWei('500', 'ether'));
+    DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('500', 'ether'));
 
-    EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('400', 'ether'));
-    gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('400', 'ether'));
+    EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('500', 'ether'));
+    gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('500', 'ether'));
 
     await USDT.transfer(recipient, web3.utils.toWei('200', 'ether'));
-    this.bFactory = await BFactory.deployed();
+    await USDT.transfer(staker, web3.utils.toWei('200', 'ether'));
 
+    this.bFactory = await BFactory.deployed();
     await this.bFactory.newBPool();
     const balancerAddress = await this.bFactory.getLastBPool();
     balancer = await BPool.at(balancerAddress);
@@ -50,11 +52,13 @@ contract('Router', (accounts) => {
     staking = await StakingManager.new(gEURO.address, timestamp, 150);
 
     router = await Router.new(
-      team, staking.address,
+      team, staking.address, timestamp,
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
     await router.setBalancerPool(USDT.address, balancer.address);
-    await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
+    await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
+
+    await increaseTime(DAY);
   });
 
   it('should return correct pool values', async () => {
@@ -77,5 +81,10 @@ contract('Router', (accounts) => {
 
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('92', 'ether'));
     assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('108', 'ether'));
+
+    await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: staker });
+    await router.addLiquidity(USDT.address, web3.utils.toWei('108', 'ether'), { from: staker });
+    assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('138', 'ether'));
+    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('162', 'ether'));
   });
 });
