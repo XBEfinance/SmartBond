@@ -1,5 +1,5 @@
 const {assert} = require('chai');
-const {time, BN, expectRevert, expectEvent} =
+const {time, BN, expectRevert } =
     require('openzeppelin-test-helpers');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
@@ -19,7 +19,7 @@ contract('SecurityAssetTokenTest', accounts => {
 
   // ----------- check allow list management -----------
 
-  it('check miris is allow list administrator',
+  it('check miris is allow list admin',
      async () => { await this.sat.allowAccount(alice, {from : miris}); });
 
   it('check empty list', async () => {
@@ -27,11 +27,11 @@ contract('SecurityAssetTokenTest', accounts => {
            "alice must not be in the list in the beginning");
   });
 
-  it('only administrator can allow account', async () => {
+  it('only admin can allow account', async () => {
     assert(!await this.sat.isAllowedAccount(alice),
            "alice must not be in the list in the beginning");
     expectRevert(this.sat.allowAccount(alice, {from : bob}),
-                 'only administrator can modify allow list');
+                 'sender isn\'t a admin');
   });
 
   it('add account', async () => {
@@ -42,12 +42,12 @@ contract('SecurityAssetTokenTest', accounts => {
            "now the list should have alice");
   });
 
-  it('only administrator can disallow account', async () => {
+  it('only admin can disallow account', async () => {
     assert(!await this.sat.isAllowedAccount(alice),
            "alice must not be in the list in the beginning");
     await this.sat.allowAccount(alice, {from : miris});
     expectRevert(this.sat.allowAccount(alice, {from : bob}),
-                 'only administrator can modify allow list');
+                 'sender isn\'t a admin');
   });
 
   it('disallow account', async () => {
@@ -68,22 +68,14 @@ contract('SecurityAssetTokenTest', accounts => {
     assert(!await this.bond.hasToken("1"),
            'bond token must not exist at this time point');
 
-    const {receipt} =
-        await this.sat.mint(alice, "1", "100", "100", {from : miris});
-    expectEvent.inTransaction(receipt.transactionHash, this.sat,
-                              'SecurityAssetTokenMinted', {
-                                to : alice,
-                                tokenId : new BN('1'),
-                                value : new BN('100'),
-                                maturity : new BN('100'),
-                              });
+    await this.sat.mint(alice, "1", "100", "100", {from : miris});
     assert(await this.bond.hasToken("1"),
            'Bond token `1` must has being created');
   });
 
   it('minting is not allowed for account not in allow list', async () => {
     await expectRevert(this.sat.mint(alice, "1", "100", "100", {from : miris}),
-                       'user is not allowed to get tokens');
+                       'user is not allowed to receive tokens');
   });
 
   // ----------- check burning -----------
@@ -94,7 +86,7 @@ contract('SecurityAssetTokenTest', accounts => {
     await this.bond.burn("1");
     // owner cannot burn his token either
     await expectRevert(this.sat.burn("1", {from : alice}),
-                       'sender is not allowed to burn SAT tokens');
+                       'sender isn\'t a burner');
   });
 
   it('burning SAT is not allowed when corresponding Bond is still alive',
@@ -111,9 +103,7 @@ contract('SecurityAssetTokenTest', accounts => {
     await this.sat.mint(alice, "1", "100", "100", {from : miris});
     await this.bond.burn("1");
     assert(!await this.bond.hasToken("1"), "bond token was not burned");
-    const {receipt} = await this.sat.burn("1", {from : miris});
-    expectEvent.inTransaction(receipt.transactionHash, this.sat,
-                              'SecurityAssetTokenBurned', "1");
+    await this.sat.burn("1", {from : miris});
   });
 
   // ----------- check transfers -----------
@@ -157,7 +147,7 @@ contract('SecurityAssetTokenTest', accounts => {
        await this.sat.setApprovalForAll(bob, true, {from : alice});
        expectRevert(
            this.sat.transferFrom(alice, bob, new BN('1'), {from : alice}),
-           "sender is not allowed to call transfer");
+           "sender isn\'t a transferer");
      });
 
   it('transfer token from alice to bob: not allowed account failure ',
