@@ -1,4 +1,7 @@
 {
-   "extends": "solium:all"
+    "extends": "solium:all",
+    "rules": {
+      "indentation": "off"
+    }
 }
 
