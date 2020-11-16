@@ -84,7 +84,7 @@ contract Router is Ownable {
         require(now >= _startTime, "The time has not come yet");
         uint256 balance = address(this).balance;
         if (balance > 0) {
-            IERC20(_tEURxb).transfer(msg.sender, balance);
+            IERC20(_tEURxb).transfer(_msgSender(), balance);
         }
         _isClosedContract = true;
     }
@@ -97,7 +97,7 @@ contract Router is Ownable {
     function addLiquidity(address token, uint256 amount) external {
         require(now >= _startTime, "The time has not come yet");
         require(!_isClosedContract, "Contract closed");
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).transferFrom(_msgSender(), address(this), amount);
 
         address balancerPool = _balancerPools[token];
         IBalancerPool balancer = IBalancerPool(balancerPool);
@@ -144,11 +144,11 @@ contract Router is Ownable {
         }
 
         if (_startTime + 7 days < now) {
-            IERC20(balancerPool).transfer(msg.sender, amountBPT);
+            IERC20(balancerPool).transfer(_msgSender(), amountBPT);
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
             IERC20(balancerPool).approve(_stakingManager, amountBPT);
-            manager.addStaker(msg.sender, balancerPool, amountBPT);
+            manager.addStaker(_msgSender(), balancerPool, amountBPT);
         }
     }
 
@@ -168,9 +168,9 @@ contract Router is Ownable {
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
         require(balanceEUR >= amountEUR, "Not enough tokens");
 
-        IERC20(from).transferFrom(msg.sender, _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
-        if (msg.sender != address(this)) {
-            IERC20(_tEURxb).transfer(msg.sender, amountEUR);
+        IERC20(from).transferFrom(_msgSender(), _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
+        if (_msgSender() != address(this)) {
+            IERC20(_tEURxb).transfer(_msgSender(), amountEUR);
         }
     }
 }

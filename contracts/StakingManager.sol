@@ -143,7 +143,7 @@ contract StakingManager is Ownable {
     ) external {
         require(now >= _startTime, "The time has not come yet");
         require(_balancerPools[pool], "Balancer pool not found");
-        IERC20(pool).transferFrom(msg.sender, address(this), amount);
+        IERC20(pool).transferFrom(_msgSender(), address(this), amount);
         _stakers[staker][pool].bptBalance = _stakers[staker][pool]
             .bptBalance
             .add(amount);
@@ -164,15 +164,15 @@ contract StakingManager is Ownable {
     function claimBPT(address pool) external {
         // TODO: maybe remove the parameter
         require(!_isFrozen, "Tokens frozen");
-        uint256 amountBPT = _stakers[msg.sender][pool].bptBalance;
+        uint256 amountBPT = _stakers[_msgSender()][pool].bptBalance;
         require(amountBPT > 0, "Staker doesn't exist");
-        _stakers[msg.sender][pool].bptBalance = 0;
-        IERC20(pool).transfer(msg.sender, amountBPT);
+        _stakers[_msgSender()][pool].bptBalance = 0;
+        IERC20(pool).transfer(_msgSender(), amountBPT);
 
-        uint256 amountGEuro = _stakers[msg.sender][pool].rewardsGEuro;
-        _stakers[msg.sender][pool].rewardsGEuro = 0;
+        uint256 amountGEuro = _stakers[_msgSender()][pool].rewardsGEuro;
+        _stakers[_msgSender()][pool].rewardsGEuro = 0;
         if (amountGEuro > 0) {
-            IERC20(_tGEuro).transfer(msg.sender, amountGEuro);
+            IERC20(_tGEuro).transfer(_msgSender(), amountGEuro);
         }
     }
 }
