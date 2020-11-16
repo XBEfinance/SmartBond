@@ -118,6 +118,7 @@ contract Router is Ownable {
             uint256 balance = balancer.getBalance(_tEURxb);
             uint256 ratio = amountEUR.mul(10**18).div(balance);
             amountBPT = totalSupply.mul(ratio).div(10**18);
+            amountBPT = amountBPT.mul(99).div(100);
 
             uint256[] memory data = new uint256[](2);
             data[0] = amountEUR;
