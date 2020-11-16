@@ -18,6 +18,7 @@ contract('StakingManager', (accounts) => {
 
     const timestamp = await currentTimestamp();
     staking = await StakingManager.new(gEURO.address, timestamp, 150);
+    await staking.setBalancerPool(BPT.address);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await increaseTime(DAY);
   });

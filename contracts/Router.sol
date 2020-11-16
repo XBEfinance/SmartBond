@@ -99,29 +99,48 @@ contract Router is Ownable {
         require(!_isClosedContract, "Contract closed");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
 
-        uint256 exchangeTokens = amount.div(2);
-        exchange(token, exchangeTokens); // TODO: transfer tokens from this contract to this contract :(
-        // TODO: if error all send to balancer
-
-        uint256 amountEUR = exchangeTokens.mul(23).div(27);
-        uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
-        require(balanceEUR >= amountEUR, "Not enough tokens");
-
         address balancerPool = _balancerPools[token];
-
-        IERC20(token).approve(balancerPool, exchangeTokens);
-        IERC20(_tEURxb).approve(balancerPool, amountEUR);
-
         IBalancerPool balancer = IBalancerPool(balancerPool);
         uint256 totalSupply = balancer.totalSupply();
-        uint256 balance = balancer.getBalance(_tEURxb);
-        uint256 ratio = amountEUR.mul(10**18).div(balance);
-        uint256 amountBPT = totalSupply.mul(ratio).div(10**18);
 
-        uint256[] memory data = new uint256[](2);
-        data[0] = amountEUR;
-        data[1] = exchangeTokens;
-        balancer.joinPool(amountBPT, data);
+        uint256 exchangeTokens = amount.div(2);
+        uint256 amountEUR = exchangeTokens.mul(23).div(27);
+        uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
+
+        uint256 amountBPT;
+
+        if (balanceEUR >= amountEUR) {
+            exchange(token, exchangeTokens);
+
+            IERC20(token).approve(balancerPool, exchangeTokens);
+            IERC20(_tEURxb).approve(balancerPool, amountEUR);
+
+            uint256 balance = balancer.getBalance(_tEURxb);
+            uint256 ratio = amountEUR.mul(10**18).div(balance);
+            amountBPT = totalSupply.mul(ratio).div(10**18);
+
+            uint256[] memory data = new uint256[](2);
+            data[0] = amountEUR;
+            data[1] = exchangeTokens;
+            balancer.joinPool(amountBPT, data);
+        } else {
+            IERC20(token).approve(balancerPool, amount);
+            uint256 tokenBalanceIn = balancer.getBalance(token);
+            uint256 tokenWeightIn = balancer.getDenormalizedWeight(token);
+            uint256 totalWeight = balancer.getTotalDenormalizedWeight();
+            uint256 tokenAmountIn = amount;
+            uint256 swapFee = balancer.getSwapFee();
+
+            amountBPT = balancer.calcPoolOutGivenSingleIn(
+                tokenBalanceIn,
+                tokenWeightIn,
+                totalSupply,
+                totalWeight,
+                tokenAmountIn,
+                swapFee
+            );
+            balancer.joinswapExternAmountIn(token, amount, amountBPT);
+        }
 
         if (_startTime + 7 days < now) {
             IERC20(balancerPool).transfer(msg.sender, amountBPT);
@@ -144,7 +163,13 @@ contract Router is Ownable {
             "Token not found"
         );
         uint256 amountEUR = amount.mul(23).div(27);
+
+        uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
+        require(balanceEUR >= amountEUR, "Not enough tokens");
+
         IERC20(from).transferFrom(msg.sender, _teamAddress, amount); // TODO: _tUSDT may not contains IERC20.transferFrom
-        IERC20(_tEURxb).transfer(msg.sender, amountEUR);
+        if (msg.sender != address(this)) {
+            IERC20(_tEURxb).transfer(msg.sender, amountEUR);
+        }
     }
 }

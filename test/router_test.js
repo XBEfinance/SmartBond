@@ -55,8 +55,9 @@ contract('Router', (accounts) => {
       team, staking.address, timestamp,
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
+
     await router.setBalancerPool(USDT.address, balancer.address);
-    await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
+    await staking.setBalancerPool(balancer.address);
 
     await increaseTime(DAY);
   });
@@ -69,6 +70,7 @@ contract('Router', (accounts) => {
   });
 
   it('should return correct balance EURxb values', async () => {
+    await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
     await USDT.approve(router.address, web3.utils.toWei('54', 'ether'), { from: recipient });
     await router.exchange(USDT.address, web3.utils.toWei('54', 'ether'), { from: recipient });
     const balance = await EURxb.balanceOf(recipient);
@@ -76,6 +78,7 @@ contract('Router', (accounts) => {
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {
+    await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
     await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
     await router.addLiquidity(USDT.address, web3.utils.toWei('108', 'ether'), { from: recipient });
 

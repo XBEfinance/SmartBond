@@ -26,6 +26,7 @@ contract StakingManager is Ownable {
 
     mapping(address => mapping(address => Reward)) private _stakers; // user address => pool address => reward
     mapping(address => uint256) private _poolBPTWeight; // pool address => weighted amount of BPT
+    mapping(address => bool) private _balancerPools; // balancer pool address => status
 
     bool private _isFrozen;
     address private _tGEuro;
@@ -33,6 +34,8 @@ contract StakingManager is Ownable {
     uint256 private _bonusWeight;
 
     uint256 private _totalGEuro = 10000 ether;
+
+    uint256 private _unfreezeShift = 0;
 
     constructor(
         address tGEuro,
@@ -82,6 +85,14 @@ contract StakingManager is Ownable {
     }
 
     /**
+     * @dev Set balancer pool
+     * @param pool address
+     */
+    function setBalancerPool(address pool) external onlyOwner {
+        _balancerPools[pool] = true;
+    }
+
+    /**
      * @dev Unfreeze BPT tokens
      */
     function unfreezeTokens() external onlyOwner {
@@ -90,9 +101,13 @@ contract StakingManager is Ownable {
             IERC20(_tGEuro).balanceOf(address(this)) >= _totalGEuro,
             "Insufficient gEuro balance"
         );
+        require(_isFrozen, "Tokens unfrozen");
 
-        for (uint256 i = 0; i < _weightStakers.length; i++) {
-            // TODO: need pagination
+        for (
+            uint256 i = _unfreezeShift;
+            i < _weightStakers.length && i < _unfreezeShift + 100;
+            i++
+        ) {
             address user = _weightStakers[i].user;
             address pool = _weightStakers[i].pool;
 
@@ -109,7 +124,11 @@ contract StakingManager is Ownable {
                 .add(amountGEuro);
         }
 
-        _isFrozen = false;
+        _unfreezeShift = _unfreezeShift + 100;
+
+        if (_unfreezeShift >= _weightStakers.length) {
+            _isFrozen = false;
+        }
     }
 
     /**
@@ -123,7 +142,7 @@ contract StakingManager is Ownable {
         uint256 amount
     ) external {
         require(now >= _startTime, "The time has not come yet");
-        // TODO: add require (address pool == usdt_balancer_pool or usdc_balancer_pool or ... etc.)
+        require(_balancerPools[pool], "Balancer pool not found");
         IERC20(pool).transferFrom(msg.sender, address(this), amount);
         _stakers[staker][pool].bptBalance = _stakers[staker][pool]
             .bptBalance
