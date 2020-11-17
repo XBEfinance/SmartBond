@@ -16,7 +16,7 @@ const StakingManager = artifacts.require('./StakingManager');
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondTokenMock = artifacts.require('NFBondTokenMock');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
-const AllowList = artifacts.require('AllowList');
+
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -44,10 +44,7 @@ module.exports = function (deployer) {
     await deployer.deploy(Router, teamAddress, StakingManager.address, 1604993292, USDT, USDC, BUSD, DAI, EURxb.address);
 
     await deployer.deploy(TokenAccessRoles);
-    await deployer.deploy(AllowList);
     await deployer.link(TokenAccessRoles, BondTokenMock);
-    await deployer.link(AllowList, BondTokenMock);
     await deployer.link(TokenAccessRoles, SecurityAssetToken);
-    await deployer.link(AllowList, SecurityAssetToken);
   });
 };
