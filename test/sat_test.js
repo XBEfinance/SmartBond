@@ -4,6 +4,7 @@ const {time, BN, expectRevert } =
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('NFBondTokenMock');
+const AllowList = artifacts.require('AllowList');
 
 const baseURI = "127.0.0.1/";
 
@@ -13,134 +14,105 @@ contract('SecurityAssetTokenTest', accounts => {
   const bob = accounts[3];
 
   beforeEach(async () => {
+    this.list = await AllowList.new(miris);
     this.bond = await BondToken.new();
-    this.sat = await SecurityAssetToken.new(baseURI, miris, this.bond.address);
-  });
-
-  // ----------- check allow list management -----------
-
-  it('check miris is allow list admin',
-     async () => { await this.sat.allowAccount(alice, {from : miris}); });
-
-  it('check empty list', async () => {
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must not be in the list in the beginning");
-  });
-
-  it('only admin can allow account', async () => {
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must not be in the list in the beginning");
-    expectRevert(this.sat.allowAccount(alice, {from : bob}),
-                 'sender isn\'t a admin');
-  });
-
-  it('add account', async () => {
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must not be in the list in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
-    assert(await this.sat.isAllowedAccount(alice),
-           "now the list should have alice");
-  });
-
-  it('only admin can disallow account', async () => {
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must not be in the list in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
-    expectRevert(this.sat.allowAccount(alice, {from : bob}),
-                 'sender isn\'t a admin');
-  });
-
-  it('disallow account', async () => {
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must not be in the list in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
-    assert(await this.sat.isAllowedAccount(alice),
-           "now the list should have alice");
-    await this.sat.disallowAccount(alice, {from : miris});
-    assert(!await this.sat.isAllowedAccount(alice),
-           "alice must have been removed");
+    this.sat = await SecurityAssetToken.new(baseURI, miris, this.bond.address, this.list);
   });
 
   // ----------- check minting -----------
 
   it('mint new SAT and Bond tokens', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    assert(!await this.bond.hasToken("1"),
-           'bond token must not exist at this time point');
+    await this.list.allowAccount(alice, {from : miris});
+    assert(!await this.bond.hasToken("0"), 'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, "1", "100", "100", {from : miris});
-    assert(await this.bond.hasToken("1"),
-           'Bond token `1` must has being created');
+    await this.sat.mint(alice, web3.utils.toWei('100', 'ether'), new BN("100"), {from : miris});
+    assert(await this.bond.hasToken("0"), 'Bond token `0` must has being created');
+  });
+
+  it ('when minting tokenId increases', async() => {
+    await this.sat.allowAccount(alice, {from : miris});
+    assert(!await this.bond.hasToken("0"), 'bond token must not exist at this time point');
+
+    await this.sat.mint(
+        alice,
+        web3.utils.toWei('100', 'ether'),
+        new BN("100"), {from : miris}
+        );
+    assert(!await this.bond.hasToken("1"), 'bond token `1` must not exist at this time point');
+    assert(await this.bond.hasToken("0"),
+           'Bond token `0` must has being created');
+    await this.sat.mint(
+        alice,
+        web3.utils.toWei('100', 'ether'),
+        new BN("100"), {from : miris}
+        );
+    assert(await this.bond.hasToken("1"), 'bond token `1` must exist at this time point');
   });
 
   it('minting is not allowed for account not in allow list', async () => {
-    await expectRevert(this.sat.mint(alice, "1", "100", "100", {from : miris}),
+    await expectRevert(this.sat.mint(alice, "0", "100", "100", {from : miris}),
                        'user is not allowed to receive tokens');
   });
 
   // ----------- check burning -----------
 
   it('burning SAT is not allowed for non-miris account', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    await this.sat.mint(alice, "1", "100", "100", {from : miris});
-    await this.bond.burn("1");
+    await this.list.allowAccount(alice, {from : miris});
+    await this.sat.mint(alice, web3.utils.toWei('100', 'ether'), new BN("100"), {from : miris});
+    await this.bond.burn("0"); // tokenId
     // owner cannot burn his token either
-    await expectRevert(this.sat.burn("1", {from : alice}),
+    await expectRevert(this.sat.burn("0", {from : alice}),
                        'sender isn\'t a burner');
   });
 
   it('burning SAT is not allowed when corresponding Bond is still alive',
      async () => {
-       await this.sat.allowAccount(alice, {from : miris});
-       await this.sat.mint(alice, "1", "100", "100", {from : miris});
-       assert(await this.bond.hasToken("1"), "bond token doesn't exist");
-       expectRevert(this.sat.burn("1", {from : miris}),
-                    'bond token is still alive');
+       await this.list.allowAccount(alice, {from : miris});
+       await this.sat.mint(alice, "100", "100", {from : miris});
+       assert(await this.bond.hasToken("0"), "bond token doesn't exist");
+       expectRevert(this.sat.burn("0", {from : miris}), 'bond token is still alive');
      });
 
   it('burn SAT', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    await this.sat.mint(alice, "1", "100", "100", {from : miris});
-    await this.bond.burn("1");
-    assert(!await this.bond.hasToken("1"), "bond token was not burned");
-    await this.sat.burn("1", {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
+    await this.sat.mint(alice, "100", "100", {from : miris});
+    await this.bond.burn("0");
+    assert(!await this.bond.hasToken("0"), "bond token was not burned");
+    await this.sat.burn("0", {from : miris});
   });
 
   // ----------- check transfers -----------
   it('transfer token from alice to bob (single approval)', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    await this.sat.allowAccount(bob, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(bob, {from : miris});
 
-    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
-                        {from : miris});
-    await this.sat.approve(bob, new BN('1'), {from : alice});
-    await this.sat.transferFrom(alice, bob, new BN('1'), {from : miris});
+    await this.sat.mint(alice, new BN('100'), new BN('100'), {from : miris});
+    await this.sat.approve(bob, new BN('0'), {from : alice});
+    await this.sat.transferFrom(alice, bob, new BN('0'), {from : miris});
   });
 
   it('transfer token from alice to bob (approve for all)', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    await this.sat.allowAccount(bob, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(bob, {from : miris});
 
-    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
-                        {from : miris});
+    await this.sat.mint(alice, new BN('100'), new BN('100'), {from : miris});
     await this.sat.setApprovalForAll(bob, true, {from : alice});
-    await this.sat.transferFrom(alice, bob, new BN('1'), {from : miris});
+    await this.sat.transferFrom(alice, bob, new BN('0'), {from : miris});
   });
 
   it('transfer token from alice to bob: no approval failure', async () => {
-    await this.sat.allowAccount(alice, {from : miris});
-    await this.sat.allowAccount(bob, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(bob, {from : miris});
 
-    await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
-                        {from : miris});
+    await this.sat.mint(alice, new BN('100'), new BN('100'), {from : miris});
     expectRevert(this.sat.transferFrom(alice, bob, new BN('1'), {from : miris}),
                  "transfer was not approved");
   });
 
   it('transfer token from alice to bob: no transferer role failure ',
      async () => {
-       await this.sat.allowAccount(alice, {from : miris});
-       await this.sat.allowAccount(bob, {from : miris});
+       await this.list.allowAccount(alice, {from : miris});
+       await this.list.allowAccount(bob, {from : miris});
 
        await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
                            {from : miris});
@@ -152,7 +124,7 @@ contract('SecurityAssetTokenTest', accounts => {
 
   it('transfer token from alice to bob: not allowed account failure ',
      async () => {
-       await this.sat.allowAccount(alice, {from : miris});
+       await this.list.allowAccount(alice, {from : miris});
        await this.sat.mint(alice, new BN('1'), new BN('100'), new BN('100'),
                            {from : miris});
        await this.sat.setApprovalForAll(bob, true, {from : alice});
@@ -165,14 +137,14 @@ contract('SecurityAssetTokenTest', accounts => {
   it('total value = 0 in the beginning', async () => {
     assert(await this.sat.totalValue() == '0',
            "total value is not 0 in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
     await this.sat.mint(alice, "1", "100", "100", {from : miris});
   });
 
   it('total value increases after minting', async () => {
     assert(await this.sat.totalValue() == '0',
            "total value is not 0 in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
     await this.sat.mint(alice, "1", "100", "100", {from : miris});
     assert(await this.sat.totalValue() == "100",
            "total value is wrong after minting");
@@ -181,7 +153,7 @@ contract('SecurityAssetTokenTest', accounts => {
   it('total value decreases after burning', async () => {
     assert(await this.sat.totalValue() == '0',
            "total value is not 0 in the beginning");
-    await this.sat.allowAccount(alice, {from : miris});
+    await this.list.allowAccount(alice, {from : miris});
     await this.sat.mint(alice, "1", "100", "100", {from : miris});
     assert(await this.sat.totalValue() == "100",
            "total value is wrong after minting");
