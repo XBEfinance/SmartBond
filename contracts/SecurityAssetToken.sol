@@ -22,8 +22,10 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
     /// value of all tokens summarized
     uint256 private _totalValue;
+
     /// bond token contract address
     address private _bond;
+
     /// allow list
     address private _allowList;
 
