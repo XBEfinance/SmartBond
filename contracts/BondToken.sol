@@ -41,15 +41,15 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     }
 
     // accessors
-    function getTokenValue(uint256 tokenId) public view returns(uint256) {
+    function getTokenValue(uint256 tokenId) external view returns(uint256) {
         return _tokens[tokenId].value;
     }
 
-    function getTokenInterestPerSec(uint256 tokenId) public view returns(uint256) {
+    function getTokenInterestPerSec(uint256 tokenId) external view returns(uint256) {
         return _tokens[tokenId].interestPerSec;
     }
 
-    function getTokenMaturityEnd(uint256 tokenId) public view returns(uint256) {
+    function getTokenMaturityEnd(uint256 tokenId) external view returns(uint256) {
         return _tokens[tokenId].maturityEnds;
     }
 
@@ -125,16 +125,35 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public override
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory _data) public override
     {
-        _safeTransferFrom( _msgSender(), from, to, tokenId, _data);
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            _data);
     }
 
     function _safeTransferFrom(
@@ -148,6 +167,10 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
         // TODO: check if we really need to check that `to` owns bond token
 
-        _safeTransfer(from, to, tokenId, _data);
+        _safeTransfer(
+            from,
+            to,
+            tokenId,
+            _data);
     }
 }

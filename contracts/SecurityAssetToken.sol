@@ -64,8 +64,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * @param maturity datetime stamp when token's deposit value must be
      * returned
      */
-    function mint(address to, uint256 value, uint256 maturity) external
-    {
+    function mint(address to, uint256 value, uint256 maturity) external {
         // check role
         // only external account having minter role is allowed to mint tokens
         require(hasRole(TokenAccessRoles.minter(), _msgSender()),
@@ -83,7 +82,12 @@ contract SecurityAssetToken is ERC721, AccessControl {
         _totalValue = _totalValue.add(value);
 
         // mint corresponding bond token
-        IBondNFToken(_bond).mint(tokenId, to, value.mul(75).div(100), maturity);
+        IBondNFToken(_bond)
+        .mint(
+            tokenId,
+            to,
+            value.mul(75).div(100),
+            maturity);
     }
 
     /**
@@ -117,17 +121,32 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * @param tokenId token id to transfer
      */
     function transferFrom(address from, address to, uint256 tokenId) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
     function safeTransferFrom(address from, address to,
         uint256 tokenId, bytes memory _data) public override
     {
-        _safeTransferFrom( _msgSender(), from, to, tokenId, _data);
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            _data);
     }
 
     function _isApproved(address spender, uint256 tokenId) private view returns(bool) {
@@ -147,8 +166,17 @@ contract SecurityAssetToken is ERC721, AccessControl {
         require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
         require(_isApproved(to, tokenId), "transfer was not approved");
 
-        _safeTransfer(from, to, tokenId, _data);
+        _safeTransfer(
+            from,
+            to,
+            tokenId,
+            _data);
 
-        IERC721(_bond).safeTransferFrom(from, to, tokenId, _data);
+        IERC721(_bond)
+        .safeTransferFrom(
+            from,
+            to,
+            tokenId,
+            _data);
     }
 }
