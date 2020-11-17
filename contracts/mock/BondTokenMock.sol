@@ -34,4 +34,34 @@ contract NFBondTokenMock is ERC721, IBondNFToken {
     require(_tokens[tokenId].isMinted, "token to burn doesn't exist");
     delete _tokens[tokenId];
   }
+
+  function transferFrom(address from, address to, uint256 tokenId) public override {
+        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
+        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+    }
+
+    function safeTransferFrom(address from, address to,
+        uint256 tokenId, bytes memory _data) public override
+    {
+        _safeTransferFrom( _msgSender(), from, to, tokenId, _data);
+    }
+
+    function _isApproved(address spender, uint256 tokenId) private view returns(bool) {
+        require(_exists(tokenId), "token does not exist");
+        address owner = ownerOf(tokenId);
+        return (getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
+    }
+
+    function _safeTransferFrom(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory _data) private
+    {
+        // no need to check this logic right here
+    }
 }
