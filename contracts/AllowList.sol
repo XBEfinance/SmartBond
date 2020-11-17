@@ -48,7 +48,7 @@ contract AllowList is Ownable {
     /**
      * Returns total count of allowed accounts
      */
-    function allowListCount() view public returns(uint256) {
+    function allowListCount() public view returns(uint256) {
         return _counter.current();
     }
 
