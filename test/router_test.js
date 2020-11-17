@@ -9,9 +9,13 @@ const Router = artifacts.require('Router');
 const StakingManager = artifacts.require('StakingManager');
 
 contract('Router', (accounts) => {
+  const owner = accounts[0];
   const recipient = accounts[1];
   const staker = accounts[2];
   const team = accounts[3];
+
+  const newBalancer = accounts[4];
+  const newTeam = accounts[5];
 
   let USDT;
   let USDC;
@@ -23,6 +27,8 @@ contract('Router', (accounts) => {
   let balancer;
   let staking;
   let router;
+
+  let timestamp;
 
   beforeEach(async () => {
     USDT = await MockToken.new('USDT', 'USDT', web3.utils.toWei('500', 'ether'));
@@ -48,7 +54,7 @@ contract('Router', (accounts) => {
     await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
     await balancer.finalize();
 
-    const timestamp = await currentTimestamp();
+    timestamp = await currentTimestamp();
     staking = await StakingManager.new(gEURO.address, timestamp, 150);
 
     router = await Router.new(
@@ -62,11 +68,27 @@ contract('Router', (accounts) => {
     await increaseTime(DAY);
   });
 
-  it('should return correct pool values', async () => {
+  it('should return correct balancer values', async () => {
     assert.equal(await balancer.getNumTokens(), 2);
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
     assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('54', 'ether'));
     assert.equal(await balancer.getSwapFee(), web3.utils.toWei('1', 'finney'));
+  });
+
+  it('should return correct router values', async () => {
+    assert.equal(await router.isClosedContract(), false);
+    assert.equal(await router.balancerPools(USDT.address), balancer.address);
+    assert.equal(await router.teamAddress(), team);
+    assert.equal(await router.stakingManager(), staking.address);
+    assert.equal(await router.startTime(), timestamp);
+  });
+
+  it('should return correct change router values', async () => {
+    await router.setBalancerPool(USDT.address, newBalancer);
+    await router.setTeamAddress(newTeam);
+
+    assert.equal(await router.balancerPools(USDT.address), newBalancer);
+    assert.equal(await router.teamAddress(), newTeam);
   });
 
   it('should return correct balance EURxb values', async () => {
@@ -97,5 +119,16 @@ contract('Router', (accounts) => {
 
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
     assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('81', 'ether'));
+  });
+
+  it('should return correct close contract', async () => {
+    await increaseTime(DAY * 8);
+    await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
+    assert.equal(await router.isClosedContract(), false);
+
+    await router.closeContract();
+
+    assert.equal(await router.isClosedContract(), true);
+    assert.equal(await EURxb.balanceOf(owner), web3.utils.toWei('354', 'ether'));
   });
 });

@@ -12,15 +12,23 @@ contract('StakingManager', (accounts) => {
   let gEURO;
   let staking;
 
+  let timestamp;
+
   beforeEach(async () => {
     BPT = await MockToken.new('BPT', 'BPT', web3.utils.toWei('400', 'ether'));
     gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('10000', 'ether'));
 
-    const timestamp = await currentTimestamp();
+    timestamp = await currentTimestamp();
     staking = await StakingManager.new(gEURO.address, timestamp, 150);
     await staking.setBalancerPool(BPT.address);
     await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await increaseTime(DAY);
+  });
+
+  it('should return correct staking values', async () => {
+    assert.equal(await staking.isFrozen(), true);
+    assert.equal(await staking.startTime(), timestamp);
+    assert.equal(await staking.bonusWeight(), 150);
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {

@@ -68,12 +68,34 @@ contract Router is Ownable {
     }
 
     /**
+     * @return balancer pool
+     */
+    function balancerPools(address token) external view returns (address) {
+        return _balancerPools[token];
+    }
+
+    /**
      * @dev Set balancer pool
      * @param token address
      * @param pool address
      */
     function setBalancerPool(address token, address pool) external onlyOwner {
         _balancerPools[token] = pool;
+    }
+
+    /**
+     * @return team address
+     */
+    function teamAddress() external view returns (address) {
+        return _teamAddress;
+    }
+
+    /**
+     * @dev set team address
+     * @param team address
+     */
+    function setTeamAddress(address team) external onlyOwner {
+        _teamAddress = team;
     }
 
     /**
