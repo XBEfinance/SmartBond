@@ -1,7 +1,7 @@
 const {assert} = require('chai');
 const {time, BN, expectRevert} = require('openzeppelin-test-helpers');
 
-const AllowList = artifacts.require('AllowLIst');
+const AllowList = artifacts.require('AllowList');
 
 const baseURI = '127.0.0.1/';
 
@@ -11,46 +11,48 @@ contract('AllowListTest', (accounts) => {
   const bob = accounts[3];
 
   beforeEach(async () => {
-    this.allowList = await AllowList.new(miris);
+    this.list = await AllowList.new(miris);
   });
-
-  // ----------- check allow list management -----------
 
   it('check miris is allow list admin',
-     async () => { await this.allowList.allowAccount(alice, {from : miris});
-  });
+     async () => { await this.list.allowAccount(alice, {from : miris}); });
 
   it('check empty list', async () => {
-    assert(!await this.allowList.isAllowedAccount(alice), "alice must not be in the list in the beginning");
+    assert(!await this.list.isAllowedAccount(alice),
+           "alice must not be in the list in the beginning");
   });
 
   it('only admin can allow account', async () => {
-    assert(!await this.allowList.isAllowedAccount(alice), "alice must not be in the list in the beginning");
-    expectRevert(this.allowList.allowAccount(alice, {from : bob}), 'sender isn\'t a admin');
+    assert(!await this.list.isAllowedAccount(alice),
+           "alice must not be in the list in the beginning");
+    expectRevert(this.list.allowAccount(alice, {from : bob}),
+                 'Ownable: caller is not the owner');
   });
 
   it('add account', async () => {
-    assert(!await this.allowList.isAllowedAccount(alice), "alice must not be in the list in the beginning");
-    await this.allowList.allowAccount(alice, {from : miris});
-    assert(await this.allowList.isAllowedAccount(alice), "now the list should have alice");
+    assert(!await this.list.isAllowedAccount(alice),
+           "alice must not be in the list in the beginning");
+    await this.list.allowAccount(alice, {from : miris});
+    assert(await this.list.isAllowedAccount(alice),
+           "now the list should have alice");
   });
 
   it('only admin can disallow account', async () => {
-    assert(!await this.allowList.isAllowedAccount(alice),
+    assert(!await this.list.isAllowedAccount(alice),
            "alice must not be in the list in the beginning");
-    await this.allowList.allowAccount(alice, {from : miris});
-    expectRevert(this.allowList.allowAccount(alice, {from : bob}),
-                 'sender isn\'t a admin');
+    await this.list.allowAccount(alice, {from : miris});
+    expectRevert(this.list.allowAccount(alice, {from : bob}),
+                 'Ownable: caller is not the owner');
   });
 
   it('disallow account', async () => {
-    assert(!await this.allowList.isAllowedAccount(alice),
+    assert(!await this.list.isAllowedAccount(alice),
            "alice must not be in the list in the beginning");
-    await this.allowList.allowAccount(alice, {from : miris});
-    assert(await this.allowList.isAllowedAccount(alice),
+    await this.list.allowAccount(alice, {from : miris});
+    assert(await this.list.isAllowedAccount(alice),
            "now the list should have alice");
-    await this.allowList.disallowAccount(alice, {from : miris});
-    assert(!await this.allowList.isAllowedAccount(alice),
+    await this.list.disallowAccount(alice, {from : miris});
+    assert(!await this.list.isAllowedAccount(alice),
            "alice must have been removed");
   });
 });
