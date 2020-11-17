@@ -69,7 +69,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         // check role
         // only external account having minter role is allowed to mint tokens
         require(hasRole(TokenAccessRoles.minter(), _msgSender()),
-            "sender isn't a minter");
+            "user is not allowed to mint");
 
         // check if account is in allow list
         require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
@@ -90,7 +90,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * burns security asset token
      */
     function burn(uint256 tokenId) external {
-        require(hasRole(TokenAccessRoles.burner(), _msgSender()), "sender isn't a burner");
+        require(hasRole(TokenAccessRoles.burner(), _msgSender()), "user is not allowed to burn");
         // get token properties
         uint256 value = _values[tokenId];
 
@@ -131,10 +131,9 @@ contract SecurityAssetToken is ERC721, AccessControl {
     }
 
     function _isApproved(address spender, uint256 tokenId) private view returns(bool) {
-        require(_exists(tokenId), "token not exist");
+        require(_exists(tokenId), "token does not exist");
         address owner = ownerOf(tokenId);
-        return (getApproved(tokenId) == spender ||
-        isApprovedForAll(owner, spender));
+        return (getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
     }
 
     function _safeTransferFrom(
@@ -144,7 +143,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         uint256 tokenId,
         bytes memory _data) private
     {
-        require(hasRole(TokenAccessRoles.transferer(), sender), "sender isn't a transferer");
+        require(hasRole(TokenAccessRoles.transferer(), sender), "user is not allowed to transfer");
         require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
         require(_isApproved(to, tokenId), "transfer was not approved");
 
