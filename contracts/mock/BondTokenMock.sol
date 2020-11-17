@@ -7,7 +7,7 @@ import "../ERC721.sol";
  * @dev mock for BondNFToken. Allows to check for bond token existance and
  * creation
  */
-contract NFBondTokenMock is IBondNFToken, ERC721 {
+contract NFBondTokenMock is ERC721, IBondNFToken {
   struct TokenInfo {
     bool isMinted;
     address to;
@@ -17,8 +17,7 @@ contract NFBondTokenMock is IBondNFToken, ERC721 {
 
   mapping(uint256 => TokenInfo) private _tokens;
 
-  constructor(string memory name, string memory symbol)
-      ERC721(name, symbol) public {}
+  constructor() ERC721('BondTokenMock', 'BND') public {}
 
   function hasToken(uint256 tokenId) external view override returns(bool) {
     return _tokens[tokenId].isMinted;
