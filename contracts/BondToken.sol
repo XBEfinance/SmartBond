@@ -14,14 +14,14 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
 
     uint256 constant private INTEREST_PERCENT = 7;
 
-    struct TokenInfo {
+    struct BondInfo {
         uint256 value;
         uint256 interestPerSec;
         uint256 maturityEnds;
     }
 
     /// all tokens values
-    mapping(uint256 => TokenInfo) private _tokens;
+    mapping(uint256 => BondInfo) private _bondInfo;
 
     /// value of all tokens summarized
     uint256 private _totalValue;
@@ -35,22 +35,23 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     /// list of allowed accounts
     address _allowList;
 
-    constructor(address admin, address allowList) public ERC721("BondToken", "BND") {
+    constructor(address admin, string memory baseURI, address allowList) public ERC721("BondToken", "BND") {
+        _setBaseURI(baseURI);
         _setupRole(TokenAccessRoles.admin(), admin);
         _allowList = allowList;
     }
 
     // accessors
     function getTokenValue(uint256 tokenId) external view returns(uint256) {
-        return _tokens[tokenId].value;
+        return _bondInfo[tokenId].value;
     }
 
     function getTokenInterestPerSec(uint256 tokenId) external view returns(uint256) {
-        return _tokens[tokenId].interestPerSec;
+        return _bondInfo[tokenId].interestPerSec;
     }
 
     function getTokenMaturityEnd(uint256 tokenId) external view returns(uint256) {
-        return _tokens[tokenId].maturityEnds;
+        return _bondInfo[tokenId].maturityEnds;
     }
 
     function totalValue() external view returns(uint256) { return _totalValue; }
@@ -76,7 +77,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         uint256 maturity) external override
     {
         require(hasRole(TokenAccessRoles.minter(),
-            _msgSender()), "only minter role can do mint");
+            _msgSender()), "user is not allowed to mint");
 
         _mint(to, tokenId);
 
@@ -84,9 +85,12 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         .mul(INTEREST_PERCENT)
         .div(365 days)
         .div(100);
+
         uint256 maturityEnds = block.timestamp
         .add(maturity);
-        _tokens[tokenId] = TokenInfo(value, interestPerSec, maturityEnds);
+
+        _bondInfo[tokenId] = BondInfo(value, interestPerSec, maturityEnds);
+
         _totalValue = _totalValue.add(value);
 
         IDDP(_ddp).deposit(tokenId, value, maturityEnds);
@@ -100,8 +104,8 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         require(hasRole(TokenAccessRoles.burner(), _msgSender()),
             "user is not allowed to burn tokens");
 
-        uint256 value = getTokenValue(tokenId);
-        delete _tokens[tokenId];
+        uint256 value = _bondInfo[tokenId].value;
+        delete _bondInfo[tokenId];
         _totalValue.sub(value);
 
         _burn(tokenId);
