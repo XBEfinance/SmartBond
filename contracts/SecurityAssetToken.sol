@@ -172,11 +172,13 @@ contract SecurityAssetToken is ERC721, AccessControl {
             tokenId,
             _data);
 
-        IERC721(_bond)
-        .safeTransferFrom(
-            from,
-            to,
-            tokenId,
-            _data);
+        if (sender != _bond) {
+            IERC721(_bond)
+            .safeTransferFrom(
+                from,
+                to,
+                tokenId,
+                _data);
+        }
     }
 }
