@@ -87,6 +87,6 @@ contract NFBondTokenMock is ERC721, IBondNFToken {
         uint256 tokenId,
         bytes memory _data) private
     {
-        // no need to check this logic right here
+      // solium-disable-previous-line no-empty-blocks
     }
 }

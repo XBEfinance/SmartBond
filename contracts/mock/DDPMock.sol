@@ -12,4 +12,4 @@ contract DDPMock is IDDP, ERC721 {
     function deposit(uint256 tokenId, uint256 value, uint256 maturityEnds) external override {
         emit DepositInvoked(tokenId, value, maturityEnds);
     }
-} 
+}
