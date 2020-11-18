@@ -1,4 +1,4 @@
-pragma solidity >= 0.6.0 < 0.7.0;
+pragma solidity >=0.6.0 <0.7.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -41,18 +41,18 @@ contract AllowList is Ownable {
     /**
      * Checks if user is allowed to receive tokens
      */
-    function isAllowedAccount(address account) external view returns(bool) {
+    function isAllowedAccount(address account) external view returns (bool) {
         return _isAllowedAccount(account);
     }
 
     /**
      * Returns total count of allowed accounts
      */
-    function allowListCount() public view returns(uint256) {
+    function allowListCount() public view returns (uint256) {
         return _counter.current();
     }
 
-    function _isAllowedAccount(address account) private view returns(bool) {
+    function _isAllowedAccount(address account) private view returns (bool) {
         return _allowList[account];
     }
 }
