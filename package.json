@@ -41,6 +41,8 @@
     "karma": "^5.2.3",
     "lodash": "^4.17.20",
     "openzeppelin-test-helpers": "^0.5.1",
+    "prettier": "^2.1.2",
+    "prettier-plugin-solidity": "^1.0.0-alpha.60",
     "solidity-coverage": "^0.7.11",
     "solium": "^1.2.5",
     "truffle": "^5.1.51",
