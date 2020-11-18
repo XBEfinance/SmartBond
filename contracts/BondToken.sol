@@ -95,7 +95,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         address to,
         uint256 value,
         uint256 maturity
-    ) external override 
+    ) external override
     {
         require(
             hasRole(TokenAccessRoles.minter(), _msgSender()),
@@ -104,9 +104,8 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
 
         _mint(to, tokenId);
 
-        uint256 interestPerSec = value.mul(INTEREST_PERCENT).div(365 days).div(
-            100
-        );
+        uint256 interestPerSec = value
+        .mul(INTEREST_PERCENT).div(365 days).div(100);
 
         uint256 maturityEnds = block.timestamp.add(maturity);
 
@@ -117,7 +116,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         IDDP(_ddp).deposit(tokenId, value, maturityEnds);
     }
 
-    function hasToken(uint256 tokenId) external override view returns (bool) {
+    function hasToken(uint256 tokenId) external view override returns (bool) {
         return _exists(tokenId);
     }
 
@@ -139,7 +138,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         revert("method is not supported");
     }
 
-    function getApproved(uint256) public override view returns (address) {
+    function getApproved(uint256) public view override returns (address) {
         revert("method is not supported");
     }
 
@@ -149,8 +148,8 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
 
     function isApprovedForAll(address, address)
         public
-        override
         view
+        override
         returns (bool)
     {
         revert("method is not supported");
@@ -160,16 +159,27 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         address from,
         address to,
         uint256 tokenId
-    ) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+    ) public override
+    {
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
     function safeTransferFrom(
         address from,
         address to,
-        uint256 tokenId
-    ) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, "");
+        uint256 tokenId) public override
+    {
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            "");
     }
 
     function safeTransferFrom(
@@ -177,8 +187,14 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         address to,
         uint256 tokenId,
         bytes memory _data
-    ) public override {
-        _safeTransferFrom(_msgSender(), from, to, tokenId, _data);
+    ) public override
+    {
+        _safeTransferFrom(
+            _msgSender(),
+            from,
+            to,
+            tokenId,
+            _data);
     }
 
     function _safeTransferFrom(
@@ -187,7 +203,8 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         address to,
         uint256 tokenId,
         bytes memory _data
-    ) private {
+    ) private
+    {
         require(
             hasRole(TokenAccessRoles.transferer(), sender),
             "user is not allowed to transfer tokens"
@@ -197,10 +214,19 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
             "user is not allowed to receive tokens"
         );
 
-        _safeTransfer(from, to, tokenId, _data);
+        _safeTransfer(
+            from,
+            to,
+            tokenId,
+            _data);
 
         if (sender != _sat) {
-            SecurityAssetToken(_sat).safeTransferFrom(from, to, tokenId, _data);
+            SecurityAssetToken(_sat)
+            .safeTransferFrom(
+                from,
+                to,
+                tokenId,
+                _data);
         }
     }
 }

@@ -1,11 +1,11 @@
-pragma solidity >= 0.6.0 < 0.7.0;
+pragma solidity >=0.6.0 <0.7.0;
 
 import "./ERC721.sol";
 import "./IBondToken.sol";
 import "./IDDP.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import { TokenAccessRoles } from "./TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./TokenAccessRoles.sol";
 
 
 contract DDP is IDDP, AccessControl {
@@ -17,17 +17,25 @@ contract DDP is IDDP, AccessControl {
     }
 
     function configure(address bond) external {
-        require(hasRole(TokenAccessRoles.admin(),
-            _msgSender()), "caller isn't an administrator");
+        require(
+            hasRole(TokenAccessRoles.admin(), _msgSender()),
+            "caller isn't an administrator"
+        );
 
         _bond = bond;
     }
 
-    function deposit(uint256 tokenId, uint256 value, uint256 maturity) external override {
+    function deposit(
+        uint256 tokenId,
+        uint256 value,
+        uint256 maturity) external override
+    {
+        // solium-disable-previous-line no-empty-blocks
         // TODO: implement
     }
 
     function withdraw() external {
+        // solium-disable-previous-line no-empty-blocks
         // TODO: implement
     }
 }

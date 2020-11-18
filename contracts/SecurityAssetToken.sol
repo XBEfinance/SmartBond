@@ -1,4 +1,4 @@
-pragma solidity >= 0.6.0 < 0.7.0;
+pragma solidity >=0.6.0 <0.7.0;
 
 import "./AllowList.sol";
 import "./ERC721.sol";
@@ -6,7 +6,7 @@ import "./IBondToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import { TokenAccessRoles } from "./TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./TokenAccessRoles.sol";
 
 
 /**
@@ -37,8 +37,12 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * @param miris external miris manager account
      * @param bond BondToken contract address
      */
-    constructor(string memory baseURI, address miris,
-        address bond, address allowList) public ERC721("SecurityAssetToken", "SAT") {
+    constructor(
+        string memory baseURI,
+        address miris,
+        address bond,
+        address allowList
+    ) public ERC721("SecurityAssetToken", "SAT") {
         _setBaseURI(baseURI);
         _bond = bond;
         _allowList = allowList;
@@ -55,7 +59,9 @@ contract SecurityAssetToken is ERC721, AccessControl {
     /**
      * @return total value of all existing tokens
      */
-    function totalValue() external view returns(uint256) { return _totalValue; }
+    function totalValue() external view returns (uint256) {
+        return _totalValue;
+    }
 
     /**
      * mints a new SAT token and it's NFT bond token accordingly
@@ -64,14 +70,23 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * @param maturity datetime stamp when token's deposit value must be
      * returned
      */
-    function mint(address to, uint256 value, uint256 maturity) external {
+    function mint(
+        address to,
+        uint256 value,
+        uint256 maturity) external
+    {
         // check role
         // only external account having minter role is allowed to mint tokens
-        require(hasRole(TokenAccessRoles.minter(), _msgSender()),
-            "user is not allowed to mint");
+        require(
+            hasRole(TokenAccessRoles.minter(), _msgSender()),
+            "user is not allowed to mint"
+        );
 
         // check if account is in allow list
-        require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
+        require(
+            AllowList(_allowList).isAllowedAccount(to),
+            "user is not allowed to receive tokens"
+        );
 
         uint256 tokenId = _counter.current();
         _counter.increment();
@@ -94,7 +109,10 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * burns security asset token
      */
     function burn(uint256 tokenId) external {
-        require(hasRole(TokenAccessRoles.burner(), _msgSender()), "user is not allowed to burn");
+        require(
+            hasRole(TokenAccessRoles.burner(), _msgSender()),
+            "user is not allowed to burn"
+        );
         // get token properties
         uint256 value = _values[tokenId];
 
@@ -102,7 +120,10 @@ contract SecurityAssetToken is ERC721, AccessControl {
         require(value > 0, "token doesn't exist");
 
         // cannot burn sat token when corresponding bond token still alive
-        require(!IBondNFToken(_bond).hasToken(tokenId), "bond token is still alive");
+        require(
+            !IBondNFToken(_bond).hasToken(tokenId),
+            "bond token is still alive"
+        );
 
         _burn(tokenId);
 
@@ -120,7 +141,11 @@ contract SecurityAssetToken is ERC721, AccessControl {
      * @param to token receiver address
      * @param tokenId token id to transfer
      */
-    function transferFrom(address from, address to, uint256 tokenId) public override {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId) public override
+    {
         _safeTransferFrom(
             _msgSender(),
             from,
@@ -129,7 +154,11 @@ contract SecurityAssetToken is ERC721, AccessControl {
             "");
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId) public override
+    {
         _safeTransferFrom(
             _msgSender(),
             from,
@@ -138,8 +167,11 @@ contract SecurityAssetToken is ERC721, AccessControl {
             "");
     }
 
-    function safeTransferFrom(address from, address to,
-        uint256 tokenId, bytes memory _data) public override
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory _data) public override
     {
         _safeTransferFrom(
             _msgSender(),
@@ -149,10 +181,15 @@ contract SecurityAssetToken is ERC721, AccessControl {
             _data);
     }
 
-    function _isApproved(address spender, uint256 tokenId) private view returns(bool) {
+    function _isApproved(address spender, uint256 tokenId)
+        private
+        view
+        returns (bool)
+    {
         require(_exists(tokenId), "token does not exist");
         address owner = ownerOf(tokenId);
-        return (getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
+        return (getApproved(tokenId) == spender ||
+            isApprovedForAll(owner, spender));
     }
 
     function _safeTransferFrom(
@@ -162,8 +199,14 @@ contract SecurityAssetToken is ERC721, AccessControl {
         uint256 tokenId,
         bytes memory _data) private
     {
-        require(hasRole(TokenAccessRoles.transferer(), sender), "user is not allowed to transfer");
-        require(AllowList(_allowList).isAllowedAccount(to), "user is not allowed to receive tokens");
+        require(
+            hasRole(TokenAccessRoles.transferer(), sender),
+            "user is not allowed to transfer"
+        );
+        require(
+            AllowList(_allowList).isAllowedAccount(to),
+            "user is not allowed to receive tokens"
+        );
         require(_isApproved(to, tokenId), "transfer was not approved");
 
         _safeTransfer(
