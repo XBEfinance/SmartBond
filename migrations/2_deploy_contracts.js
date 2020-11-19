@@ -17,6 +17,7 @@ const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondTokenMock = artifacts.require('NFBondTokenMock');
 const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
+const DDP = artifacts.require('DDPMock');
 
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
