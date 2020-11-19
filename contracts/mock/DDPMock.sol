@@ -2,14 +2,27 @@ pragma solidity >= 0.6.0 < 0.7.0;
 
 import "../IDDP.sol";
 import "../ERC721.sol";
+import "../BondToken.sol";
 
 
 contract DDPMock is IDDP, ERC721 {
     event DepositInvoked(uint256 tokenId, uint256 value, uint256 maturityEnds);
 
-    constructor() ERC721("DDPMock", "DDP") public {}
+    address private _bond;
+
+    constructor(address bond) ERC721("DDPMock", "DDP") public {
+        _bond = bond;
+    }
 
     function deposit(uint256 tokenId, uint256 value, uint256 maturityEnds) external override {
         emit DepositInvoked(tokenId, value, maturityEnds);
+    }
+
+    function burnToken(uint256 tokenId) external {
+        BondToken(_bond).burn(tokenId);
+    }
+
+    function callTransfer(address from, address to, uint256 tokenId) external {
+        BondToken(_bond).safeTransferFrom(from, to, tokenId);
     }
 }

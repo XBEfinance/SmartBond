@@ -4,8 +4,9 @@ import "./AllowList.sol";
 import "./ERC721.sol";
 import "./IBondToken.sol";
 import "./IDDP.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./SecurityAssetToken.sol";
+
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {TokenAccessRoles} from "./TokenAccessRoles.sol";
 
@@ -109,7 +110,12 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
 
         uint256 maturityEnds = block.timestamp.add(maturity);
 
-        _bondInfo[tokenId] = BondInfo(value, interestPerSec, maturityEnds);
+        _bondInfo[tokenId] = BondInfo(
+            {
+                value: value,
+                interestPerSec: interestPerSec,
+                maturityEnds: maturityEnds
+            });
 
         _totalValue = _totalValue.add(value);
 

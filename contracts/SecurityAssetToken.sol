@@ -207,8 +207,12 @@ contract SecurityAssetToken is ERC721, AccessControl {
             AllowList(_allowList).isAllowedAccount(to),
             "user is not allowed to receive tokens"
         );
-        require(_isApproved(to, tokenId), "transfer was not approved");
 
+        // case ddp->bond->sat 
+        if (sender != _bond) {
+            require(_isApproved(to, tokenId), "transfer was not approved");
+        }
+        
         _safeTransfer(
             from,
             to,
