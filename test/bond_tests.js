@@ -1,14 +1,23 @@
 /* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
 
-const { assert } = require('chai');
-const { time, BN, expectRevert } = require('openzeppelin-test-helpers');
-const expectEvent = require('openzeppelin-test-helpers/src/expectEvent');
+const chai = require('chai');
+chai.use(require('chai-bignumber')());
+
+const { expect, assert } = chai;
+
+const {
+  BN,
+  constants,
+  expectEvent,
+  expectRevert,
+} = require('@openzeppelin/test-helpers');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
 const AllowList = artifacts.require('AllowList');
 const DDP = artifacts.require('DDPMock');
+const BondBurnerHelper = artifacts.require('BondBurnerHelper');
 const baseURI = '127.0.0.1/';
 
 contract('BondTokenTest', (accounts) => {
@@ -33,6 +42,7 @@ contract('BondTokenTest', (accounts) => {
 
     this.ddp = await DDP.new(this.bond.address);
     await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
+    this.burnHelper = await BondBurnerHelper.new(this.bond.address);
   });
 
   // just mint sat, which mints bond and check token info
@@ -44,22 +54,19 @@ contract('BondTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
     // check bond info
-    const value = await this.bond.getTokenValue(TOKEN_0);
+    const { value, interest } = await this.bond.getTokenInfo(TOKEN_0);
     const expectedValue = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
-    assert(value.toString() == expectedValue.toString(), 'bond token has wrong value');
-    // TODO: find out why BN == BN doesn't work
+    expect(value, 'wrong bond value').to.be.bignumber.equal(expectedValue);
 
-    const ips = value
-      .mul(new BN('7'))
-      .div(new BN('365').mul(new BN('8640000')));
-    const tokenIps = await this.bond.getTokenInterestPerSec(TOKEN_0);
-    assert(ips.toString() == tokenIps.toString(), 'bond token has wrong ips');
+    const expectedInterest = value
+      .mul(new BN('7')).div(new BN('365').mul(new BN('8640000')));
+    expect(interest, 'wrong interest value').to.be.bignumber.equal(expectedInterest);
 
     // cannot check maturity ends right now
     // let maturityEnds = now.add(maturity);
     // let tokenMaturityEnds = await this.bond.getTokenMaturityEnds(TOKEN_0);
-    // assert(maturityEnds.toString() == tokenMaturityEnds.toString(),
-    //   "bond token has wrong maturity");
+    // expect(maturityEnds, 'wrong maturity value')
+    //   .to.be.bignumber.equal(tokenMaturityEnds);
   });
 
   // ensure that mint bond invokes ddp.deposit()
@@ -69,16 +76,14 @@ contract('BondTokenTest', (accounts) => {
       'bond token must not exist at this time point');
 
     const { tx } = await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    const value = await this.bond.getTokenValue(TOKEN_0);
-    const tokenIps = await this.bond.getTokenInterestPerSec(TOKEN_0);
-    const tokenMaturityEnds = await this.bond.getTokenMaturityEnd(TOKEN_0);
+    const { value, interest, maturity } = await this.bond.getTokenInfo(TOKEN_0);
 
     expectEvent
       .inTransaction(
         tx,
         this.ddp,
         'DepositInvoked',
-        { tokenId: TOKEN_0, value: value, maturityEnds: tokenMaturityEnds },
+        { tokenId: TOKEN_0, value: value, maturityEnds: maturity },
       );
   });
 
@@ -103,13 +108,41 @@ contract('BondTokenTest', (accounts) => {
     assert(!await this.bond.hasToken(TOKEN_0));
   });
 
-  // it('non-burner cannot burn', async() => {
-  //   // TODO: implement
-  // });
+  it('Non-burner cannot burn', async () => {
+    await this.list.allowAccount(alice, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    await expectRevert(
+      this.burnHelper.burnToken(TOKEN_0),
+      'user is not allowed to burn tokens',
+    );
+  });
 
-  // it('total value increases and decreases', async() => {
-  //   // TODO: implement
-  // });
+  it('total value increases after mint and decreases after burn', async () => {
+    const value1 = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
+    const value2 = (new BN(ETHER_100)).mul(new BN('150')).div(new BN('100'));
+
+    await this.list.allowAccount(alice, { from: miris });
+
+    expect(await this.bond.totalValue(), 'wrong total value')
+      .to.be.bignumber.equal(ETHER_0);
+
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    expect(await this.bond.totalValue(), 'wrong total value')
+      .to.be.bignumber.equal(value1);
+
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    expect(await this.bond.totalValue(), 'wrong total value')
+      .to.be.bignumber.equal(value2);
+
+    await this.ddp.burnToken(TOKEN_0);
+    expect(await this.bond.totalValue(), 'wrong total value')
+      .to.be.bignumber.equal(value1);
+
+    await this.ddp.burnToken(TOKEN_1);
+    expect(await this.bond.totalValue(), 'wrong total value')
+      .to.be.bignumber.equal(ETHER_0);
+  });
 
   it('transfer success', async () => {
     await this.list.allowAccount(alice, { from: miris });
@@ -120,7 +153,7 @@ contract('BondTokenTest', (accounts) => {
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
-    // TODO: fix
+
     const { tx } = await this.ddp.callTransfer(alice, bob, TOKEN_0);
     expectEvent.inTransaction(
       tx,

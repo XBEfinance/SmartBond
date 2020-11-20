@@ -1,12 +1,12 @@
 pragma solidity >=0.6.0 <0.7.0;
 
-import "./AllowList.sol";
+import "./interfaces/IAllowList.sol";
 import "./ERC721.sol";
-import "./IBondToken.sol";
+import "./interfaces/IBondToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import {TokenAccessRoles} from "./TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./library/TokenAccessRoles.sol";
 
 
 /**
@@ -84,7 +84,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
         // check if account is in allow list
         require(
-            AllowList(_allowList).isAllowedAccount(to),
+            IAllowList(_allowList).isAllowedAccount(to),
             "user is not allowed to receive tokens"
         );
 
@@ -97,7 +97,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
         _totalValue = _totalValue.add(value);
 
         // mint corresponding bond token
-        IBondNFToken(_bond)
+        IBondToken(_bond)
         .mint(
             tokenId,
             to,
@@ -121,7 +121,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
         // cannot burn sat token when corresponding bond token still alive
         require(
-            !IBondNFToken(_bond).hasToken(tokenId),
+            !IBondToken(_bond).hasToken(tokenId),
             "bond token is still alive"
         );
 
@@ -204,15 +204,15 @@ contract SecurityAssetToken is ERC721, AccessControl {
             "user is not allowed to transfer"
         );
         require(
-            AllowList(_allowList).isAllowedAccount(to),
+            IAllowList(_allowList).isAllowedAccount(to),
             "user is not allowed to receive tokens"
         );
 
-        // case ddp->bond->sat 
+        // case ddp->bond->sat
         if (sender != _bond) {
             require(_isApproved(to, tokenId), "transfer was not approved");
         }
-        
+
         _safeTransfer(
             from,
             to,

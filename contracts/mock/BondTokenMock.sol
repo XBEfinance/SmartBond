@@ -1,14 +1,14 @@
 pragma solidity >= 0.6.0 < 0.7.0;
 
-import "../IBondToken.sol";
+import "../interfaces/IBondToken.sol";
 import "../ERC721.sol";
 
 
 /**
- * @dev mock for BondNFToken. Allows to check for bond token existance and
+ * @dev mock for BondToken. Allows to check for bond token existance and
  * creation
  */
-contract NFBondTokenMock is ERC721, IBondNFToken {
+contract BondTokenMock is ERC721, IBondToken {
   struct TokenInfo {
     bool isMinted;
     address to;
@@ -54,7 +54,7 @@ contract NFBondTokenMock is ERC721, IBondNFToken {
             "");
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override(IBondToken, ERC721) {
         _safeTransferFrom(
             _msgSender(),
             from,
@@ -72,12 +72,6 @@ contract NFBondTokenMock is ERC721, IBondNFToken {
             to,
             tokenId,
             _data);
-    }
-
-    function _isApproved(address spender, uint256 tokenId) private view returns(bool) {
-        require(_exists(tokenId), "token does not exist");
-        address owner = ownerOf(tokenId);
-        return (getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
     }
 
     function _safeTransferFrom(

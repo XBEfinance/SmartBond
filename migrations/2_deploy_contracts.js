@@ -14,7 +14,7 @@ const Router = artifacts.require('./Router');
 const StakingManager = artifacts.require('./StakingManager');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
-const BondTokenMock = artifacts.require('NFBondTokenMock');
+const BondTokenMock = artifacts.require('BondTokenMock');
 const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
 const DDP = artifacts.require('DDPMock');
