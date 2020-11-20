@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+
 /**
  * @title StakingManager
  * @dev Staking manager contract
@@ -136,11 +137,9 @@ contract StakingManager is Ownable {
      * @param staker user address
      * @param amount number of BPT tokens
      */
-    function addStaker(
-        address staker,
-        address pool,
-        uint256 amount
-    ) external {
+    function addStaker(address staker, address pool, uint256 amount)
+        external
+    {
         require(now >= _startTime, "The time has not come yet");
         require(_balancerPools[pool], "Balancer pool not found");
         IERC20(pool).transferFrom(_msgSender(), address(this), amount);
