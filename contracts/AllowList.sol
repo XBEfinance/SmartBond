@@ -4,14 +4,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+import "./interfaces/IAllowList.sol";
 
-contract AllowList is Ownable {
+
+contract AllowList is IAllowList, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
 
     mapping(address => bool) private _allowList;
 
-    uint256 private _count;
     Counters.Counter private _counter;
 
     constructor(address owner) public {
@@ -41,7 +42,7 @@ contract AllowList is Ownable {
     /**
      * Checks if user is allowed to receive tokens
      */
-    function isAllowedAccount(address account) external view returns (bool) {
+    function isAllowedAccount(address account) external view override returns (bool) {
         return _isAllowedAccount(account);
     }
 

@@ -1,8 +1,8 @@
 pragma solidity >= 0.6.0 < 0.7.0;
 
-import "../IDDP.sol";
+import "../interfaces/IBondToken.sol";
+import "../interfaces/IDDP.sol";
 import "../ERC721.sol";
-import "../BondToken.sol";
 
 
 contract DDPMock is IDDP, ERC721 {
@@ -19,10 +19,10 @@ contract DDPMock is IDDP, ERC721 {
     }
 
     function burnToken(uint256 tokenId) external {
-        BondToken(_bond).burn(tokenId);
+        IBondToken(_bond).burn(tokenId);
     }
 
     function callTransfer(address from, address to, uint256 tokenId) external {
-        BondToken(_bond).safeTransferFrom(from, to, tokenId);
+       IBondToken(_bond).safeTransferFrom(from, to, tokenId);
     }
 }

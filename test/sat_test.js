@@ -3,7 +3,7 @@ const { assert } = require('chai');
 const { BN, expectRevert } = require('openzeppelin-test-helpers');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
-const BondToken = artifacts.require('NFBondTokenMock');
+const BondToken = artifacts.require('BondTokenMock');
 const AllowList = artifacts.require('AllowList');
 const baseURI = '127.0.0.1/';
 
@@ -96,7 +96,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_0), 'bond token doesn\'t exist');
-    expectRevert(
+    await expectRevert(
       this.sat.burn(TOKEN_0, { from: miris }),
       'bond token is still alive',
     );
@@ -135,7 +135,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
-    expectRevert(
+    await expectRevert(
       this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris }),
       'transfer was not approved',
     );
@@ -147,7 +147,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     await this.sat.setApprovalForAll(bob, true, { from: alice });
-    expectRevert(
+    await expectRevert(
       this.sat.transferFrom(alice, bob, TOKEN_1, { from: alice }),
       'user is not allowed to transfer',
     );
@@ -157,7 +157,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     await this.sat.setApprovalForAll(bob, true, { from: alice });
-    expectRevert(
+    await expectRevert(
       this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris }),
       'user is not allowed to receive tokens',
     );

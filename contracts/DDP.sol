@@ -1,11 +1,11 @@
 pragma solidity >=0.6.0 <0.7.0;
 
 import "./ERC721.sol";
-import "./IBondToken.sol";
-import "./IDDP.sol";
+import "./interfaces/IBondToken.sol";
+import "./interfaces/IDDP.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {TokenAccessRoles} from "./TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./library/TokenAccessRoles.sol";
 
 
 contract DDP is IDDP, AccessControl {

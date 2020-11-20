@@ -1,17 +1,16 @@
 pragma solidity >=0.6.0 <0.7.0;
 
-import "./AllowList.sol";
+import "./interfaces/IAllowList.sol";
+import "./interfaces/IBondToken.sol";
+import "./interfaces/IDDP.sol";
 import "./ERC721.sol";
-import "./IBondToken.sol";
-import "./IDDP.sol";
-import "./SecurityAssetToken.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {TokenAccessRoles} from "./TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./library/TokenAccessRoles.sol";
 
 
-contract BondToken is IBondNFToken, AccessControl, ERC721 {
+contract BondToken is IBondToken, AccessControl, ERC721 {
     using SafeMath for uint256;
 
     uint256 private constant INTEREST_PERCENT = 7;
@@ -35,7 +34,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     address private _ddp;
 
     /// list of allowed accounts
-    address _allowList;
+    address private _allowList;
 
     constructor(
         address admin,
@@ -48,24 +47,10 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     }
 
     /// bond info accessors
-    function getTokenValue(uint256 tokenId) external view returns (uint256) {
-        return _bondInfo[tokenId].value;
-    }
 
-    function getTokenInterestPerSec(uint256 tokenId)
-        external
-        view
-        returns (uint256)
-    {
-        return _bondInfo[tokenId].interestPerSec;
-    }
-
-    function getTokenMaturityEnd(uint256 tokenId)
-        external
-        view
-        returns (uint256)
-    {
-        return _bondInfo[tokenId].maturityEnds;
+    function getTokenInfo(uint256 tokenId) external view returns (uint256 value, uint256 interest, uint256 maturity) {
+        BondInfo memory info = _bondInfo[tokenId];
+        return ( info.value, info.interestPerSec, info.maturityEnds );
     }
 
     function totalValue() external view returns (uint256) {
@@ -126,7 +111,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
         return _exists(tokenId);
     }
 
-    function burn(uint256 tokenId) external override {
+    function burn(uint256 tokenId) external override(IBondToken) {
         require(
             hasRole(TokenAccessRoles.burner(), _msgSender()),
             "user is not allowed to burn tokens"
@@ -134,7 +119,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
 
         uint256 value = _bondInfo[tokenId].value;
         delete _bondInfo[tokenId];
-        _totalValue.sub(value);
+        _totalValue = _totalValue.sub(value);
 
         _burn(tokenId);
     }
@@ -178,7 +163,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
     function safeTransferFrom(
         address from,
         address to,
-        uint256 tokenId) public override
+        uint256 tokenId) public override(IBondToken, ERC721)
     {
         _safeTransferFrom(
             _msgSender(),
@@ -216,7 +201,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
             "user is not allowed to transfer tokens"
         );
         require(
-            AllowList(_allowList).isAllowedAccount(to),
+            IAllowList(_allowList).isAllowedAccount(to),
             "user is not allowed to receive tokens"
         );
 
@@ -227,7 +212,7 @@ contract BondToken is IBondNFToken, AccessControl, ERC721 {
             _data);
 
         if (sender != _sat) {
-            SecurityAssetToken(_sat)
+            IERC721(_sat)
             .safeTransferFrom(
                 from,
                 to,
