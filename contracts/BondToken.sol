@@ -48,7 +48,9 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
 
     /// bond info accessors
 
-    function getTokenInfo(uint256 tokenId) external view returns (uint256 value, uint256 interest, uint256 maturity) {
+    function getTokenInfo(uint256 tokenId) external view override 
+        returns (uint256 value, uint256 interest, uint256 maturity) 
+    {
         BondInfo memory info = _bondInfo[tokenId];
         return ( info.value, info.interestPerSec, info.maturityEnds );
     }
