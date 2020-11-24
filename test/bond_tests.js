@@ -1,17 +1,18 @@
 /* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
 
-const chai = require('chai');
-chai.use(require('chai-bignumber')());
-
-const { expect, assert } = chai;
-
 const {
   BN,
   constants,
   expectEvent,
   expectRevert,
 } = require('@openzeppelin/test-helpers');
+const { default: BigNumber } = require('bignumber.js');
+
+const chai = require('chai');
+chai.use(require('chai-as-promised'));
+
+const { expect, assert } = chai;
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
@@ -28,8 +29,8 @@ contract('BondTokenTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const DATE_SHIFT = new BN('10000');
-  const TOKEN_0 = new BN('0');
-  const TOKEN_1 = new BN('1');
+  const TOKEN_0 = '0';
+  const TOKEN_1 = '1';
 
   beforeEach(async () => {
     this.list = await AllowList.new(miris);
@@ -56,17 +57,13 @@ contract('BondTokenTest', (accounts) => {
     // check bond info
     const { value, interest } = await this.bond.getTokenInfo(TOKEN_0);
     const expectedValue = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
-    expect(value, 'wrong bond value').to.be.bignumber.equal(expectedValue);
+    expect(value.toString(), 'wrong bond value')
+      .equal(expectedValue.toString());
 
     const expectedInterest = value
       .mul(new BN('7')).div(new BN('365').mul(new BN('8640000')));
-    expect(interest, 'wrong interest value').to.be.bignumber.equal(expectedInterest);
-
-    // cannot check maturity ends right now
-    // let maturityEnds = now.add(maturity);
-    // let tokenMaturityEnds = await this.bond.getTokenMaturityEnds(TOKEN_0);
-    // expect(maturityEnds, 'wrong maturity value')
-    //   .to.be.bignumber.equal(tokenMaturityEnds);
+    expect(interest.toString(), 'wrong interest value')
+      .equal(expectedInterest.toString());
   });
 
   // ensure that mint bond invokes ddp.deposit()
@@ -83,7 +80,7 @@ contract('BondTokenTest', (accounts) => {
         tx,
         this.ddp,
         'DepositInvoked',
-        { tokenId: TOKEN_0, value: value, maturityEnds: maturity },
+        { tokenId: TOKEN_0, value: value.toString(), maturityEnds: maturity.toString() },
       );
   });
 
@@ -124,24 +121,24 @@ contract('BondTokenTest', (accounts) => {
 
     await this.list.allowAccount(alice, { from: miris });
 
-    expect(await this.bond.totalValue(), 'wrong total value')
-      .to.be.bignumber.equal(ETHER_0);
+    expect((await this.bond.totalValue()).toString(), 'wrong total value')
+      .equal(ETHER_0);
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    expect(await this.bond.totalValue(), 'wrong total value')
-      .to.be.bignumber.equal(value1);
+    expect((await this.bond.totalValue()).toString(), 'wrong total value')
+      .equal(value1.toString());
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    expect(await this.bond.totalValue(), 'wrong total value')
-      .to.be.bignumber.equal(value2);
+    expect((await this.bond.totalValue()).toString(), 'wrong total value')
+      .equal(value2.toString());
 
     await this.ddp.burnToken(TOKEN_0);
-    expect(await this.bond.totalValue(), 'wrong total value')
-      .to.be.bignumber.equal(value1);
+    expect((await this.bond.totalValue()).toString(), 'wrong total value')
+      .equal(value1.toString());
 
     await this.ddp.burnToken(TOKEN_1);
-    expect(await this.bond.totalValue(), 'wrong total value')
-      .to.be.bignumber.equal(ETHER_0);
+    expect((await this.bond.totalValue()).toString(), 'wrong total value')
+      .equal(ETHER_0.toString());
   });
 
   it('transfer success', async () => {

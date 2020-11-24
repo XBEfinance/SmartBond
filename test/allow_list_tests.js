@@ -1,5 +1,10 @@
 const { assert } = require('chai');
-const { expectRevert } = require('openzeppelin-test-helpers');
+const {
+  BN,
+  constants,
+  expectEvent,
+  expectRevert,
+} = require('@openzeppelin/test-helpers');
 
 const AllowList = artifacts.require('AllowList');
 
