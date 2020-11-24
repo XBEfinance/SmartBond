@@ -74,7 +74,7 @@ library LinkedList {
         if (nodeIDPrev > 0) {
             self.list[nodeIDPrev].next = nodeIDNext;
         } else {
-            self.head = nodeIDNext
+            self.head = nodeIDNext;
         }
 
         if (nodeIDNext > 0) {
