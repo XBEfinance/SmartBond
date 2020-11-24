@@ -73,10 +73,14 @@ library LinkedList {
 
         if (nodeIDPrev > 0) {
             self.list[nodeIDPrev].next = nodeIDNext;
+        } else {
+            self.head = nodeIDNext
         }
 
         if (nodeIDNext > 0) {
             self.list[nodeIDNext].prev = nodeIDPrev;
+        } else {
+            self.end = nodeIDPrev;
         }
 
         delete self.list[id];
