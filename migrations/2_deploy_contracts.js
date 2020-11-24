@@ -3,7 +3,8 @@ const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondTokenMock = artifacts.require('BondTokenMock');
 const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
-const DDP = artifacts.require('DDPMock');
+const DDPMock = artifacts.require('DDPMock');
+const DDP = artifacts.require('DDP');
 
 module.exports = (deployer, network, accounts) => {
   deployer.then(async () => {
@@ -11,5 +12,6 @@ module.exports = (deployer, network, accounts) => {
     await deployer.link(TokenAccessRoles, BondTokenMock);
     await deployer.link(TokenAccessRoles, BondToken);
     await deployer.link(TokenAccessRoles, SecurityAssetToken);
+    await deployer.link(TokenAccessRoles, DDP);
   });
 }
