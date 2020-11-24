@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./ERC20.sol";
-import "./lib/LinkedList.sol";
+import "./libs/LinkedList.sol";
 
 
 /**
@@ -14,6 +14,9 @@ import "./lib/LinkedList.sol";
 contract EURxb is ERC20 {
     using SafeMath for uint256;
     using Address for address;
+    using LinkedList for LinkedList.List;
+
+    LinkedList.List private _list;
 
     uint256 private _unit = 10**18;
 
@@ -72,6 +75,42 @@ contract EURxb is ERC20 {
             _expIndex
         );
         _accrualTimestamp = block.timestamp;
+    }
+
+    /**
+     * @dev Added new maturity
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
+    function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
+        _totalActiveValue = _totalActiveValue.add(amount);
+        if (_list.listExists()) {
+            uint256 id = _list.end;
+
+            // TODO: maybe many elements
+            while (true) {
+                if (_list.list[id].maturityEnd < maturityEnd) {
+                    _list.pushBack(amount, maturityEnd);
+                    break;
+                }
+
+                if (_list.list[id].prev == 0) {
+                    _list.pushBefore(id, amount, maturityEnd);
+                    break;
+                }
+
+                uint256 prev = _list.list[id].prev;
+
+                if (_list.list[prev].maturityEnd < maturityEnd && maturityEnd < _list.list[id].maturityEnd) {
+                    _list.pushBefore(id, amount, maturityEnd);
+                    break;
+                }
+
+                id = prev;
+            }
+        } else {
+            _list.pushBack(amount, maturityEnd);
+        }
     }
 
     /**
