@@ -5,12 +5,11 @@ const EURxb = artifacts.require('EURxb');
 
 contract('EURxb', (accounts) => {
   const recipient = accounts[1];
-  const bondToken = accounts[2];
 
   let token;
 
   beforeEach(async () => {
-    token = await EURxb.new(bondToken);
+    token = await EURxb.new();
   });
 
   it('should return correct balance values', async () => {
