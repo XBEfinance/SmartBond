@@ -20,7 +20,7 @@ contract StakingManager is Ownable {
 
     struct Reward {
         uint256 bptBalance;
-        uint256 rewardsGEuro;
+        uint256 rewardsXbg;
     }
 
     Stake[] private _weightStakers;
@@ -30,22 +30,22 @@ contract StakingManager is Ownable {
     mapping(address => bool) private _balancerPools; // balancer pool address => status
 
     bool private _isFrozen;
-    address private _tGEuro;
+    address private _tokenXbg;
     uint256 private _startTime;
     uint256 private _bonusWeight;
 
-    uint256 private _totalGEuro = 10000 ether;
+    uint256 private _totalXbg = 10000 ether;
 
     uint256 private _unfreezeShift = 0;
 
     constructor(
-        address tGEuro,
+        address xbg,
         uint256 startTime,
         uint256 bonusWeight
     ) public {
         require(bonusWeight >= 100, "Weight must be over 100");
         _isFrozen = true;
-        _tGEuro = tGEuro;
+        _tokenXbg = xbg;
         _startTime = startTime;
         _bonusWeight = bonusWeight;
     }
@@ -79,10 +79,10 @@ contract StakingManager is Ownable {
     function getRewardInfo(address staker, address pool)
         external
         view
-        returns (uint256 bptBalance, uint256 gEuroBalance)
+        returns (uint256 bptBalance, uint256 xbgBalance)
     {
         bptBalance = _stakers[staker][pool].bptBalance;
-        gEuroBalance = _stakers[staker][pool].rewardsGEuro;
+        xbgBalance = _stakers[staker][pool].rewardsXbg;
     }
 
     /**
@@ -99,8 +99,8 @@ contract StakingManager is Ownable {
     function unfreezeTokens() external onlyOwner {
         require(_startTime + 7 days < now, "Time is not over");
         require(
-            IERC20(_tGEuro).balanceOf(address(this)) >= _totalGEuro,
-            "Insufficient gEuro balance"
+            IERC20(_tokenXbg).balanceOf(address(this)) >= _totalXbg,
+            "Insufficient xbg balance"
         );
         require(_isFrozen, "Tokens unfrozen");
 
@@ -117,12 +117,12 @@ contract StakingManager is Ownable {
             uint256 poolBPTWeight = _poolBPTWeight[pool];
             uint256 percent = weightedBPT.mul(10**18).div(poolBPTWeight);
 
-            uint256 poolGEuro = _totalGEuro.div(4);
-            uint256 amountGEuro = percent.mul(poolGEuro).div(10**18);
+            uint256 poolXbg = _totalXbg.div(4);
+            uint256 amountXbg = percent.mul(poolXbg).div(10**18);
 
-            _stakers[user][pool].rewardsGEuro = _stakers[user][pool]
-                .rewardsGEuro
-                .add(amountGEuro);
+            _stakers[user][pool].rewardsXbg = _stakers[user][pool]
+                .rewardsXbg
+                .add(amountXbg);
         }
 
         _unfreezeShift = _unfreezeShift + 100;
@@ -168,10 +168,10 @@ contract StakingManager is Ownable {
         _stakers[_msgSender()][pool].bptBalance = 0;
         IERC20(pool).transfer(_msgSender(), amountBPT);
 
-        uint256 amountGEuro = _stakers[_msgSender()][pool].rewardsGEuro;
-        _stakers[_msgSender()][pool].rewardsGEuro = 0;
-        if (amountGEuro > 0) {
-            IERC20(_tGEuro).transfer(_msgSender(), amountGEuro);
+        uint256 amountXbg = _stakers[_msgSender()][pool].rewardsXbg;
+        _stakers[_msgSender()][pool].rewardsXbg = 0;
+        if (amountXbg > 0) {
+            IERC20(_tokenXbg).transfer(_msgSender(), amountXbg);
         }
     }
 }

@@ -9,19 +9,19 @@ contract('StakingManager', (accounts) => {
   const staker = accounts[2];
 
   let BPT;
-  let gEURO;
+  let xbg;
   let staking;
 
   let timestamp;
 
   beforeEach(async () => {
     BPT = await MockToken.new('BPT', 'BPT', web3.utils.toWei('400', 'ether'));
-    gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('10000', 'ether'));
+    xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('10000', 'ether'));
 
     timestamp = await currentTimestamp();
-    staking = await StakingManager.new(gEURO.address, timestamp, 150);
+    staking = await StakingManager.new(xbg.address, timestamp, 150);
     await staking.setBalancerPool(BPT.address);
-    await gEURO.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
+    await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await increaseTime(DAY / 2);
   });
 
@@ -50,22 +50,22 @@ contract('StakingManager', (accounts) => {
     let resultStaker = await staking.getRewardInfo(staker, BPT.address);
     assert.equal(resultRecipient.bptBalance, web3.utils.toWei('100', 'ether'));
     assert.equal(resultStaker.bptBalance, web3.utils.toWei('100', 'ether'));
-    assert.equal(resultRecipient.gEuroBalance, web3.utils.toWei('0', 'ether'));
-    assert.equal(resultStaker.gEuroBalance, web3.utils.toWei('0', 'ether'));
+    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('0', 'ether'));
+    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('0', 'ether'));
 
     await increaseTime(DAY * 2);
     await staking.unfreezeTokens();
     assert.equal(await staking.isFrozen(), false);
     resultRecipient = await staking.getRewardInfo(recipient, BPT.address);
     resultStaker = await staking.getRewardInfo(staker, BPT.address);
-    assert.equal(resultRecipient.gEuroBalance, web3.utils.toWei('1500', 'ether'));
-    assert.equal(resultStaker.gEuroBalance, web3.utils.toWei('1000', 'ether'));
+    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('1500', 'ether'));
+    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('1000', 'ether'));
 
     await staking.claimBPT(BPT.address, { from: recipient });
     await staking.claimBPT(BPT.address, { from: staker });
     assert.equal(await BPT.balanceOf(recipient), web3.utils.toWei('100', 'ether'));
     assert.equal(await BPT.balanceOf(staker), web3.utils.toWei('100', 'ether'));
-    assert.equal(await gEURO.balanceOf(recipient), web3.utils.toWei('1500', 'ether'));
-    assert.equal(await gEURO.balanceOf(staker), web3.utils.toWei('1000', 'ether'));
+    assert.equal(await xbg.balanceOf(recipient), web3.utils.toWei('1500', 'ether'));
+    assert.equal(await xbg.balanceOf(staker), web3.utils.toWei('1000', 'ether'));
   });
 });

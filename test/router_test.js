@@ -22,7 +22,7 @@ contract('Router', (accounts) => {
   let BUSD;
   let DAI;
   let EURxb;
-  let gEURO;
+  let xbg;
 
   let balancer;
   let staking;
@@ -37,7 +37,7 @@ contract('Router', (accounts) => {
     DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('500', 'ether'));
 
     EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('500', 'ether'));
-    gEURO = await MockToken.new('gEURO', 'gEURO', web3.utils.toWei('500', 'ether'));
+    xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('500', 'ether'));
 
     await USDT.transfer(recipient, web3.utils.toWei('200', 'ether'));
     await USDT.transfer(staker, web3.utils.toWei('200', 'ether'));
@@ -55,7 +55,7 @@ contract('Router', (accounts) => {
     await balancer.finalize();
 
     timestamp = await currentTimestamp();
-    staking = await StakingManager.new(gEURO.address, timestamp, 150);
+    staking = await StakingManager.new(xbg.address, timestamp, 150);
 
     router = await Router.new(
       team, staking.address, timestamp,
