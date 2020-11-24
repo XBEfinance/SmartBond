@@ -106,7 +106,7 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
 
         _totalValue = _totalValue.add(value);
 
-        IDDP(_ddp).deposit(tokenId, value, maturityEnds);
+        IDDP(_ddp).deposit(tokenId, value, maturityEnds, to);
     }
 
     function hasToken(uint256 tokenId) external view override returns (bool) {

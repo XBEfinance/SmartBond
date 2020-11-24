@@ -44,20 +44,19 @@ contract DDP is IDDP, AccessControl {
     function deposit(
         uint256 tokenId,
         uint256 value,
-        uint256 maturity) external override
+        uint256 maturity,
+        address to) external override
     {
         // only bond is allowed to deposit
-        require(
-            _msgSender() == _bond, 
+        require(_msgSender() == _bond, 
             "caller is not allowed to deposit");
-        address owner = IERC721(_bond).ownerOf(tokenId);
 
         // mint EURxb tokens: amount of EURxb FT tokens = value of Bond NFT token.
-        IEURxb(_eurxb).mint(owner, value);
+        IEURxb(_eurxb).mint(to, value);
     }
 
     /**
-     *  repays bond token, any iser can call it
+     *  repays bond token, any user can call it
      */
     function withdraw(uint256 tokenId) external {
         

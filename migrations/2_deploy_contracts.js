@@ -5,6 +5,7 @@ const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
 const DDPMock = artifacts.require('DDPMock');
 const DDP = artifacts.require('DDP');
+const EURxbMock = artifacts.require('EURxbMock');
 
 module.exports = (deployer, network, accounts) => {
   deployer.then(async () => {
