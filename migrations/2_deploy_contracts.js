@@ -19,6 +19,7 @@ const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
 const DDPMock = artifacts.require('DDPMock');
 const DDP = artifacts.require('DDP');
+const EURxbMock = artifacts.require('EURxbMock');
 
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";

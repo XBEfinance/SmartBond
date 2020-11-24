@@ -11,6 +11,7 @@ const { default: BigNumber } = require('bignumber.js');
 
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
+// chai.use(require('chai-bignumber')(BN));
 
 const { expect, assert } = chai;
 
