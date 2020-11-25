@@ -12,10 +12,12 @@ contract EURxbMock is IEURxb, ERC20 {
 
     constructor () ERC20("EURxbMock", "EXB") public {}
 
-    function mint(address account, uint256 value) external override {
-        emit MintInvoked(account, value);
+    function mint(address account, uint256 amount) external override {
+        emit MintInvoked(account, amount);
+        _mint(account, amount);
     }
-    function burn(address account, uint256 value) external override {
-        emit BurnInvoked(account, value);
+    function burn(address account, uint256 amount) external override {
+        emit BurnInvoked(account, amount);
+        _burn(account, amount);
     }
 }
