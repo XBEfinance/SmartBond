@@ -40,7 +40,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 1);
     assert.equal(next, 3);
 
-    result = await list.getNodeValue(next);
+    let end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 2);
@@ -66,8 +67,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
 
-    head = await list.getHead();
-    result = await list.getNodeValue(next);
+    let end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 1);
@@ -75,6 +76,7 @@ contract('MockLinkedList', (accounts) => {
 
     await list.pushBefore(2, 1, 2);
 
+    head = await list.getHead();
     result = await list.getNodeValue(head);
     next = result.next;
     assert.equal(result.maturityEnd, 1);
@@ -87,7 +89,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 1);
     assert.equal(next, 2);
 
-    result = await list.getNodeValue(next);
+    end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 3);
@@ -105,7 +108,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
 
-    result = await list.getNodeValue(next);
+    let end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 1);
@@ -126,7 +130,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 3);
     assert.equal(next, 2);
 
-    result = await list.getNodeValue(next);
+    end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 1);
@@ -144,7 +149,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
 
-    result = await list.getNodeValue(next);
+    let end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 2);
     assert.equal(result.prev, 1);
@@ -165,7 +171,8 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 1);
     assert.equal(next, 3);
 
-    result = await list.getNodeValue(next);
+    end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
     assert.equal(result.prev, 2);
@@ -199,7 +206,8 @@ contract('MockLinkedList', (accounts) => {
     // Remove at the beginning
     await list.remove(1);
 
-    result = await list.getNodeValue(2);
+    let head = await list.getHead();
+    result = await list.getNodeValue(head);
     next = result.next;
     assert.equal(result.maturityEnd, 2);
     assert.equal(result.prev, 0);
@@ -208,7 +216,8 @@ contract('MockLinkedList', (accounts) => {
     // End removal 
     await list.remove(6);
 
-    result = await list.getNodeValue(5);
+    let end = await list.getEnd();
+    result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 5);
     assert.equal(result.prev, 2);
