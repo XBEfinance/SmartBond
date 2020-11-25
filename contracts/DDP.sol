@@ -62,7 +62,7 @@ contract DDP is IDDP, AccessControl {
         
         // check if token exists
         require(
-            !IBondToken(_bond).hasToken(tokenId), 
+            IBondToken(_bond).hasToken(tokenId), 
             "bond token id does not exist");
 
         address user = _msgSender();
