@@ -20,18 +20,38 @@ library LinkedList {
         mapping(uint256 => Node) list;
     }
 
+    /**
+     * @dev Checks if the list exists
+     * @param self stored linked list from contract
+     * @return bool true if list exists, false otherwise
+     */
     function listExists(List storage self) public view returns (bool) {
         return self.head != 0;
     }
 
+    /**
+     * @dev Returns a pointer to the beginning of the list 
+     * @param self stored linked list from contract
+     * @return uint256 id
+     */
     function getHead(List storage self) public view returns (uint256) {
         return self.head;
     }
 
+    /**
+     * @dev Returns a pointer to the end of the list
+     * @param self stored linked list from contract
+     * @return uint256 id
+     */
     function getEnd(List storage self) public view returns (uint256) {
         return self.end;
     }
 
+    /**
+     * @dev Returns the value of the node
+     * @param self stored linked list from contract
+     * @param id node
+     */
     function getNodeValue(List storage self, uint256 id)
         public
         view
@@ -48,10 +68,21 @@ library LinkedList {
         next = self.list[id].next;
     }
 
+    /**
+     * @dev Setting the pointer to the beginning of the list
+     * @param self stored linked list from contract
+     * @param id node
+     */
     function setHead(List storage self, uint256 id) public {
         self.head = id;
     }
 
+    /**
+     * @dev Adding to the end of the list
+     * @param self stored linked list from contract
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
     function pushBack(List storage self, uint256 amount, uint256 maturityEnd) public {
         if (self.end != 0) {
             self.list[self.end].next = self.counter + 1;
@@ -67,6 +98,13 @@ library LinkedList {
         self.head = self.head == 0 ? self.counter : self.head;
     }
 
+    /**
+     * @dev Adding to the list before a node
+     * @param self stored linked list from contract
+     * @param id node
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
     function pushBefore(
         List storage self,
         uint256 id,
@@ -95,6 +133,11 @@ library LinkedList {
         self.counter += 1;
     }
 
+    /**
+     * @dev Removing from the list
+     * @param self stored linked list from contract
+     * @param id node
+     */
     function remove(List storage self, uint256 id) public {
         require(id > 0, "ID must be greater than 0");
 
