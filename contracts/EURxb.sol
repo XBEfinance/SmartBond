@@ -25,7 +25,8 @@ contract EURxb is ERC20 {
     uint256 private _accrualTimestamp;
     uint256 private _expIndex;
 
-    uint256 private _secondsRatio = _unit.mul(365).mul(86400);
+    uint256 private _perYear = _unit.mul(365).mul(86400);
+    uint256 private _countMaturity = 100;
 
     mapping(address => uint256) private _holderIndex;
 
@@ -79,10 +80,10 @@ contract EURxb is ERC20 {
         view
         returns (uint256)
     {
-        if (_balances[account] > 0 && _holderIndex[account] > 0) {
+        if (_balances[account] > 0 && _holderIndex[account] > 0 && totalSupply() > 0) {
             uint256 newExpIndex = _calculateInterest(
                 timestamp,
-                _annualInterest,
+                _annualInterest.mul(_totalActiveValue),
                 _expIndex
             );
             return
@@ -95,12 +96,31 @@ contract EURxb is ERC20 {
      * @dev Calculation of accrued interest
      */
     function accrueInterest() public {
-        // TODO
+        for (uint256 i = 0; i < _countMaturity && _list.listExists(); i++) {
+            uint256 head = _list.getHead();
+            uint256 amount;
+            uint256 maturityEnd;
+            uint256 next;
+            (amount, maturityEnd, , next) = _list.getNodeValue(head);
+
+            if (next == 0) {
+                break;
+            }
+
+            if (maturityEnd <= now) {
+                _totalActiveValue = _totalActiveValue.sub(amount);
+                _list.setHead(next);
+            } else {
+                break;
+            }
+        }
+
         _expIndex = _calculateInterest(
             block.timestamp,
-            _annualInterest,
+            _annualInterest.mul(_totalActiveValue),
             _expIndex
         );
+
         _accrualTimestamp = block.timestamp;
     }
 
@@ -115,6 +135,7 @@ contract EURxb is ERC20 {
             uint256 id = _list.getEnd();
 
             // TODO: maybe many elements
+            // TODO: maybe you need to add close dates
             while (true) {
                 uint256 maturityNode;
                 uint256 prevIDNode;
@@ -165,13 +186,16 @@ contract EURxb is ERC20 {
         view
         returns (uint256)
     {
-        uint256 period = timestampNow.sub(_accrualTimestamp);
-        if (period < 60) {
-            return prevIndex;
+        uint256 newExpIndex = prevIndex;
+        if (totalSupply() > 0) {
+            uint256 period = timestampNow.sub(_accrualTimestamp);
+            if (period < 60) {
+                return prevIndex;
+            }
+            uint256 interestFactor = interest.mul(period);
+            newExpIndex = (interestFactor.mul(prevIndex).div(_perYear).div(totalSupply()))
+                .add(prevIndex);
         }
-        uint256 interestFactor = interest.mul(period);
-        uint256 newExpIndex = (interestFactor.mul(prevIndex).div(_secondsRatio))
-            .add(prevIndex);
         return newExpIndex;
     }
 
