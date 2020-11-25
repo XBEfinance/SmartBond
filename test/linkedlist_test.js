@@ -1,10 +1,11 @@
 const { assert } = require('chai');
+
 const MockLinkedList = artifacts.require('MockLinkedList');
 
 contract('MockLinkedList', (accounts) => {
   const owner = accounts[0];
   let list;
-  
+
   beforeEach(async () => {
     list = await MockLinkedList.new({ from: owner });
   });
@@ -28,7 +29,7 @@ contract('MockLinkedList', (accounts) => {
 
     const head = await list.getHead();
     let result = await list.getNodeValue(head);
-    let next = result.next;
+    let { next } = result;
     assert.equal(result.amount, 1);
     assert.equal(result.maturityEnd, 1);
     assert.equal(result.prev, 0);
@@ -40,7 +41,7 @@ contract('MockLinkedList', (accounts) => {
     assert.equal(result.prev, 1);
     assert.equal(next, 3);
 
-    let end = await list.getEnd();
+    const end = await list.getEnd();
     result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 3);
@@ -62,7 +63,7 @@ contract('MockLinkedList', (accounts) => {
 
     let head = await list.getHead();
     let result = await list.getNodeValue(head);
-    let next = result.next;
+    let { next } = result;
     assert.equal(result.maturityEnd, 1);
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
@@ -103,7 +104,7 @@ contract('MockLinkedList', (accounts) => {
 
     let head = await list.getHead();
     let result = await list.getNodeValue(head);
-    let next = result.next;
+    let { next } = result;
     assert.equal(result.maturityEnd, 2);
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
@@ -144,7 +145,7 @@ contract('MockLinkedList', (accounts) => {
 
     let head = await list.getHead();
     let result = await list.getNodeValue(head);
-    let next = result.next;
+    let { next } = result;
     assert.equal(result.maturityEnd, 1);
     assert.equal(result.prev, 0);
     assert.equal(next, 2);
@@ -192,7 +193,7 @@ contract('MockLinkedList', (accounts) => {
     await list.remove(4);
 
     let result = await list.getNodeValue(2);
-    let next = result.next;
+    let { next } = result;
     assert.equal(result.maturityEnd, 2);
     assert.equal(result.prev, 1);
     assert.equal(next, 5);
@@ -206,17 +207,17 @@ contract('MockLinkedList', (accounts) => {
     // Remove at the beginning
     await list.remove(1);
 
-    let head = await list.getHead();
+    const head = await list.getHead();
     result = await list.getNodeValue(head);
     next = result.next;
     assert.equal(result.maturityEnd, 2);
     assert.equal(result.prev, 0);
     assert.equal(next, 5);
 
-    // End removal 
+    // End removal
     await list.remove(6);
 
-    let end = await list.getEnd();
+    const end = await list.getEnd();
     result = await list.getNodeValue(end);
     next = result.next;
     assert.equal(result.maturityEnd, 5);
