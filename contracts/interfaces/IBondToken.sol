@@ -11,7 +11,7 @@ interface IBondToken {
 
     function hasToken(uint256 tokenId) external view returns (bool);
 
-    function getTokenInfo(uint256 tokenId) external view 
+    function getTokenInfo(uint256 tokenId) external view
         returns (uint256 value, uint256 interest, uint256 maturity);
 
     function mint(

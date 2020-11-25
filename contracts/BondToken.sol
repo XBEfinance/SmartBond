@@ -48,8 +48,8 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
 
     /// bond info accessors
 
-    function getTokenInfo(uint256 tokenId) external view override 
-        returns (uint256 value, uint256 interest, uint256 maturity) 
+    function getTokenInfo(uint256 tokenId) external view override
+        returns (uint256 value, uint256 interest, uint256 maturity)
     {
         BondInfo memory info = _bondInfo[tokenId];
         return ( info.value, info.interestPerSec, info.maturityEnds );
@@ -106,7 +106,12 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
 
         _totalValue = _totalValue.add(value);
 
-        IDDP(_ddp).deposit(tokenId, value, maturityEnds, to);
+        IDDP(_ddp).deposit(
+            tokenId,
+            value,
+            maturityEnds,
+            to
+        );
     }
 
     function hasToken(uint256 tokenId) external view override returns (bool) {

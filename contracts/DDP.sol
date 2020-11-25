@@ -17,7 +17,7 @@ contract DDP is IDDP, AccessControl {
     address private _eurxb;
     address private _allowList;
 
-    uint256 _claimPeriod = 7 days; // check 
+    uint256 _claimPeriod = 30 days;
 
     constructor(address admin) public {
         _setupRole(TokenAccessRoles.admin(), admin);
@@ -36,7 +36,7 @@ contract DDP is IDDP, AccessControl {
 
     function setClaimPeriod(uint256 period) external {
         require(
-            hasRole(TokenAccessRoles.admin(), _msgSender()), 
+            hasRole(TokenAccessRoles.admin(), _msgSender()),
             "user is not admin");
         _claimPeriod = period;
     }
@@ -48,7 +48,7 @@ contract DDP is IDDP, AccessControl {
         address to) external override
     {
         // only bond is allowed to deposit
-        require(_msgSender() == _bond, 
+        require(_msgSender() == _bond,
             "caller is not allowed to deposit");
 
         // mint EURxb tokens: amount of EURxb FT tokens = value of Bond NFT token.
@@ -59,32 +59,31 @@ contract DDP is IDDP, AccessControl {
      *  repays bond token, any user can call it
      */
     function withdraw(uint256 tokenId) external {
-        
         // check if token exists
         require(
-            IBondToken(_bond).hasToken(tokenId), 
+            IBondToken(_bond).hasToken(tokenId),
             "bond token id does not exist");
 
         address user = _msgSender();
 
         // get token properties
-        ( uint256 value, /* uint256 interest */, uint256 maturity ) = 
-            IBondToken(_bond).getTokenInfo(tokenId);
+        ( uint256 value, /* uint256 interest */, uint256 maturity ) = IBondToken(_bond)
+            .getTokenInfo(tokenId);
 
         address owner = IERC721(_bond).ownerOf(tokenId);
         bool isOwner = owner == user;
 
         if (!isOwner) {
             require (
-                IAllowList(_allowList).isAllowedAccount(user), 
+                IAllowList(_allowList).isAllowedAccount(user),
                 "user is not allowed");
             require(
-                block.timestamp <= maturity + _claimPeriod, 
+                block.timestamp <= maturity + _claimPeriod,
                 "claim period is not finished yet");
         }
 
         // check if enough money to repay
-        require(IERC20(_eurxb).balanceOf(user) >= value, 
+        require(IERC20(_eurxb).balanceOf(user) >= value,
             "not enough EURxb to withdraw");
 
         // burn EURxb

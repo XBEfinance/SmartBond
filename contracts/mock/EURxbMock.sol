@@ -16,6 +16,7 @@ contract EURxbMock is IEURxb, ERC20 {
         emit MintInvoked(account, amount);
         _mint(account, amount);
     }
+
     function burn(address account, uint256 amount) external override {
         emit BurnInvoked(account, amount);
         _burn(account, amount);
