@@ -1,4 +1,6 @@
+/* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
+
 const { assert } = require('chai');
 const {
   BN,

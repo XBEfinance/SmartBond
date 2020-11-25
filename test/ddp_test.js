@@ -23,39 +23,40 @@ const FakeBond = artifacts.require('FakeBond');
 const baseURI = '127.0.0.1/';
 
 contract('DDPTest', (accounts) => {
-    const miris = accounts[1];
-    const alice = accounts[2];
-    const bob = accounts[3];
-  
-    const ETHER_100 = web3.utils.toWei('100', 'ether');
-    const ETHER_0 = web3.utils.toWei('0', 'ether');
-    const DATE_SHIFT = new BN('10000');
-    const TOKEN_0 = new BN('0');
-    const TOKEN_1 = new BN('1');
-  
-    beforeEach(async () => {
-      this.list = await AllowList.new(miris);
-      this.bond = await BondToken.new(miris, baseURI  , this.list.address);
-      this.sat = await SecurityAssetToken
-        .new(baseURI,
-          miris,
-          this.bond.address,
-          this.list.address);
-  
-      this.ddp = await DDP.new(miris);
+  const miris = accounts[1];
+  const alice = accounts[2];
+  const bob = accounts[3];
 
-      await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
+  const ETHER_100 = web3.utils.toWei('100', 'ether');
+  const ETHER_0 = web3.utils.toWei('0', 'ether');
+  const DATE_SHIFT = new BN('10000');
+  const TOKEN_0 = new BN('0');
+  const TOKEN_1 = new BN('1');
 
-      this.eurxb = await EURxb.new();
-
-      await this.ddp.configure(
+  beforeEach(async () => {
+    this.list = await AllowList.new(miris);
+    this.bond = await BondToken.new(miris, baseURI, this.list.address);
+    this.sat = await SecurityAssetToken
+      .new(baseURI,
+        miris,
         this.bond.address,
-        this.eurxb.address,
-        this.list.address,
-        { from: miris });
+        this.list.address);
 
-      this._fakeBond = await FakeBond.new(this.ddp.address);
-    });
+    this.ddp = await DDP.new(miris);
+
+    await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
+
+    this.eurxb = await EURxb.new();
+
+    await this.ddp.configure(
+      this.bond.address,
+      this.eurxb.address,
+      this.list.address,
+      { from: miris },
+    );
+
+    this.fakeBond = await FakeBond.new(this.ddp.address);
+  });
 
   it('mint and deposit success', async () => {
     await this.list.allowAccount(alice, { from: miris });
@@ -78,7 +79,6 @@ contract('DDPTest', (accounts) => {
     expect(interest, 'wrong interest value')
       .to.be.bignumber.equal(expectedInterest);
 
-    
     // check eurxb value minted
     expectEvent
       .inTransaction(
@@ -89,23 +89,24 @@ contract('DDPTest', (accounts) => {
       );
 
     expect(
-      (await this.eurxb.balanceOf(alice)), 
-      'wrong balance')
-      .to.be.bignumber.equal(value);
+      (await this.eurxb.balanceOf(alice)),
+      'wrong balance',
+    ).to.be.bignumber.equal(value);
   });
 
   it('check non-bond deposit caller fails', async () => {
     await this.list.allowAccount(alice, { from: miris });
 
     await expectRevert(
-      this._fakeBond.callDdpDeposit(
+      this.fakeBond.callDdpDeposit(
         TOKEN_0,
         ETHER_100,
         DATE_SHIFT,
         alice,
-        { from: miris }
-        ), 
-        'caller is not allowed to deposit');
+        { from: miris },
+      ),
+      'caller is not allowed to deposit',
+    );
   });
 
   it('owner withdraw success', async () => {
@@ -120,14 +121,14 @@ contract('DDPTest', (accounts) => {
 
     expect(await this.eurxb.balanceOf(alice), 'withdrawn account must be zero')
       .to.be.bignumber.equal(
-        (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'))
+        (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100')),
       );
 
     await this.ddp.withdraw(TOKEN_0, { from: alice });
 
     expect(await this.eurxb.balanceOf(alice), 'withdrawn account must be zero')
       .to.be.bignumber.equal(new BN('0'));
-    
+
     assert(!(await this.bond.hasToken(TOKEN_0)), 'bond token was not burned');
   });
 
@@ -147,15 +148,15 @@ contract('DDPTest', (accounts) => {
       .to.be.bignumber.equal(halfAmount);
 
     await expectRevert(
-      this.ddp.withdraw(TOKEN_0, { from: alice }), 
-      'not enough EURxb to withdraw'
-      );
+      this.ddp.withdraw(TOKEN_0, { from: alice }),
+      'not enough EURxb to withdraw',
+    );
   });
 
   // TODO: maybe implement later
   // it('user withdraw fail maturity not completed', async () => {
   // });
-  
+
   it('user withdraw fail user not allowed (KYC)', async () => {
     await this.list.allowAccount(alice, { from: miris });
 
@@ -165,7 +166,8 @@ contract('DDPTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
     await expectRevert(
-      this.ddp.withdraw(TOKEN_0, { from: bob }), 
-      'user is not allowed');
+      this.ddp.withdraw(TOKEN_0, { from: bob }),
+      'user is not allowed',
+    );
   });
 });

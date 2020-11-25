@@ -22,7 +22,7 @@ contract DDPMock is IDDP, ERC721 {
         uint256 tokenId,
         uint256 value,
         uint256 maturityEnds,
-        address to) external override 
+        address to) external override
     {
         emit DepositInvoked(
             tokenId,
