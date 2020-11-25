@@ -30,7 +30,7 @@ library LinkedList {
     }
 
     /**
-     * @dev Returns a pointer to the beginning of the list 
+     * @dev Returns a pointer to the beginning of the list
      * @param self stored linked list from contract
      * @return uint256 id
      */

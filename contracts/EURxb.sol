@@ -35,6 +35,33 @@ contract EURxb is ERC20 {
     }
 
     /**
+     * @dev Return totalActiveValue
+     */
+    function totalActiveValue() public view returns (uint256) {
+        return _totalActiveValue;
+    }
+
+    /**
+     * @dev Return first added maturity
+     */
+    function getFirstMaturity() public view returns (uint256) {
+        uint256 head = _list.getHead();
+        uint256 maturityEnd;
+        (, maturityEnd, , ) = _list.getNodeValue(head);
+        return maturityEnd;
+    }
+
+    /**
+     * @dev Return last added maturity
+     */
+    function getLastMaturity() public view returns (uint256) {
+        uint256 end = _list.getEnd();
+        uint256 maturityEnd;
+        (, maturityEnd, , ) = _list.getNodeValue(end);
+        return maturityEnd;
+    }
+
+    /**
      * @dev Return user balance
      * @param account user address
      */
@@ -85,28 +112,33 @@ contract EURxb is ERC20 {
     function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
         _totalActiveValue = _totalActiveValue.add(amount);
         if (_list.listExists()) {
-            uint256 id = _list.end;
+            uint256 id = _list.getEnd();
 
             // TODO: maybe many elements
             while (true) {
-                if (_list.list[id].maturityEnd < maturityEnd) {
+                uint256 maturityNode;
+                uint256 prevIDNode;
+                (, maturityNode, prevIDNode, ) = _list.getNodeValue(id);
+
+                if (maturityNode < maturityEnd) {
                     _list.pushBack(amount, maturityEnd);
                     break;
                 }
 
-                if (_list.list[id].prev == 0) {
+                if (prevIDNode == 0) {
                     _list.pushBefore(id, amount, maturityEnd);
                     break;
                 }
 
-                uint256 prev = _list.list[id].prev;
+                uint256 maturityPrevNode;
+                (, maturityPrevNode, , ) = _list.getNodeValue(prevIDNode);
 
-                if (_list.list[prev].maturityEnd < maturityEnd && maturityEnd < _list.list[id].maturityEnd) {
+                if (maturityPrevNode < maturityEnd && maturityEnd < maturityNode) {
                     _list.pushBefore(id, amount, maturityEnd);
                     break;
                 }
 
-                id = prev;
+                id = prevIDNode;
             }
         } else {
             _list.pushBack(amount, maturityEnd);
