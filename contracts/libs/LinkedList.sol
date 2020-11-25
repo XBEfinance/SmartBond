@@ -24,6 +24,34 @@ library LinkedList {
         return self.head != 0;
     }
 
+    function getHead(List storage self) public view returns (uint256) {
+        return self.head;
+    }
+
+    function getEnd(List storage self) public view returns (uint256) {
+        return self.end;
+    }
+
+    function getNodeValue(List storage self, uint256 id)
+        public
+        view
+        returns (
+            uint256 amount,
+            uint256 maturityEnd,
+            uint256 prev,
+            uint256 next
+        )
+    {
+        amount = self.list[id].amount;
+        maturityEnd = self.list[id].maturityEnd;
+        prev = self.list[id].prev;
+        next = self.list[id].next;
+    }
+
+    function setHead(List storage self, uint256 id) public {
+        self.head = id;
+    }
+
     function pushBack(List storage self, uint256 amount, uint256 maturityEnd) public {
         if (self.end != 0) {
             self.list[self.end].next = self.counter + 1;
@@ -54,6 +82,8 @@ library LinkedList {
 
         if (nodeIDPrev > 0) {
             self.list[nodeIDPrev].next = self.counter + 1;
+        } else {
+            self.head = self.counter + 1;
         }
 
         self.list[self.counter + 1] = Node(

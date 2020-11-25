@@ -7,6 +7,18 @@ contract MockLinkedList {
 
     LinkedList.List private _list;
 
+    function listExists() public view returns (bool) {
+        return _list.listExists();
+    }
+
+    function getHead() public view returns (uint256) {
+        return _list.getHead();
+    }
+
+    function getEnd() public view returns (uint256) {
+        return _list.getEnd();
+    }
+
     function getNodeValue(uint256 id)
         public
         view
@@ -17,14 +29,11 @@ contract MockLinkedList {
             uint256 next
         )
     {
-        amount = _list.list[id].amount;
-        maturityEnd = _list.list[id].maturityEnd;
-        prev = _list.list[id].prev;
-        next = _list.list[id].next;
+        (amount, maturityEnd, prev, next) = _list.getNodeValue(id);
     }
 
-    function listExists() public view returns (bool) {
-        return _list.listExists();
+    function setHead(uint256 id) public {
+        _list.setHead(id);
     }
 
     function pushBack(uint256 amount, uint256 maturityEnd) public {
