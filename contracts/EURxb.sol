@@ -11,7 +11,7 @@ import "./libs/LinkedList.sol";
  * @title EURxb
  * @dev EURxb token
  */
-contract EURxb is ERC20 {
+contract EURxb is ERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     using LinkedList for LinkedList.List;
@@ -19,20 +19,20 @@ contract EURxb is ERC20 {
     LinkedList.List private _list;
 
     uint256 private _unit = 10**18;
+    uint256 private _perYear = _unit.mul(365).mul(86400);
 
+    uint256 private _countMaturity;
     uint256 private _totalActiveValue;
     uint256 private _annualInterest;
     uint256 private _accrualTimestamp;
     uint256 private _expIndex;
-
-    uint256 private _perYear = _unit.mul(365).mul(86400);
-    uint256 private _countMaturity = 100;
 
     mapping(address => uint256) private _holderIndex;
 
     constructor() public ERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
         _expIndex = _unit;
+        _countMaturity = 100;
     }
 
     /**
@@ -40,6 +40,13 @@ contract EURxb is ERC20 {
      */
     function totalActiveValue() public view returns (uint256) {
         return _totalActiveValue;
+    }
+
+    /**
+     * @dev Return accrualTimestamp
+     */
+    function accrualTimestamp() public view returns (uint256) {
+        return _accrualTimestamp;
     }
 
     /**
@@ -80,16 +87,43 @@ contract EURxb is ERC20 {
         view
         returns (uint256)
     {
-        if (_balances[account] > 0 && _holderIndex[account] > 0 && totalSupply() > 0) {
+        uint256 tempTotalActiveValue = _totalActiveValue;
+        uint256 head = _list.getHead();
+        while (_list.listExists()) {
+            uint256 amount;
+            uint256 maturityEnd;
+            uint256 next;
+            (amount, maturityEnd, , next) = _list.getNodeValue(head);
+
+            if (next == 0) {
+                break;
+            }
+
+            if (maturityEnd <= now) {
+                tempTotalActiveValue = tempTotalActiveValue.sub(amount);
+            } else {
+                break;
+            }
+
+            head = next;
+        }
+        if (_balances[account] > 0 && _holderIndex[account] > 0) {
             uint256 newExpIndex = _calculateInterest(
                 timestamp,
-                _annualInterest.mul(_totalActiveValue),
+                _annualInterest.mul(tempTotalActiveValue),
                 _expIndex
             );
             return
                 _balances[account].mul(newExpIndex).div(_holderIndex[account]);
         }
         return super.balanceOf(account);
+    }
+
+    /**
+     * @dev Set countMaturity
+     */
+    function setCountMaturity(uint256 count) public onlyOwner {
+        _countMaturity = count;
     }
 
     /**
