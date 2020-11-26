@@ -15,18 +15,19 @@ contract('EURxb', (accounts) => {
   });
 
   it('should return correct balance values', async () => {
+    const timestamp = await currentTimestamp();
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp);
     await increaseTime(DAY * daysAYear);
     const balance = await token.balanceOf(recipient);
-    // TODO: change to real values
-    // when the calculations are ready
-    // console.log(balance);
-    // assert(balance > web3.utils.toWei('106999999999999999000', 'wei'));
-    // assert(balance < web3.utils.toWei('107000000000000002000', 'wei'));
+    assert(balance > web3.utils.toWei('106999999999999999000', 'wei'));
+    assert(balance < web3.utils.toWei('107000000000000002000', 'wei'));
   });
 
   it('should return correct balance approximation values', async () => {
+    const timestamp = await currentTimestamp();
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp);
     let year = daysAYear;
     while (year > 0) {
       /* eslint-disable */
@@ -36,11 +37,8 @@ contract('EURxb', (accounts) => {
       /* eslint-enable */
     }
     const balance = await token.balanceOf(recipient);
-    // TODO: change to real values
-    // when the calculations are ready
-    // console.log(balance);
-    // assert(balance > web3.utils.toWei('107200000000000000000', 'wei'));
-    // assert(balance < web3.utils.toWei('107290000000000000000', 'wei'));
+    assert(balance > web3.utils.toWei('107200000000000000000', 'wei'));
+    assert(balance < web3.utils.toWei('107290000000000000000', 'wei'));
   });
 
   it('should return correct adding maturity', async () => {
