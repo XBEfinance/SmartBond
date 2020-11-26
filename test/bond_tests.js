@@ -19,7 +19,6 @@ const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
 const AllowList = artifacts.require('AllowList');
 const DDP = artifacts.require('DDPMock');
-const BondBurnerHelper = artifacts.require('BondBurnerHelper');
 const baseURI = '127.0.0.1/';
 
 contract('BondTokenTest', (accounts) => {
@@ -44,7 +43,6 @@ contract('BondTokenTest', (accounts) => {
 
     this.ddp = await DDP.new(this.bond.address);
     await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
-    this.burnHelper = await BondBurnerHelper.new(this.bond.address);
   });
 
   // just mint sat, which mints bond and check token info
@@ -111,7 +109,7 @@ contract('BondTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
     await expectRevert(
-      this.burnHelper.burnToken(TOKEN_0),
+      this.bond.burn(TOKEN_0, { from: bob }),
       'user is not allowed to burn tokens',
     );
   });
