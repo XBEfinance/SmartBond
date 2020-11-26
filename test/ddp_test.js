@@ -19,7 +19,6 @@ const BondToken = artifacts.require('BondToken');
 const AllowList = artifacts.require('AllowList');
 const DDP = artifacts.require('DDP');
 const EURxb = artifacts.require('EURxbMock');
-const FakeBond = artifacts.require('FakeBond');
 const baseURI = '127.0.0.1/';
 
 contract('DDPTest', (accounts) => {
@@ -54,8 +53,6 @@ contract('DDPTest', (accounts) => {
       this.list.address,
       { from: miris },
     );
-
-    this.fakeBond = await FakeBond.new(this.ddp.address);
   });
 
   it('mint and deposit success', async () => {
@@ -98,12 +95,12 @@ contract('DDPTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
 
     await expectRevert(
-      this.fakeBond.callDdpDeposit(
+      this.ddp.deposit(
         TOKEN_0,
         ETHER_100,
         DATE_SHIFT,
         alice,
-        { from: miris },
+        { from: bob },
       ),
       'caller is not allowed to deposit',
     );
