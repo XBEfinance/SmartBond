@@ -71,4 +71,21 @@ contract('EURxb', (accounts) => {
     assert.equal(await token.getFirstMaturity(), timestamp1);
     assert.equal(await token.getLastMaturity(), timestamp3);
   });
+
+  it('should return correct calculate interest', async () => {
+    const timestamp = await currentTimestamp();
+    await token.mint(recipient, web3.utils.toWei('150', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 1);
+    await increaseTime(DAY * 2);
+    await token.mint(recipient, web3.utils.toWei('150', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 2);
+
+    await token.accrueInterest();
+
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('150', 'ether'));
+    // TODO: Incorrect calculations
+    // const expIndex = await token.expIndex()
+    // assert(expIndex > web3.utils.toWei('1000000000000000000', 'wei'));
+    // assert(expIndex < web3.utils.toWei('1000900000000000000', 'wei'));
+  });
 });

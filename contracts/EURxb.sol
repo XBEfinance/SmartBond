@@ -50,6 +50,13 @@ contract EURxb is ERC20, Ownable {
     }
 
     /**
+     * @dev Return expIndex
+     */
+    function expIndex() public view returns (uint256) {
+        return _expIndex;
+    }
+
+    /**
      * @dev Return first added maturity
      */
     function getFirstMaturity() public view returns (uint256) {
@@ -87,27 +94,27 @@ contract EURxb is ERC20, Ownable {
         view
         returns (uint256)
     {
-        uint256 tempTotalActiveValue = _totalActiveValue;
-        uint256 head = _list.getHead();
-        while (_list.listExists()) {
-            uint256 amount;
-            uint256 maturityEnd;
-            uint256 next;
-            (amount, maturityEnd, , next) = _list.getNodeValue(head);
-
-            if (next == 0) {
-                break;
-            }
-
-            if (maturityEnd <= now) {
-                tempTotalActiveValue = tempTotalActiveValue.sub(amount);
-            } else {
-                break;
-            }
-
-            head = next;
-        }
         if (_balances[account] > 0 && _holderIndex[account] > 0) {
+            uint256 tempTotalActiveValue = _totalActiveValue;
+            uint256 head = _list.getHead();
+            while (_list.listExists()) {
+                uint256 amount;
+                uint256 maturityEnd;
+                uint256 next;
+                (amount, maturityEnd, , next) = _list.getNodeValue(head);
+
+                if (next == 0) {
+                    break;
+                }
+
+                if (maturityEnd <= now) {
+                    tempTotalActiveValue = tempTotalActiveValue.sub(amount);
+                } else {
+                    break;
+                }
+
+                head = next;
+            }
             uint256 newExpIndex = _calculateInterest(
                 timestamp,
                 _annualInterest.mul(tempTotalActiveValue),
