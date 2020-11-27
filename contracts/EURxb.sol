@@ -245,6 +245,8 @@ contract EURxb is ERC20, Ownable {
         require(_list.listExists(), "The list does not exist");
 
         uint256 id = _list.getHead();
+        // TODO: maybe many elements
+        // TODO: maybe you need to add close dates
         while (true) {
             uint256 amountNode;
             uint256 maturityNode;
@@ -254,6 +256,7 @@ contract EURxb is ERC20, Ownable {
             if (maturityNode == maturityEnd && amountNode == amount) {
                 _totalActiveValue = _totalActiveValue.sub(amount);
                 _list.remove(id);
+                break;
             }
 
             if (next == 0) {
