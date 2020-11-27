@@ -36,10 +36,24 @@ contract EURxb is ERC20, Ownable {
     }
 
     /**
+     * @dev Return countMaturity
+     */
+    function countMaturity() public view returns (uint256) {
+        return _countMaturity;
+    }
+
+    /**
      * @dev Return totalActiveValue
      */
     function totalActiveValue() public view returns (uint256) {
         return _totalActiveValue;
+    }
+
+    /**
+     * @dev Return annualInterest
+     */
+    function annualInterest() public view returns (uint256) {
+        return _annualInterest;
     }
 
     /**
@@ -109,11 +123,10 @@ contract EURxb is ERC20, Ownable {
 
                 if (maturityEnd <= now) {
                     tempTotalActiveValue = tempTotalActiveValue.sub(amount);
+                    head = next;
                 } else {
                     break;
                 }
-
-                head = next;
             }
             uint256 newExpIndex = _calculateInterest(
                 timestamp,
@@ -128,8 +141,10 @@ contract EURxb is ERC20, Ownable {
 
     /**
      * @dev Set countMaturity
+     * @param count maturity
      */
     function setCountMaturity(uint256 count) public onlyOwner {
+        require(count > 0, "The amount must be greater than zero");
         _countMaturity = count;
     }
 
@@ -171,7 +186,11 @@ contract EURxb is ERC20, Ownable {
      * @param maturityEnd end date of interest accrual
      */
     function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
+        require(amount > 0, "The amount must be greater than zero");
+        require(maturityEnd > 0, "End date must be greater than zero");
+
         _totalActiveValue = _totalActiveValue.add(amount);
+
         if (_list.listExists()) {
             uint256 id = _list.getEnd();
 
@@ -184,6 +203,14 @@ contract EURxb is ERC20, Ownable {
 
                 if (maturityNode < maturityEnd) {
                     _list.pushBack(amount, maturityEnd);
+                    break;
+                }
+
+                if (id == _list.getHead() && maturityNode > maturityEnd) {
+                    _list.pushBefore(id, amount, maturityEnd);
+                    uint256 newPrev;
+                    (, , newPrev, ) = _list.getNodeValue(id);
+                    _list.setHead(newPrev);
                     break;
                 }
 
@@ -204,6 +231,36 @@ contract EURxb is ERC20, Ownable {
             }
         } else {
             _list.pushBack(amount, maturityEnd);
+        }
+    }
+
+    /**
+     * @dev Remove maturity
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
+    function removeMaturity(uint256 amount, uint256 maturityEnd) public {
+        require(amount > 0, "The amount must be greater than zero");
+        require(maturityEnd > 0, "End date must be greater than zero");
+        require(_list.listExists(), "The list does not exist");
+
+        uint256 id = _list.getHead();
+        while (true) {
+            uint256 amountNode;
+            uint256 maturityNode;
+            uint256 next;
+            (amountNode, maturityNode, , next) = _list.getNodeValue(id);
+
+            if (maturityNode == maturityEnd && amountNode == amount) {
+                _totalActiveValue = _totalActiveValue.sub(amount);
+                _list.remove(id);
+            }
+
+            if (next == 0) {
+                break;
+            }
+
+            id = next;
         }
     }
 
