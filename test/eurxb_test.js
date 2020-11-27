@@ -14,6 +14,19 @@ contract('EURxb', (accounts) => {
     token = await EURxb.new();
   });
 
+  it('should create EURxb contract and show default parameters', async () => {
+    assert.equal(await token.name(), 'EURxb');
+    assert.equal(await token.symbol(), 'EURxb');
+    assert.equal(await token.decimals(), 18);
+    assert.equal(await token.totalSupply(), 0);
+
+    assert.equal(await token.countMaturity(), 100);
+    assert.equal(await token.totalActiveValue(), 0);
+    assert.equal(await token.annualInterest(), web3.utils.toWei('70', 'finney'));
+    assert.equal(await token.accrualTimestamp(), 0);
+    assert.equal(await token.expIndex(), web3.utils.toWei('1', 'ether'));
+  });
+
   it('should return correct balance values', async () => {
     const timestamp = await currentTimestamp();
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
@@ -21,7 +34,7 @@ contract('EURxb', (accounts) => {
     await increaseTime(DAY * daysAYear);
     const balance = await token.balanceOf(recipient);
     assert(balance > web3.utils.toWei('106999999999999999000', 'wei'));
-    assert(balance < web3.utils.toWei('107000000000000002000', 'wei'));
+    assert(balance < web3.utils.toWei('107000000000000004000', 'wei'));
   });
 
   it('should return correct balance approximation values', async () => {
@@ -74,18 +87,25 @@ contract('EURxb', (accounts) => {
 
   it('should return correct calculate interest', async () => {
     const timestamp = await currentTimestamp();
+
     await token.mint(recipient, web3.utils.toWei('150', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 1);
+    let expIndex = await token.expIndex();
+    assert.equal(expIndex, web3.utils.toWei('1', 'ether'));
+
     await increaseTime(DAY * 2);
     await token.mint(recipient, web3.utils.toWei('150', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 2);
 
+    expIndex = await token.expIndex();
+    assert(expIndex > web3.utils.toWei('1', 'ether'));
+    assert(expIndex < web3.utils.toWei('1001', 'finney')); // 1 ether = 1000 finney
+
     await token.accrueInterest();
 
     assert.equal(await token.totalActiveValue(), web3.utils.toWei('150', 'ether'));
-    // TODO: Incorrect calculations
-    // const expIndex = await token.expIndex()
-    // assert(expIndex > web3.utils.toWei('1000000000000000000', 'wei'));
-    // assert(expIndex < web3.utils.toWei('1000900000000000000', 'wei'));
+    expIndex = await token.expIndex();
+    assert(expIndex > web3.utils.toWei('1', 'ether'));
+    assert(expIndex < web3.utils.toWei('1001', 'finney')); // 1 ether = 1000 finney
   });
 });
