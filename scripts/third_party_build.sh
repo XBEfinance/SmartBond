@@ -9,3 +9,7 @@ truffle compile
 # build USDT
 generate_truffle_config "0.4.17" ".\/third-party-contracts\/USDT"
 truffle compile
+
+# build BUSD
+generate_truffle_config "0.4.24" ".\/third-party-contracts\/BUSD"
+truffle compile
