@@ -1,27 +1,17 @@
 #!/bin/bash
 
-build_contracts() {
-  SOLC_VERSION=$1
-  CONTRACT_DIR=$2
-  CONFIG_NAME="./truffle-config.js"
-  # remove previous config file
-  rm -f $CONFIG_NAME
-  touch $CONFIG_NAME
-  cat "./truffle-config-template.js" >> $CONFIG_NAME
-  sed -i -e "s/solcVersion/$SOLC_VERSION/g" $CONFIG_NAME
-  sed -i -e "s/contractsDirectory/$CONTRACT_DIR/g" $CONFIG_NAME
-  # build contract
-  npm run truffle-build
-  # remove config file
-  rm -f $CONFIG_NAME
-}
+export CONFIG_NAME="./truffle-config.js"
+source ./scripts/utils/generate_truffle_config.sh
 
-#remove previous build
+# remove previous build
 rm -rf ./build
 
-# build balancer
-build_contracts "0.5.12" ".\/third-party-contracts\/balancer"
+# build third party contracts
+./scripts/third_party_build.sh
 
 # build our contracts
-build_contracts "0.6.3" ".\/contracts"
+generate_truffle_config "0.6.3" ".\/contracts" "false" 200
+npm run truffle-build
 
+# remove config file
+rm -f $CONFIG_NAME

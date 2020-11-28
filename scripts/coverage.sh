@@ -1,20 +1,21 @@
 #!/bin/bash
 
-SOLC_VERSION="0.6.3"
-CONTRACT_DIR=".\/contracts"
-CONFIG_NAME="./truffle-config.js"
+export CONFIG_NAME="./truffle-config.js"
+source ./scripts/utils/generate_truffle_config.sh
 
-# remove previous config file
-rm -f $CONFIG_NAME
+# remove previous build
+rm -rf ./build
 
-#create new config file
-touch $CONFIG_NAME
-cat "./truffle-config-template.js" >> $CONFIG_NAME
-sed -i -e "s/solcVersion/$SOLC_VERSION/g" $CONFIG_NAME
-sed -i -e "s/contractsDirectory/$CONTRACT_DIR/g" $CONFIG_NAME
+# build third party contracts
+./scripts/third_party_build.sh
+
+generate_truffle_config "0.6.3" ".\/contracts" "false" 200
 
 #run coverage
 truffle run coverage
+
+# remove build
+rm -rf ./build
 
 # remove config file
 rm -f $CONFIG_NAME
