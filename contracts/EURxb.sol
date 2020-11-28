@@ -3,7 +3,7 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./ERC20.sol";
+import "./OverrideERC20.sol";
 import "./libs/LinkedList.sol";
 
 
@@ -11,7 +11,7 @@ import "./libs/LinkedList.sol";
  * @title EURxb
  * @dev EURxb token
  */
-contract EURxb is ERC20, Ownable {
+contract EURxb is OverrideERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     using LinkedList for LinkedList.List;
@@ -29,7 +29,7 @@ contract EURxb is ERC20, Ownable {
 
     mapping(address => uint256) private _holderIndex;
 
-    constructor() public ERC20("EURxb", "EURxb") {
+    constructor() public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
         _expIndex = _unit;
         _countMaturity = 100;
