@@ -1,4 +1,5 @@
 const BFactory = artifacts.require('./BFactory');
+const TetherToken = artifacts.require('./TetherToken'); // USDT
 
 const LinkedList = artifacts.require('./LinkedList');
 const MockLinkedList = artifacts.require('./MockLinkedList');
@@ -19,6 +20,7 @@ const teamAddress = "0x0000000000000000000000000000000000000000";
 module.exports = function (deployer) {
   deployer.then(async () => {
     await deployer.deploy(BFactory);
+    await deployer.deploy(TetherToken);
 
     await deployer.deploy(LinkedList);
     await deployer.link(LinkedList, MockLinkedList);
