@@ -2,6 +2,7 @@ const BFactory = artifacts.require('./BFactory');
 const TetherToken = artifacts.require('./TetherToken'); // USDT
 const BUSDImplementation = artifacts.require('./BUSDImplementation'); // BUSD
 const FiatTokenV2 = artifacts.require('./FiatTokenV2'); // USDC
+const Dai = artifacts.require('./Dai'); // DAI
 
 const LinkedList = artifacts.require('./LinkedList');
 const MockLinkedList = artifacts.require('./MockLinkedList');
@@ -22,9 +23,10 @@ const teamAddress = "0x0000000000000000000000000000000000000000";
 module.exports = function (deployer) {
   deployer.then(async () => {
     await deployer.deploy(BFactory);
-    await deployer.deploy(TetherToken);
+    await deployer.deploy(TetherToken);  // TODO: need set params
     await deployer.deploy(BUSDImplementation);
     await deployer.deploy(FiatTokenV2);
+    await deployer.deploy(Dai);          // TODO: need set params
 
     await deployer.deploy(LinkedList);
     await deployer.link(LinkedList, MockLinkedList);
