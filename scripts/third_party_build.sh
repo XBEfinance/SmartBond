@@ -13,3 +13,7 @@ truffle compile
 # build BUSD
 generate_truffle_config "0.4.24" ".\/third-party-contracts\/BUSD"
 truffle compile
+
+# build USDC
+generate_truffle_config "0.6.12" ".\/third-party-contracts\/USDC"
+truffle compile

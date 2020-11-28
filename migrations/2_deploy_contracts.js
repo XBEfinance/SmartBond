@@ -1,6 +1,7 @@
 const BFactory = artifacts.require('./BFactory');
 const TetherToken = artifacts.require('./TetherToken'); // USDT
 const BUSDImplementation = artifacts.require('./BUSDImplementation'); // BUSD
+const FiatTokenV2 = artifacts.require('./FiatTokenV2'); // USDC
 
 const LinkedList = artifacts.require('./LinkedList');
 const MockLinkedList = artifacts.require('./MockLinkedList');
@@ -23,6 +24,7 @@ module.exports = function (deployer) {
     await deployer.deploy(BFactory);
     await deployer.deploy(TetherToken);
     await deployer.deploy(BUSDImplementation);
+    await deployer.deploy(FiatTokenV2);
 
     await deployer.deploy(LinkedList);
     await deployer.link(LinkedList, MockLinkedList);
