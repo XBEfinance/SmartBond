@@ -11,6 +11,10 @@ generate_truffle_config() {
   cat "./truffle-config-template.js" >> $CONFIG_NAME
   sed -i -e "s/solcVersion/$SOLC_VERSION/g" $CONFIG_NAME
   sed -i -e "s/contractsDirectory/$CONTRACT_DIR/g" $CONFIG_NAME
-  sed -i -e "s/enabled: false/enabled: $OPTIMIZATION_KEY/g" $CONFIG_NAME
-  sed -i -e "s/runs: 200/runs: $RUN_KEY/g" $CONFIG_NAME
+  if [ $# -ge 3 ]; then
+    sed -i -e "s/enabled: false/enabled: $OPTIMIZATION_KEY/g" $CONFIG_NAME
+  fi
+  if [ $# -ge 4 ]; then
+    sed -i -e "s/runs: 200/runs: $RUN_KEY/g" $CONFIG_NAME
+  fi
 }

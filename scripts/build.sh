@@ -10,8 +10,8 @@ rm -rf ./build
 ./scripts/third_party_build.sh
 
 # build our contracts
-generate_truffle_config "0.6.3" ".\/contracts" "false" 200
-npm run truffle-build
+generate_truffle_config "0.6.3" ".\/contracts"
+truffle compile
 
 # remove config file
 rm -f $CONFIG_NAME
