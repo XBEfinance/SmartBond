@@ -9,7 +9,8 @@ rm -rf ./build
 # build third party contracts
 ./scripts/third_party_build.sh
 
-generate_truffle_config "0.6.3" ".\/contracts" "false" 200
+# generate truffle config for coverage
+generate_truffle_config "0.6.3" ".\/contracts"
 
 #run coverage
 truffle run coverage
