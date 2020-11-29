@@ -62,7 +62,7 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
     function configure(address sat, address ddp) external {
         require(
             hasRole(TokenAccessRoles.admin(), _msgSender()),
-            "caller isn't an administrator"
+            "caller is not an admin"
         );
 
         require(sat != address(0), "sat address is invalid");
