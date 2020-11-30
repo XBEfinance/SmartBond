@@ -12,9 +12,7 @@
     "solium": "solium --dir contracts",
     "coverage": "bash ./scripts/coverage.sh",
     "build": "bash ./scripts/build.sh",
-    "truffle-build": "truffle compile",
     "test": "bash ./scripts/test.sh",
-    "truffle-test": "truffle test",
     "flatten": "truffle-flattener $PROJECT_NAME.sol >> contracts/Flattened.sol"
   },
   "keywords": [],
@@ -39,6 +37,7 @@
     "eslint-plugin-react": "^7.21.5",
     "eslint-plugin-react-hooks": "^4.2.0",
     "ethereumjs-testrpc-sc": "^6.5.1-sc.1",
+    "fs-extra": "^9.0.1",
     "karma": "^5.2.3",
     "lodash": "^4.17.20",
     "openzeppelin-test-helpers": "^0.5.1",

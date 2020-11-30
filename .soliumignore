@@ -1,5 +1,6 @@
 node_modules
-contracts/mock/MockToken.sol
+contracts/mocks/MockToken.sol
+contracts/mocks/MockLinkedList.sol
 contracts/Flattened.sol
 contracts/Migrations.sol
 contracts/ERC20.sol
