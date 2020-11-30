@@ -42,7 +42,6 @@
     "fs-extra": "^9.0.1",
     "karma": "^5.2.3",
     "lodash": "^4.17.20",
-    "openzeppelin-test-helpers": "^0.5.1",
     "prettier": "^2.1.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.60",
     "should": "^13.2.3",
