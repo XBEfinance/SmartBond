@@ -3,8 +3,9 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./IBalancerPool.sol";
-import "./IStakingManager.sol";
+
+import "./interfaces/IBalancerPool.sol";
+import "./interfaces/IStakingManager.sol";
 
 
 /**

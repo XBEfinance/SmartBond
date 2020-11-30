@@ -1,7 +1,7 @@
 pragma solidity >= 0.6.0 < 0.7.0;
 
 import "../interfaces/IBondToken.sol";
-import "../ERC721.sol";
+import "../templates/ERC721.sol";
 
 
 /**

@@ -1,12 +1,13 @@
 pragma solidity >=0.6.0 <0.7.0;
 
-import "./interfaces/IAllowList.sol";
-import "./ERC721.sol";
-import "./interfaces/IBondToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import {TokenAccessRoles} from "./library/TokenAccessRoles.sol";
+import "./interfaces/IAllowList.sol";
+import "./templates/ERC721.sol";
+import "./interfaces/IBondToken.sol";
+
+import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
 
 
 /**

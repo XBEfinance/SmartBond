@@ -7,7 +7,6 @@ const {
   expectEvent,
   expectRevert,
 } = require('@openzeppelin/test-helpers');
-const { default: BigNumber } = require('bignumber.js');
 
 const chai = require('chai');
 chai.use(require('chai-as-promised'));

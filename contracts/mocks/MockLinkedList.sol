@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "../libs/LinkedList.sol";
+import "../libraries/LinkedList.sol";
 
 contract MockLinkedList {
     using LinkedList for LinkedList.List;

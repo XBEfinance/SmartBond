@@ -2,7 +2,7 @@ pragma solidity >= 0.6.0 < 0.7.0;
 
 import "../interfaces/IBondToken.sol";
 import "../interfaces/IDDP.sol";
-import "../ERC721.sol";
+import "../templates/ERC721.sol";
 
 
 contract DDPMock is IDDP, ERC721 {

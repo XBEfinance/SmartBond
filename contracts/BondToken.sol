@@ -1,13 +1,13 @@
 pragma solidity >=0.6.0 <0.7.0;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
+
 import "./interfaces/IAllowList.sol";
 import "./interfaces/IBondToken.sol";
 import "./interfaces/IDDP.sol";
-import "./ERC721.sol";
+import "./templates/ERC721.sol";
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-
-import {TokenAccessRoles} from "./library/TokenAccessRoles.sol";
+import {TokenAccessRoles} from "./libraries/TokenAccessRoles.sol";
 
 
 contract BondToken is IBondToken, AccessControl, ERC721 {

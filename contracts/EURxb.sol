@@ -3,8 +3,9 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./OverrideERC20.sol";
-import "./libs/LinkedList.sol";
+
+import "./templates/OverrideERC20.sol";
+import "./libraries/LinkedList.sol";
 
 
 /**

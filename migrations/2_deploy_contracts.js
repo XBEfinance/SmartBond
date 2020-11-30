@@ -41,11 +41,11 @@ module.exports = function (deployer) {
     await deployer.link(LinkedList, MockLinkedList);
     await deployer.link(LinkedList, EURxb);
 
-    await deployer.deploy(EURxb);
-    await deployer.deploy(XBG, 1); // TODO: set real values
-
-    await deployer.deploy(StakingManager, XBG.address, 1604993292, 150); // TODO: set real values
-    await deployer.deploy(Router, teamAddress, StakingManager.address, 1604993292, USDT, USDC, BUSD, DAI, EURxb.address);
+    // await deployer.deploy(EURxb);
+    // await deployer.deploy(XBG, 1); // TODO: set real values
+    //
+    // await deployer.deploy(StakingManager, XBG.address, 1604993292, 150); // TODO: set real values
+    // await deployer.deploy(Router, teamAddress, StakingManager.address, 1604993292, USDT, USDC, BUSD, DAI, EURxb.address);
 
     await deployer.deploy(TokenAccessRoles);
     await deployer.link(TokenAccessRoles, BondTokenMock);
