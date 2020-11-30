@@ -1,5 +1,13 @@
+/* eslint no-unused-vars: 0 */
+/* eslint eqeqeq: 0 */
+
 const { assert } = require('chai');
-const { expectRevert } = require('openzeppelin-test-helpers');
+const {
+  BN,
+  constants,
+  expectEvent,
+  expectRevert,
+} = require('@openzeppelin/test-helpers');
 
 const AllowList = artifacts.require('AllowList');
 

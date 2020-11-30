@@ -6,7 +6,11 @@ import "../ERC721.sol";
 
 
 contract DDPMock is IDDP, ERC721 {
-    event DepositInvoked(uint256 tokenId, uint256 value, uint256 maturityEnds);
+    event DepositInvoked(
+        uint256 tokenId,
+        uint256 value,
+        uint256 maturityEnds,
+        address to);
 
     address private _bond;
 
@@ -14,8 +18,17 @@ contract DDPMock is IDDP, ERC721 {
         _bond = bond;
     }
 
-    function deposit(uint256 tokenId, uint256 value, uint256 maturityEnds) external override {
-        emit DepositInvoked(tokenId, value, maturityEnds);
+    function deposit(
+        uint256 tokenId,
+        uint256 value,
+        uint256 maturityEnds,
+        address to) external override
+    {
+        emit DepositInvoked(
+            tokenId,
+            value,
+            maturityEnds,
+            to);
     }
 
     function burnToken(uint256 tokenId) external {

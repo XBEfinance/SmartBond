@@ -4,6 +4,7 @@ interface IDDP {
     function deposit(
         uint256 tokenId,
         uint256 value,
-        uint256 maturity
+        uint256 maturity,
+        address to
     ) external;
 }

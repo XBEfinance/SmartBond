@@ -17,7 +17,9 @@ const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondTokenMock = artifacts.require('BondTokenMock');
 const BondToken = artifacts.require('BondToken');
 const TokenAccessRoles = artifacts.require('TokenAccessRoles');
-const DDP = artifacts.require('DDPMock');
+const DDPMock = artifacts.require('DDPMock');
+const DDP = artifacts.require('DDP');
+const EURxbMock = artifacts.require('EURxbMock');
 
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
@@ -49,5 +51,6 @@ module.exports = function (deployer) {
     await deployer.link(TokenAccessRoles, BondTokenMock);
     await deployer.link(TokenAccessRoles, BondToken);
     await deployer.link(TokenAccessRoles, SecurityAssetToken);
+    await deployer.link(TokenAccessRoles, DDP);
   });
 };

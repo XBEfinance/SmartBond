@@ -1,6 +1,13 @@
+/* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
+
 const { assert } = require('chai');
-const { BN, expectRevert } = require('openzeppelin-test-helpers');
+const {
+  BN,
+  constants,
+  expectEvent,
+  expectRevert,
+} = require('@openzeppelin/test-helpers');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondTokenMock');

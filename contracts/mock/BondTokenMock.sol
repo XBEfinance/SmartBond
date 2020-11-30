@@ -24,6 +24,12 @@ contract BondTokenMock is ERC721, IBondToken {
     return _tokens[tokenId].isMinted;
   }
 
+  function getTokenInfo(uint256 tokenId) external view override
+    returns (uint256 value, uint256 interest, uint256 maturity)
+  {
+    revert("not necessary");
+  }
+
   function mint(
       uint256 tokenId,
       address to,

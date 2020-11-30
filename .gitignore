@@ -6,4 +6,4 @@ build
 coverage/
 coverage.json
 Flattened.sol
-
+.vscode
