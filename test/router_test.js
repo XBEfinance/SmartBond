@@ -1,6 +1,11 @@
 const { assert } = require('chai');
 const { increaseTime, currentTimestamp, DAY } = require('./common');
 
+const TetherToken = artifacts.require('TetherToken'); // USDT
+const BUSDImplementation = artifacts.require('BUSDImplementation'); // BUSD
+const FiatTokenV2 = artifacts.require('FiatTokenV2'); // USDC
+const Dai = artifacts.require('Dai'); // DAI
+
 const MockToken = artifacts.require('MockToken');
 const BFactory = artifacts.require('BFactory');
 const BPool = artifacts.require('BPool');
@@ -31,26 +36,28 @@ contract('Router', (accounts) => {
   let timestamp;
 
   beforeEach(async () => {
-    USDT = await MockToken.new('USDT', 'USDT', web3.utils.toWei('500', 'ether'));
-    USDC = await MockToken.new('USDC', 'USDC', web3.utils.toWei('500', 'ether'));
-    BUSD = await MockToken.new('BUSD', 'BUSD', web3.utils.toWei('500', 'ether'));
-    DAI = await MockToken.new('DAI', 'DAI', web3.utils.toWei('500', 'ether'));
+    USDT = await TetherToken.new(web3.utils.toWei('12042213561', 'ether'), 'Tether USD', 'USDT', 6);
+    USDC = await FiatTokenV2.new();
+    BUSD = await BUSDImplementation.new();
+    DAI = await Dai.new(1);
 
     EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('500', 'ether'));
     xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('500', 'ether'));
 
-    await USDT.transfer(recipient, web3.utils.toWei('200', 'ether'));
-    await USDT.transfer(staker, web3.utils.toWei('200', 'ether'));
+    await DAI.mint(owner, web3.utils.toWei('1000', 'ether'));
+    await DAI.transfer(recipient, web3.utils.toWei('200', 'ether'));
+    await DAI.transfer(staker, web3.utils.toWei('200', 'ether'));
 
     this.bFactory = await BFactory.deployed();
     await this.bFactory.newBPool();
     const balancerAddress = await this.bFactory.getLastBPool();
     balancer = await BPool.at(balancerAddress);
 
+    // TODO: USDT not supported in balancer
     await EURxb.approve(balancer.address, web3.utils.toWei('46', 'ether'));
-    await USDT.approve(balancer.address, web3.utils.toWei('54', 'ether'));
+    await DAI.approve(balancer.address, web3.utils.toWei('54', 'ether'));
     await balancer.bind(EURxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
-    await balancer.bind(USDT.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+    await balancer.bind(DAI.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
     await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
     await balancer.finalize();
 
@@ -62,7 +69,7 @@ contract('Router', (accounts) => {
       USDT.address, USDC.address, BUSD.address, DAI.address, EURxb.address,
     );
 
-    await router.setBalancerPool(USDT.address, balancer.address);
+    await router.setBalancerPool(DAI.address, balancer.address);
     await staking.setBalancerPool(balancer.address);
 
     await increaseTime(DAY);
@@ -71,54 +78,54 @@ contract('Router', (accounts) => {
   it('should return correct balancer values', async () => {
     assert.equal(await balancer.getNumTokens(), 2);
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
-    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('54', 'ether'));
+    assert.equal(await balancer.getBalance(DAI.address), web3.utils.toWei('54', 'ether'));
     assert.equal(await balancer.getSwapFee(), web3.utils.toWei('1', 'finney'));
   });
 
   it('should return correct router values', async () => {
     assert.equal(await router.isClosedContract(), false);
-    assert.equal(await router.balancerPools(USDT.address), balancer.address);
+    assert.equal(await router.balancerPools(DAI.address), balancer.address);
     assert.equal(await router.teamAddress(), team);
     assert.equal(await router.stakingManager(), staking.address);
     assert.equal(await router.startTime(), timestamp);
   });
 
   it('should return correct change router values', async () => {
-    await router.setBalancerPool(USDT.address, newBalancer);
+    await router.setBalancerPool(DAI.address, newBalancer);
     await router.setTeamAddress(newTeam);
 
-    assert.equal(await router.balancerPools(USDT.address), newBalancer);
+    assert.equal(await router.balancerPools(DAI.address), newBalancer);
     assert.equal(await router.teamAddress(), newTeam);
   });
 
   it('should return correct balance EURxb values', async () => {
     await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-    await USDT.approve(router.address, web3.utils.toWei('54', 'ether'), { from: recipient });
-    await router.exchange(USDT.address, web3.utils.toWei('54', 'ether'), { from: recipient });
+    await DAI.approve(router.address, web3.utils.toWei('54', 'ether'), { from: recipient });
+    await router.exchange(DAI.address, web3.utils.toWei('54', 'ether'), { from: recipient });
     const balance = await EURxb.balanceOf(recipient);
     assert.equal(web3.utils.fromWei(balance, 'ether'), 46);
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {
     await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-    await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-    await router.addLiquidity(USDT.address, web3.utils.toWei('108', 'ether'), { from: recipient });
+    await DAI.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
+    await router.addLiquidity(DAI.address, web3.utils.toWei('108', 'ether'), { from: recipient });
 
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('91540', 'finney'));
-    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('107460', 'finney'));
+    assert.equal(await balancer.getBalance(DAI.address), web3.utils.toWei('107460', 'finney'));
 
-    await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: staker });
-    await router.addLiquidity(USDT.address, web3.utils.toWei('108', 'ether'), { from: staker });
+    await DAI.approve(router.address, web3.utils.toWei('200', 'ether'), { from: staker });
+    await router.addLiquidity(DAI.address, web3.utils.toWei('108', 'ether'), { from: staker });
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('137079999999999999886', 'wei'));
-    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('160919999999999999867', 'wei'));
+    assert.equal(await balancer.getBalance(DAI.address), web3.utils.toWei('160919999999999999867', 'wei'));
   });
 
   it('should return correct pool values when adding liquidity through a contract', async () => {
-    await USDT.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-    await router.addLiquidity(USDT.address, web3.utils.toWei('27', 'ether'), { from: recipient });
+    await DAI.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
+    await router.addLiquidity(DAI.address, web3.utils.toWei('27', 'ether'), { from: recipient });
 
     assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
-    assert.equal(await balancer.getBalance(USDT.address), web3.utils.toWei('81', 'ether'));
+    assert.equal(await balancer.getBalance(DAI.address), web3.utils.toWei('81', 'ether'));
   });
 
   it('should return correct close contract', async () => {

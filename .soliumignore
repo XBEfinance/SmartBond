@@ -3,4 +3,4 @@ contracts/mocks/MockToken.sol
 contracts/mocks/MockLinkedList.sol
 contracts/Flattened.sol
 contracts/Migrations.sol
-contracts/ERC20.sol
+contracts/OverrideERC20.sol

@@ -121,7 +121,7 @@ contract Router is Ownable {
     function addLiquidity(address token, uint256 amount) external {
         require(now >= _startTime, "The time has not come yet");
         require(!_isClosedContract, "Contract closed");
-        IERC20(token).transferFrom(_msgSender(), address(this), amount);
+        IERC20(token).transferFrom(_msgSender(), address(this), amount); // TODO: use Uniswap TransferHelper.sol
 
         address balancerPool = _balancerPools[token];
         IBalancerPool balancer = IBalancerPool(balancerPool);
@@ -136,7 +136,7 @@ contract Router is Ownable {
         if (balanceEUR >= amountEUR) {
             exchange(token, exchangeTokens);
 
-            IERC20(token).approve(balancerPool, exchangeTokens);
+            IERC20(token).approve(balancerPool, exchangeTokens); // TODO: use Uniswap TransferHelper.sol
             IERC20(_tEURxb).approve(balancerPool, amountEUR);
 
             uint256 balance = balancer.getBalance(_tEURxb);
@@ -149,7 +149,7 @@ contract Router is Ownable {
             data[1] = exchangeTokens;
             balancer.joinPool(amountBPT, data);
         } else {
-            IERC20(token).approve(balancerPool, amount);
+            IERC20(token).approve(balancerPool, amount); // TODO: use Uniswap TransferHelper.sol
             uint256 tokenBalanceIn = balancer.getBalance(token);
             uint256 tokenWeightIn = balancer.getDenormalizedWeight(token);
             uint256 totalWeight = balancer.getTotalDenormalizedWeight();
