@@ -106,7 +106,7 @@ contract Router is Ownable {
     function closeContract() external onlyOwner {
         require(_startTime + 7 days < now, "Time is not over");
         require(now >= _startTime, "The time has not come yet");
-        uint256 balance = address(this).balance;
+        uint256 balance = IERC20(_tEURxb).balanceOf(address(this));
         if (balance > 0) {
             IERC20(_tEURxb).transfer(_msgSender(), balance);
         }
