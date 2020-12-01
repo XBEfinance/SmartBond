@@ -1,4 +1,5 @@
 const { assert } = require('chai');
+const truffleAssert = require('truffle-assertions');
 const { increaseTime, currentTimestamp, DAY } = require('./common');
 
 // const TetherToken = artifacts.require('TetherToken'); // USDT
@@ -167,6 +168,8 @@ contract('Router', (accounts) => {
         mockStableToken, mockStableToken, mockStableToken, mockStableToken, EURxb.address,
       );
 
+      await truffleAssert.reverts(router.closeContract(), 'Time is not over');
+
       await increaseTime(DAY * 8);
       await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
       assert.equal(await router.isClosedContract(), false);
@@ -175,6 +178,20 @@ contract('Router', (accounts) => {
 
       assert.equal(await router.isClosedContract(), true);
       assert.equal(await EURxb.balanceOf(owner), web3.utils.toWei('50000', 'ether'));
+
+      await truffleAssert.reverts(router.exchange(mockStableToken, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Contract closed');
+      await truffleAssert.reverts(router.addLiquidity(mockStableToken, web3.utils.toWei('27', 'ether'), { from: recipient }), 'Contract closed');
+    });
+
+    it('should throw an exception when the exchange is called', async () => {
+      router = await Router.new(
+        team, staking.address, timestamp,
+        mockStableToken, mockStableToken, mockStableToken, mockStableToken, EURxb.address,
+      );
+
+      await truffleAssert.reverts(router.exchange(EURxb.address, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Token not found');
+
+      await truffleAssert.reverts(router.exchange(mockStableToken, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Not enough tokens');
     });
   });
 });
