@@ -7,4 +7,6 @@ interface IDDP {
         uint256 maturity,
         address to
     ) external;
+
+    function setClaimPeriod(uint256 claimPeriod) external;
 }

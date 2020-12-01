@@ -2,15 +2,15 @@ pragma solidity >=0.6.0 <0.7.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import "./interfaces/IAllowList.sol";
 import "./interfaces/IBondToken.sol";
 import "./interfaces/IDDP.sol";
 import "./templates/ERC721.sol";
+import "./templates/Initializable.sol";
 
-import {TokenAccessRoles} from "./libraries/TokenAccessRoles.sol";
+import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
 
 
-contract BondToken is IBondToken, AccessControl, ERC721 {
+contract BondToken is IBondToken, AccessControl, ERC721, Initializable {
     using SafeMath for uint256;
 
     uint256 private constant INTEREST_PERCENT = 7;
@@ -33,17 +33,8 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
     /// ddp address
     address private _ddp;
 
-    /// list of allowed accounts
-    address private _allowList;
-
-    constructor(
-        address admin,
-        string memory baseURI,
-        address allowList
-    ) public ERC721("BondToken", "BND") {
+    constructor(string memory baseURI) public ERC721("BondToken", "BND") {
         _setBaseURI(baseURI);
-        _setupRole(TokenAccessRoles.admin(), admin);
-        _allowList = allowList;
     }
 
     /// bond info accessors
@@ -59,12 +50,8 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
         return _totalValue;
     }
 
-    function configure(address sat, address ddp) external {
-        require(
-            hasRole(TokenAccessRoles.admin(), _msgSender()),
-            "caller is not an admin"
-        );
-
+    function configure(address allowList, address sat, address ddp) external initializer {
+        require(allowList != address(0), "list address is invalid");
         require(sat != address(0), "sat address is invalid");
         require(ddp != address(0), "ddp address is invalid");
 
@@ -206,10 +193,6 @@ contract BondToken is IBondToken, AccessControl, ERC721 {
         require(
             hasRole(TokenAccessRoles.transferer(), sender),
             "user is not allowed to transfer tokens"
-        );
-        require(
-            IAllowList(_allowList).isAllowedAccount(to),
-            "user is not allowed to receive tokens"
         );
 
         _safeTransfer(

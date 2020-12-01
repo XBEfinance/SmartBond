@@ -4,9 +4,9 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "./interfaces/IAllowList.sol";
+import "./interfaces/ISecurityAssetToken.sol";
 import "./templates/ERC721.sol";
 import "./interfaces/IBondToken.sol";
-
 import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
 
 
@@ -14,7 +14,7 @@ import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
  * SecurityAssetToken represents an asset or deposit token, which has a
  * declared value
  */
-contract SecurityAssetToken is ERC721, AccessControl {
+contract SecurityAssetToken is ERC721, AccessControl, ISecurityAssetToken {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
 
@@ -35,7 +35,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
 
     /**
      * @param baseURI token base URI
-     * @param miris external miris manager account
+     * @param miris external miris manager contract or account address
      * @param bond BondToken contract address
      */
     constructor(
@@ -52,8 +52,6 @@ contract SecurityAssetToken is ERC721, AccessControl {
         _setupRole(TokenAccessRoles.minter(), miris);
         _setupRole(TokenAccessRoles.burner(), miris);
         _setupRole(TokenAccessRoles.transferer(), miris);
-        _setupRole(TokenAccessRoles.admin(), miris);
-
         _setupRole(TokenAccessRoles.transferer(), bond);
     }
 
@@ -74,7 +72,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
     function mint(
         address to,
         uint256 value,
-        uint256 maturity) external
+        uint256 maturity) external override
     {
         // check role
         // only external account having minter role is allowed to mint tokens
@@ -109,7 +107,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
     /**
      * burns security asset token
      */
-    function burn(uint256 tokenId) external {
+    function burn(uint256 tokenId) external override {
         require(
             hasRole(TokenAccessRoles.burner(), _msgSender()),
             "user is not allowed to burn"
@@ -145,7 +143,7 @@ contract SecurityAssetToken is ERC721, AccessControl {
     function transferFrom(
         address from,
         address to,
-        uint256 tokenId) public override
+        uint256 tokenId) public override(ERC721, ISecurityAssetToken)
     {
         _safeTransferFrom(
             _msgSender(),
