@@ -170,10 +170,12 @@ contract('Router', (accounts) => {
 
       await expectRevert(router.closeContract(), 'Time is not over');
 
+      // we leave 8 days ahead
       await increaseTime(DAY * 8);
       await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
       assert.equal(await router.isClosedContract(), false);
 
+      // you can close the contract only after 7 days from the start time
       await router.closeContract();
 
       assert.equal(await router.isClosedContract(), true);
@@ -190,7 +192,6 @@ contract('Router', (accounts) => {
       );
 
       await expectRevert(router.exchange(EURxb.address, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Token not found');
-
       await expectRevert(router.exchange(mockStableToken, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Not enough tokens');
     });
   });
