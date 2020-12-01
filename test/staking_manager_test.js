@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const truffleAssert = require('truffle-assertions');
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const { increaseTime, currentTimestamp, DAY } = require('./common');
 
 const MockToken = artifacts.require('MockToken');
@@ -25,7 +25,7 @@ contract('StakingManager', (accounts) => {
   });
 
   it('should throw an exception when the constructor is called', async () => {
-    await truffleAssert.reverts(StakingManager.new(xbg.address, timestamp, 50), 'Weight must be over 100');
+    await expectRevert(StakingManager.new(xbg.address, timestamp, 50), 'Weight must be over 100');
   });
 
   it('should return correct staking values', async () => {
@@ -43,7 +43,7 @@ contract('StakingManager', (accounts) => {
   });
 
   it('should throw an exception when the unfreezeTokens is called', async () => {
-    await truffleAssert.reverts(staking.unfreezeTokens(), 'Time is not over');
+    await expectRevert(staking.unfreezeTokens(), 'Time is not over');
   });
 
   it('should correct claim BPT tokens and unfreeze tokens', async () => {
@@ -64,7 +64,7 @@ contract('StakingManager', (accounts) => {
 
     await increaseTime(DAY * 2);
 
-    await truffleAssert.reverts(staking.unfreezeTokens(), 'Insufficient xbg balance');
+    await expectRevert(staking.unfreezeTokens(), 'Insufficient xbg balance');
 
     await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await staking.unfreezeTokens();
@@ -86,17 +86,17 @@ contract('StakingManager', (accounts) => {
   it('should throw an exception when the unfreezeTokens is called', async () => {
     await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await staking.unfreezeTokens();
-    await truffleAssert.reverts(staking.unfreezeTokens(), 'Tokens unfrozen');
+    await expectRevert(staking.unfreezeTokens(), 'Tokens unfrozen');
   });
 
   it('should throw an exception when the addStaker is called', async () => {
-    await truffleAssert.reverts(staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether')), 'Balancer pool not found');
+    await expectRevert(staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether')), 'Balancer pool not found');
   });
 
   it('should throw an exception when the claimBPT is called', async () => {
-    await truffleAssert.reverts(staking.claimBPT(BPT.address, { from: recipient }), 'Tokens frozen');
+    await expectRevert(staking.claimBPT(BPT.address, { from: recipient }), 'Tokens frozen');
     await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
     await staking.unfreezeTokens();
-    await truffleAssert.reverts(staking.claimBPT(BPT.address, { from: recipient }), "Staker doesn't exist");
+    await expectRevert(staking.claimBPT(BPT.address, { from: recipient }), "Staker doesn't exist");
   });
 });

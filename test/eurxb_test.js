@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const truffleAssert = require('truffle-assertions');
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const { increaseTime, currentTimestamp, DAY } = require('./common');
 
 const EURxb = artifacts.require('EURxb');
@@ -30,7 +30,7 @@ contract('EURxb', (accounts) => {
 
   it('should correct change EURxb parameters', async () => {
     assert.equal(await token.countMaturity(), 100);
-    await truffleAssert.reverts(token.setCountMaturity(0), 'The amount must be greater than zero');
+    await expectRevert(token.setCountMaturity(0), 'The amount must be greater than zero');
     await token.setCountMaturity(200);
     assert.equal(await token.countMaturity(), 200);
   });
@@ -142,13 +142,13 @@ contract('EURxb', (accounts) => {
   });
 
   it('should throw an exception when the addNewMaturity is called', async () => {
-    await truffleAssert.reverts(token.addNewMaturity(0, 0), 'The amount must be greater than zero');
-    await truffleAssert.reverts(token.addNewMaturity(1, 0), 'End date must be greater than zero');
+    await expectRevert(token.addNewMaturity(0, 0), 'The amount must be greater than zero');
+    await expectRevert(token.addNewMaturity(1, 0), 'End date must be greater than zero');
   });
 
   it('should throw an exception when the removeMaturity is called', async () => {
-    await truffleAssert.reverts(token.removeMaturity(0, 0), 'The amount must be greater than zero');
-    await truffleAssert.reverts(token.removeMaturity(1, 0), 'End date must be greater than zero');
-    await truffleAssert.reverts(token.removeMaturity(1, 1), 'The list does not exist');
+    await expectRevert(token.removeMaturity(0, 0), 'The amount must be greater than zero');
+    await expectRevert(token.removeMaturity(1, 0), 'End date must be greater than zero');
+    await expectRevert(token.removeMaturity(1, 1), 'The list does not exist');
   });
 });
