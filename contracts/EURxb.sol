@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./templates/OverrideERC20.sol";
@@ -15,7 +14,7 @@ import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
  * @title EURxb
  * @dev EURxb token
  */
-contract EURxb is AccessControl, OverrideERC20, Ownable {
+contract EURxb is AccessControl, OverrideERC20 {
     using SafeMath for uint256;
     using Address for address;
     using LinkedList for LinkedList.List;
@@ -33,10 +32,19 @@ contract EURxb is AccessControl, OverrideERC20, Ownable {
 
     mapping(address => uint256) private _holderIndex;
 
-    constructor(address ddp) public OverrideERC20("EURxb", "EURxb") {
+    constructor(address admin) public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
         _expIndex = _unit;
         _countMaturity = 100;
+
+        _setupRole(TokenAccessRoles.admin(), admin);
+    }
+
+    function configure(address ddp) external {
+        require(
+            hasRole(TokenAccessRoles.admin(), _msgSender()),
+            "Caller is not an admin"
+        );
 
         _setupRole(TokenAccessRoles.minter(), ddp);
         _setupRole(TokenAccessRoles.burner(), ddp);
@@ -150,7 +158,11 @@ contract EURxb is AccessControl, OverrideERC20, Ownable {
      * @dev Set countMaturity
      * @param count maturity
      */
-    function setCountMaturity(uint256 count) public onlyOwner {
+    function setCountMaturity(uint256 count) public {
+        require(
+            hasRole(TokenAccessRoles.admin(), _msgSender()),
+            "Caller is not an admin"
+        );
         require(count > 0, "The amount must be greater than zero");
         _countMaturity = count;
     }

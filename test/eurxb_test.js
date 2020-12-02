@@ -14,6 +14,7 @@ contract('EURxb', (accounts) => {
 
   beforeEach(async () => {
     token = await EURxb.new(owner);
+    await token.configure(owner);
   });
 
   it('should create EURxb contract and show default parameters', async () => {
