@@ -52,5 +52,6 @@ module.exports = function (deployer) {
     await deployer.link(TokenAccessRoles, BondToken);
     await deployer.link(TokenAccessRoles, SecurityAssetToken);
     await deployer.link(TokenAccessRoles, DDP);
+    await deployer.link(TokenAccessRoles, EURxb);
   });
 };

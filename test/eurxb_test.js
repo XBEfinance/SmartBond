@@ -5,6 +5,7 @@ const { increaseTime, currentTimestamp, DAY } = require('./common');
 const EURxb = artifacts.require('EURxb');
 
 contract('EURxb', (accounts) => {
+  const owner = accounts[0];
   const recipient = accounts[1];
 
   const daysAYear = 365;
@@ -12,7 +13,7 @@ contract('EURxb', (accounts) => {
   let token;
 
   beforeEach(async () => {
-    token = await EURxb.new();
+    token = await EURxb.new(owner);
   });
 
   it('should create EURxb contract and show default parameters', async () => {

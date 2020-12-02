@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -7,12 +8,14 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./templates/OverrideERC20.sol";
 import "./libraries/LinkedList.sol";
 
+import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
+
 
 /**
  * @title EURxb
  * @dev EURxb token
  */
-contract EURxb is OverrideERC20, Ownable {
+contract EURxb is AccessControl, OverrideERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     using LinkedList for LinkedList.List;
@@ -30,10 +33,13 @@ contract EURxb is OverrideERC20, Ownable {
 
     mapping(address => uint256) private _holderIndex;
 
-    constructor() public OverrideERC20("EURxb", "EURxb") {
+    constructor(address ddp) public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
         _expIndex = _unit;
         _countMaturity = 100;
+
+        _setupRole(TokenAccessRoles.minter(), ddp);
+        _setupRole(TokenAccessRoles.burner(), ddp);
     }
 
     /**
@@ -269,12 +275,56 @@ contract EURxb is OverrideERC20, Ownable {
     }
 
     /**
+     * @dev Transfer tokens
+     * @param sender user address
+     * @param recipient user address
+     * @param amount number of tokens
+     */
+    function _transfer(address sender, address recipient, uint256 amount) internal override {
+        accrueInterest();
+        if (sender != address(0)) {
+            _updateBalance(sender);
+        }
+        if (recipient != address(0)) {
+            _updateBalance(recipient);
+        }
+        super._transfer(sender, recipient, amount);
+    }
+
+    /**
      * @dev Mint tokens
      * @param account user address
      * @param amount number of tokens
      */
     function mint(address account, uint256 amount) public {
+        require(
+            hasRole(TokenAccessRoles.minter(), _msgSender()),
+            "Caller is not an minter"
+        );
+
+        accrueInterest();
+        if (account != address(0)) {
+            _updateBalance(account);
+        }
         super._mint(account, amount);
+    }
+
+    /**
+     * @dev Burn tokens
+     * @param account user address
+     * @param amount number of tokens
+     */
+    function burn(address account, uint256 amount) public {
+        require(
+            hasRole(TokenAccessRoles.burner(), _msgSender()),
+            "Caller is not an burner"
+        );
+
+        accrueInterest();
+        if (account != address(0)) {
+            _updateBalance(account);
+        }
+        super._burn(account, amount);
     }
 
     /**
@@ -313,26 +363,9 @@ contract EURxb is OverrideERC20, Ownable {
             uint256 delta = newBalance.sub(_balances[account]);
 
             if (delta != 0) {
-                _balances[account] = newBalance;
+                super._mint(account, delta);
             }
         }
         _holderIndex[account] = _expIndex;
-    }
-
-    /**
-     * @dev Before token transfer
-     * @param from address
-     * @param to address
-     * @param amount number of tokens
-     */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        accrueInterest();
-        if (from != address(0)) {
-            _updateBalance(from);
-        }
-        if (to != address(0)) {
-            _updateBalance(to);
-        }
-        super._beforeTokenTransfer(from, to, amount);
     }
 }
