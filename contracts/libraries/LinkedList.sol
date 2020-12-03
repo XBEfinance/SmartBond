@@ -1,11 +1,15 @@
 pragma solidity ^0.6.0;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title LinkedList
  * @dev An utility library for using sorted linked list data structures in your Solidity project.
  */
 library LinkedList {
+    using SafeMath for uint256;
+
     struct Node {
         uint256 amount;
         uint256 maturityEnd;
@@ -75,6 +79,15 @@ library LinkedList {
      */
     function setHead(List storage self, uint256 id) public {
         self.head = id;
+    }
+
+    /**
+     * @dev Update amount the last element of the list
+     * @param self stored linked list from contract
+     * @param amount tokens
+     */
+    function updateLastAmount(List storage self, uint256 amount) public {
+        self.list[self.end].amount = self.list[self.end].amount.add(amount);
     }
 
     /**
