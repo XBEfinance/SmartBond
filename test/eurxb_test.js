@@ -7,6 +7,7 @@ const EURxb = artifacts.require('EURxb');
 contract('EURxb', (accounts) => {
   const owner = accounts[0];
   const recipient = accounts[1];
+  const sender = accounts[2];
 
   const daysAYear = 365;
 
@@ -42,9 +43,18 @@ contract('EURxb', (accounts) => {
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp);
     await increaseTime(DAY * daysAYear);
-    const balance = await token.balanceOf(recipient);
+
+    let balance = await token.balanceOf(recipient);
     assert(balance > web3.utils.toWei('106999999999999900000', 'wei'));
     assert(balance < web3.utils.toWei('107000000000000900000', 'wei'));
+
+    // await token.approve(sender, web3.utils.toWei('100', 'ether'), { from: recipient });
+    await token.transfer(sender, web3.utils.toWei('100', 'ether'), { from: recipient });
+    assert.equal(await token.balanceOf(sender), web3.utils.toWei('100', 'ether'));
+
+    balance = await token.balanceOf(recipient);
+    assert(balance > web3.utils.toWei('6999999999999900000', 'wei'));
+    assert(balance < web3.utils.toWei('7000000000000900000', 'wei'));
   });
 
   it('should return correct balance approximation values', async () => {
@@ -144,6 +154,16 @@ contract('EURxb', (accounts) => {
     // maturity should not be taken into account in the calculations.
     // Made for optimization
     assert.equal(await token.getLastMaturity(), timestamp3);
+  });
+
+  it('should throw an exception when the configure is called', async () => {
+    await expectRevert(token.configure(sender, { from: sender }), 'Caller is not an admin');
+  });
+
+  it('should throw an exception when the mint and burn is called', async () => {
+    await token.configure(recipient);
+    await expectRevert(token.mint(sender, 0, { from: sender }), 'Caller is not an minter');
+    await expectRevert(token.burn(sender, 0, { from: sender }), 'Caller is not an burner');
   });
 
   it('should throw an exception when the addNewMaturity is called', async () => {
