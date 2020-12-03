@@ -43,8 +43,8 @@ contract('EURxb', (accounts) => {
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp);
     await increaseTime(DAY * daysAYear);
     const balance = await token.balanceOf(recipient);
-    assert(balance > web3.utils.toWei('106999999999999990000', 'wei'));
-    assert(balance < web3.utils.toWei('107000000000000090000', 'wei'));
+    assert(balance > web3.utils.toWei('106999999999999900000', 'wei'));
+    assert(balance < web3.utils.toWei('107000000000000900000', 'wei'));
   });
 
   it('should return correct balance approximation values', async () => {
@@ -67,9 +67,9 @@ contract('EURxb', (accounts) => {
   it('should return correct adding maturity', async () => {
     const timestamp = await currentTimestamp();
     // Because in the previous tests the time goes 2 years ahead
-    const timestamp1 = timestamp + DAY * (daysAYear * 3);
-    const timestamp2 = timestamp + DAY * (daysAYear * 3);
-    const timestamp3 = timestamp + DAY * (daysAYear * 3);
+    const timestamp1 = timestamp + DAY * (daysAYear * 3) + 1;
+    const timestamp2 = timestamp + DAY * (daysAYear * 3) + 2;
+    const timestamp3 = timestamp + DAY * (daysAYear * 3) + 3;
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
 
@@ -122,9 +122,9 @@ contract('EURxb', (accounts) => {
   it('should return correct remove maturity', async () => {
     const timestamp = await currentTimestamp();
     // Because in the previous tests the time goes 5 years ahead
-    const timestamp1 = timestamp + DAY * (daysAYear * 6);
-    const timestamp2 = timestamp + DAY * (daysAYear * 6);
-    const timestamp3 = timestamp + DAY * (daysAYear * 6);
+    const timestamp1 = timestamp + DAY * (daysAYear * 6) + 1;
+    const timestamp2 = timestamp + DAY * (daysAYear * 6) + 2;
+    const timestamp3 = timestamp + DAY * (daysAYear * 6) + 3;
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
 
@@ -140,7 +140,10 @@ contract('EURxb', (accounts) => {
     assert.equal(await token.getLastMaturity(), timestamp3);
 
     await token.removeMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
-    assert.equal(await token.getLastMaturity(), timestamp2);
+    // Deletion does not occur, but only records that this
+    // maturity should not be taken into account in the calculations.
+    // Made for optimization
+    assert.equal(await token.getLastMaturity(), timestamp3);
   });
 
   it('should throw an exception when the addNewMaturity is called', async () => {
