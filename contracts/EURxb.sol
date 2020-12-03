@@ -21,6 +21,8 @@ contract EURxb is AccessControl, OverrideERC20 {
 
     LinkedList.List private _list;
 
+    address private _ddp;
+
     uint256 private _unit = 10**18;
     uint256 private _perYear = _unit.mul(365).mul(86400);
 
@@ -31,6 +33,7 @@ contract EURxb is AccessControl, OverrideERC20 {
     uint256 private _expIndex;
 
     mapping(address => uint256) private _holderIndex;
+    mapping(uint256 => uint256) private _deleteMaturity;
 
     constructor(address admin) public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
@@ -45,6 +48,8 @@ contract EURxb is AccessControl, OverrideERC20 {
             hasRole(TokenAccessRoles.admin(), _msgSender()),
             "Caller is not an admin"
         );
+
+        _ddp = ddp;
 
         _setupRole(TokenAccessRoles.minter(), ddp);
         _setupRole(TokenAccessRoles.burner(), ddp);
@@ -137,7 +142,8 @@ contract EURxb is AccessControl, OverrideERC20 {
                 }
 
                 if (maturityEnd <= now) {
-                    tempTotalActiveValue = tempTotalActiveValue.sub(amount);
+                    uint256 deleteAmount = _deleteMaturity[maturityEnd];
+                    tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
                     head = next;
                 } else {
                     break;
@@ -183,7 +189,9 @@ contract EURxb is AccessControl, OverrideERC20 {
             }
 
             if (maturityEnd <= now) {
-                _totalActiveValue = _totalActiveValue.sub(amount);
+                uint256 deleteAmount = _deleteMaturity[maturityEnd];
+                _deleteMaturity[maturityEnd] = 0;
+                _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
                 _list.setHead(next);
             } else {
                 break;
@@ -205,6 +213,7 @@ contract EURxb is AccessControl, OverrideERC20 {
      * @param maturityEnd end date of interest accrual
      */
     function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
+        require(_msgSender() == _ddp, "Caller is not allowed to addNewMaturity");
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
 
@@ -264,31 +273,13 @@ contract EURxb is AccessControl, OverrideERC20 {
      * @param maturityEnd end date of interest accrual
      */
     function removeMaturity(uint256 amount, uint256 maturityEnd) public {
+        require(_msgSender() == _ddp, "Caller is not allowed to removeMaturity");
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
         require(_list.listExists(), "The list does not exist");
 
-        uint256 id = _list.getHead();
-        // TODO: maybe many elements
-        // TODO: maybe you need to add close dates
-        while (true) {
-            uint256 amountNode;
-            uint256 maturityNode;
-            uint256 next;
-            (amountNode, maturityNode, , next) = _list.getNodeValue(id);
-
-            if (maturityNode == maturityEnd && amountNode == amount) {
-                _totalActiveValue = _totalActiveValue.sub(amount);
-                _list.remove(id);
-                break;
-            }
-
-            if (next == 0) {
-                break;
-            }
-
-            id = next;
-        }
+        _totalActiveValue = _totalActiveValue.sub(amount);
+        _deleteMaturity[maturityEnd] = _deleteMaturity[maturityEnd].add(amount);
     }
 
     /**
