@@ -34,7 +34,7 @@ contract StakingManager is Ownable {
     uint256 private _startTime;
     uint256 private _bonusWeight;
 
-    uint256 private _totalXbg = 10000 ether;
+    uint256 private _totalXbg = 8000 ether;
 
     uint256 private _unfreezeShift = 0;
 
