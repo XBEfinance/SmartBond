@@ -1,41 +1,48 @@
 pragma solidity >=0.6.0 <0.7.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/GSN/Context.sol";
 
 import "./interfaces/IAllowList.sol";
 
 
-contract AllowList is IAllowList, Ownable {
+contract AllowList is IAllowList, IAllowListChange, Context {
     using SafeMath for uint256;
-    using Counters for Counters.Counter;
+
+    event AccountAdded(address account);
+    event AccountRemoved(address account);
+
+    address _admin;
 
     mapping(address => bool) private _allowList;
 
-    Counters.Counter private _counter;
+    constructor(address admin) public {
+        require(admin != address(0), "invalid argument");
+        _admin = admin;
+    }
 
-    constructor(address owner) public {
-        transferOwnership(owner);
+    modifier onlyAdmin() {
+        require(_msgSender() == _admin, "user is not admin");
+        _;
     }
 
     /**
      * Allows user to receive tokens
      */
-    function allowAccount(address account) external onlyOwner {
+    function allowAccount(address account) external override onlyAdmin {
         if (!_isAllowedAccount(account)) {
             _allowList[account] = true;
-            _counter.increment();
+            emit AccountAdded(account);
         }
     }
 
     /**
      * Forbids user from receiving tokens
      */
-    function disallowAccount(address account) external onlyOwner {
+    function disallowAccount(address account) external override onlyAdmin {
         if (_isAllowedAccount(account)) {
             delete _allowList[account];
-            _counter.decrement();
+            emit AccountRemoved(account);
         }
     }
 
@@ -44,13 +51,6 @@ contract AllowList is IAllowList, Ownable {
      */
     function isAllowedAccount(address account) external view override returns (bool) {
         return _isAllowedAccount(account);
-    }
-
-    /**
-     * Returns total count of allowed accounts
-     */
-    function allowListCount() public view returns (uint256) {
-        return _counter.current();
     }
 
     function _isAllowedAccount(address account) private view returns (bool) {

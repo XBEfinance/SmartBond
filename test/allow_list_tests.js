@@ -36,9 +36,9 @@ contract('AllowListTest', (accounts) => {
       !(await this.list.isAllowedAccount(alice)),
       'alice must not be in the list in the beginning',
     );
-    expectRevert(
+    await expectRevert(
       this.list.allowAccount(alice, { from: bob }),
-      'Ownable: caller is not the owner',
+      'user is not admin',
     );
   });
 
@@ -60,9 +60,9 @@ contract('AllowListTest', (accounts) => {
       'alice must not be in the list in the beginning',
     );
     await this.list.allowAccount(alice, { from: miris });
-    expectRevert(
+    await expectRevert(
       this.list.allowAccount(alice, { from: bob }),
-      'Ownable: caller is not the owner',
+      'user is not admin',
     );
   });
 

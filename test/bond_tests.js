@@ -33,7 +33,7 @@ contract('BondTokenTest', (accounts) => {
 
   beforeEach(async () => {
     this.list = await AllowList.new(miris);
-    this.bond = await BondToken.new(miris, baseURI, this.list.address);
+    this.bond = await BondToken.new(baseURI);
     this.sat = await SecurityAssetToken
       .new(baseURI,
         miris,
@@ -41,7 +41,7 @@ contract('BondTokenTest', (accounts) => {
         this.list.address);
 
     this.ddp = await DDP.new(this.bond.address);
-    await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
+    await this.bond.configure(this.list.address, this.sat.address, this.ddp.address);
   });
 
   // just mint sat, which mints bond and check token info
@@ -140,7 +140,7 @@ contract('BondTokenTest', (accounts) => {
     assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
 
     const { tx } = await this.ddp.callTransfer(alice, bob, TOKEN_0);
-    expectEvent.inTransaction(
+    await expectEvent.inTransaction(
       tx,
       this.bond,
       'Transfer',

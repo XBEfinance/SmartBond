@@ -8,11 +8,12 @@ import "./interfaces/IAllowList.sol";
 import "./interfaces/IBondToken.sol";
 import "./interfaces/IDDP.sol";
 import "./interfaces/IEURxb.sol";
+import "./templates/Initializable.sol";
 
 import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
 
 
-contract DDP is IDDP, AccessControl {
+contract DDP is IDDP, AccessControl, Initializable {
     /// bond address
     address private _bond;
     address private _eurxb;
@@ -21,21 +22,23 @@ contract DDP is IDDP, AccessControl {
     uint256 _claimPeriod = 30 days;
 
     constructor(address admin) public {
+        // admin role for setClaimPeriod only
         _setupRole(TokenAccessRoles.admin(), admin);
     }
 
-    function configure(address bond, address eurxb, address allowList) external {
-        require(
-            hasRole(TokenAccessRoles.admin(), _msgSender()),
-            "caller is not an admin"
-        );
-
+    /**
+     * @dev configures DDP to use BondToken, EURxb contract and AllowList addresses
+     * @param bond BondToken contract address
+     * @param eurxb EURxb contract address
+     * @param allowList AllowList address
+     */
+    function configure(address bond, address eurxb, address allowList) external initializer {
         _bond = bond;
         _eurxb = eurxb;
         _allowList = allowList;
     }
 
-    function setClaimPeriod(uint256 period) external {
+    function setClaimPeriod(uint256 period) external override {
         require(
             hasRole(TokenAccessRoles.admin(), _msgSender()),
             "user is not admin");
@@ -97,5 +100,9 @@ contract DDP is IDDP, AccessControl {
 
         // burn token
         IBondToken(_bond).burn(tokenId);
+    }
+
+    function getClaimPeriod() external view returns (uint256) {
+        return _claimPeriod;
     }
 }

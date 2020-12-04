@@ -12,6 +12,8 @@ contract DDPMock is IDDP, ERC721 {
         uint256 maturityEnds,
         address to);
 
+    event SetClaimPeriodInvoked(uint256 claimPeriod);
+
     address private _bond;
 
     constructor(address bond) ERC721("DDPMock", "DDP") public {
@@ -37,5 +39,9 @@ contract DDPMock is IDDP, ERC721 {
 
     function callTransfer(address from, address to, uint256 tokenId) external {
        IBondToken(_bond).safeTransferFrom(from, to, tokenId);
+    }
+
+    function setClaimPeriod(uint256 claimPeriod) external override {
+        emit SetClaimPeriodInvoked(claimPeriod);
     }
 }

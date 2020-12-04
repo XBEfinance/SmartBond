@@ -33,7 +33,7 @@ contract('DDPTest', (accounts) => {
 
   beforeEach(async () => {
     this.list = await AllowList.new(miris);
-    this.bond = await BondToken.new(miris, baseURI, this.list.address);
+    this.bond = await BondToken.new(baseURI);
     this.sat = await SecurityAssetToken
       .new(baseURI,
         miris,
@@ -42,7 +42,7 @@ contract('DDPTest', (accounts) => {
 
     this.ddp = await DDP.new(miris);
 
-    await this.bond.configure(this.sat.address, this.ddp.address, { from: miris });
+    await this.bond.configure(this.list.address, this.sat.address, this.ddp.address);
 
     this.eurxb = await EURxb.new();
 
@@ -50,7 +50,6 @@ contract('DDPTest', (accounts) => {
       this.bond.address,
       this.eurxb.address,
       this.list.address,
-      { from: miris },
     );
   });
 
