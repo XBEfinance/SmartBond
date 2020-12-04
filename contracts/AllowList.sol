@@ -9,6 +9,9 @@ import "./interfaces/IAllowList.sol";
 contract AllowList is IAllowList, IAllowListChange, Context {
     using SafeMath for uint256;
 
+    event AccountAdded(address account);
+    event AccountRemoved(address account);
+
     address _admin;
 
     mapping(address => bool) private _allowList;
@@ -29,6 +32,7 @@ contract AllowList is IAllowList, IAllowListChange, Context {
     function allowAccount(address account) external override onlyAdmin {
         if (!_isAllowedAccount(account)) {
             _allowList[account] = true;
+            emit AccountAdded(account);
         }
     }
 
@@ -38,6 +42,7 @@ contract AllowList is IAllowList, IAllowListChange, Context {
     function disallowAccount(address account) external override onlyAdmin {
         if (_isAllowedAccount(account)) {
             delete _allowList[account];
+            emit AccountRemoved(account);
         }
     }
 
