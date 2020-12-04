@@ -227,7 +227,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
                 (, maturityNode, prevIDNode, ) = _list.getNodeValue(id);
 
                 if (maturityNode == maturityEnd) {
-                    _list.updateLastAmount(amount);
+                    _list.updateElementAmount(id, amount);
                     break;
                 }
 

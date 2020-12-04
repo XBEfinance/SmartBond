@@ -82,12 +82,13 @@ library LinkedList {
     }
 
     /**
-     * @dev Update amount the last element of the list
+     * @dev Update amount the element of the list
      * @param self stored linked list from contract
+     * @param id element
      * @param amount tokens
      */
-    function updateLastAmount(List storage self, uint256 amount) public {
-        self.list[self.end].amount = self.list[self.end].amount.add(amount);
+    function updateElementAmount(List storage self, uint256 id, uint256 amount) public {
+        self.list[id].amount = self.list[id].amount.add(amount);
     }
 
     /**
