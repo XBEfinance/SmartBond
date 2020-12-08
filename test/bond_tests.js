@@ -235,29 +235,29 @@ contract('BondTokenTest', (accounts) => {
   // prohibited approve operations
   it('approve is not supported', async () => {
     await expectRevert(
-      this.bond.approve(alice, ETHER_100), 
-      'method is not supported'
+      this.bond.approve(alice, ETHER_100),
+      'method is not supported',
     );
   });
 
   it('getApproved is not supported', async () => {
     await expectRevert(
-      this.bond.getApproved(alice), 
-      'method is not supported'
+      this.bond.getApproved(alice),
+      'method is not supported',
     );
   });
 
   it('setApprovalForAll is not supported', async () => {
     await expectRevert(
-      this.bond.setApprovalForAll(alice, true), 
-      'method is not supported'
+      this.bond.setApprovalForAll(alice, true),
+      'method is not supported',
     );
   });
 
   it('isApprovedForAll is not supported', async () => {
     await expectRevert(
-      this.bond.setApprovalForAll(alice, bob), 
-      'method is not supported'
+      this.bond.setApprovalForAll(alice, bob),
+      'method is not supported',
     );
   });
 });

@@ -23,7 +23,6 @@ const Multisig = artifacts.require('MultiSignature');
 const EURxb = artifacts.require('EURxb');
 const baseURI = '127.0.0.1/';
 
-
 contract('IntegrationSatTest', (accounts) => {
   const zero = accounts[0];
   const deployer = zero;
@@ -45,7 +44,24 @@ contract('IntegrationSatTest', (accounts) => {
   const MATURITY_SHORT = new BN('1');
   const TOKEN_0 = new BN('0');
   const TOKEN_1 = new BN('1');
-  const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+
+  const FOUNDERS = [
+    yorick,
+    alice,
+    bob,
+    charlie,
+    diana,
+    eva,
+    frank,
+    george,
+    hannah,
+  ]; // 9 users
+
+  const USERS_COUNT = new BN(FOUNDERS.length);
+  const THRESHOLD = new BN('6');
+
+  const SAT_VALUE = ETHER_100;
+  const BOND_VALUE = (new BN(SAT_VALUE)).mul(new BN('3')).div(new BN('4'));
 
   async function burnSat(self, tokenId, user) {
     await self.ddp.withdraw(tokenId, { from: user });
@@ -65,10 +81,6 @@ contract('IntegrationSatTest', (accounts) => {
     await self.sat.setApprovalForAll(oper, true, { from: owner });
   }
 
-  async function denyForAll(self, from, to) {
-    await self.sat.setApprovalForAll(oper, false, { from: owner });
-  }
-
   async function approve(self, tokenId, from, to) {
     await self.sat.approve(to, tokenId, { from: from });
   }
@@ -84,23 +96,9 @@ contract('IntegrationSatTest', (accounts) => {
   }
 
   beforeEach(async () => {
-    this.founders = [
-      zero,
-      yorick,
-      alice,
-      bob,
-      charlie,
-      diana,
-      eva,
-      frank,
-      george,
-      hannah,
-    ];
-
-    this.threshold = new BN('6');
     this.multisig = await Multisig.new(
-      this.founders,
-      this.threshold,
+      FOUNDERS,
+      THRESHOLD,
       { from: deployer },
     );
 
@@ -155,11 +153,31 @@ contract('IntegrationSatTest', (accounts) => {
     await burnSat(this, TOKEN_0, alice);
   });
 
-  it('mint to 10 different users', async () => {
-    for (const user of this.founders) {
+  it('mint to several different users', async () => {
+    for (const user of FOUNDERS) {
       await this.multisig.allowAccount(user);
       await mintSat(this, user, ETHER_100, MATURITY_LONG);
+
+      expect(
+        new BN(await this.eurxb.balanceOf(user)),
+        'wrong user balance',
+      ).to.be.bignumber.equal(BOND_VALUE); // same value as bond
     }
+
+    expect(
+      await this.sat.totalValue(),
+      'sat total is wrong',
+    ).to.be.bignumber.equal((new BN(SAT_VALUE)).mul(USERS_COUNT));
+
+    expect(
+      await this.bond.totalValue(),
+      'wrong bond total value',
+    ).to.be.bignumber.equal((new BN(BOND_VALUE)).mul(USERS_COUNT));
+
+    expect(
+      await this.eurxb.totalSupply(),
+      'wrong eurxb total value',
+    ).to.be.bignumber.equal((new BN(BOND_VALUE)).mul(USERS_COUNT));
   });
 
   it('mint 100 tokens', async () => {
@@ -237,7 +255,7 @@ contract('IntegrationSatTest', (accounts) => {
   it('withdraw different user before maturity ended failure', async () => {
     await this.multisig.setClaimPeriod(MATURITY_LONG, { from: operator });
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
-    await mintSat(this, bob, ETHER_100, MATURITY_LONG); // to give bob money
+    await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
     await expectRevert(
       this.ddp.withdraw(TOKEN_0, { from: bob }),
@@ -248,7 +266,7 @@ contract('IntegrationSatTest', (accounts) => {
   it('withdraw different user after claim period ended', async () => {
     await this.multisig.setClaimPeriod(MATURITY_SHORT, { from: operator });
     await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
-    await mintSat(this, bob, ETHER_100, MATURITY_LONG); // to give bob money
+    await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
     await increaseTime(2*DAY);
 
