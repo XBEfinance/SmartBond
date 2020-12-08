@@ -78,7 +78,7 @@ module.exports = {
   mocha: {
     reporter: 'eth-gas-reporter',
     gasReporter: { 'gasPrice': 1 },
-    timeout: 10000000
+    // timeout: 10000000
   },
 
   contracts_directory: 'contractsDirectory',

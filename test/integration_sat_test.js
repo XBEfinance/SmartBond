@@ -13,6 +13,8 @@ chai.use(require('chai-as-promised'));
 
 const { expect, assert } = chai;
 
+const { increaseTime, currentTimestamp, DAY } = require('./common');
+
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
 const AllowList = artifacts.require('AllowList');
@@ -20,6 +22,7 @@ const DDP = artifacts.require('DDP');
 const Multisig = artifacts.require('MultiSignature');
 const EURxb = artifacts.require('EURxb');
 const baseURI = '127.0.0.1/';
+
 
 contract('IntegrationSatTest', (accounts) => {
   const zero = accounts[0];
@@ -38,10 +41,47 @@ contract('IntegrationSatTest', (accounts) => {
 
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
-  const DATE_SHIFT = new BN('10000000');
+  const MATURITY_LONG = new BN('10000000');
+  const MATURITY_SHORT = new BN('1');
   const TOKEN_0 = new BN('0');
   const TOKEN_1 = new BN('1');
   const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+
+  async function burnSat(self, tokenId, user) {
+    await self.ddp.withdraw(tokenId, { from: user });
+    await self.multisig.burnSecurityAssetToken(tokenId, { from: operator });
+  }
+
+  async function mintSat(self, user, value, maturity) {
+    await self.multisig.mintSecurityAssetToken(
+      user,
+      value,
+      maturity,
+      { from: operator },
+    );
+  }
+
+  async function approveForAll(self, owner, oper) {
+    await self.sat.setApprovalForAll(oper, true, { from: owner });
+  }
+
+  async function denyForAll(self, from, to) {
+    await self.sat.setApprovalForAll(oper, false, { from: owner });
+  }
+
+  async function approve(self, tokenId, from, to) {
+    await self.sat.approve(to, tokenId, { from: from });
+  }
+
+  async function transferToken(self, tokenId, from, to) {
+    await self.sat.approve(to, tokenId, { from: from });
+    await self.multisig.transferSecurityAssetToken(
+      from,
+      to,
+      tokenId,
+      { from: operator },
+    );
+  }
 
   beforeEach(async () => {
     this.founders = [
@@ -81,7 +121,7 @@ contract('IntegrationSatTest', (accounts) => {
 
     this.ddp = await DDP.new(this.multisig.address, { from: deployer });
     this.eurxb = await EURxb.new(this.multisig.address, { from: deployer });
-    await this.eurxb.configure(this.ddp.address, { from: deployer },);
+    await this.eurxb.configure(this.ddp.address, { from: deployer });
 
     await this.bond.configure(
       this.list.address,
@@ -106,26 +146,125 @@ contract('IntegrationSatTest', (accounts) => {
 
     await this.multisig.allowAccount(alice);
     await this.multisig.allowAccount(bob);
+    await this.multisig.allowAccount(charlie);
+    await this.multisig.allowAccount(diana);
   });
 
-  it('mint success', async () => {
-    const n = new BN('10000');
+  it('mint and then burn success', async () => {
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await burnSat(this, TOKEN_0, alice);
+  });
+
+  it('mint to 10 different users', async () => {
+    for (const user of this.founders) {
+      await this.multisig.allowAccount(user);
+      await mintSat(this, user, ETHER_100, MATURITY_LONG);
+    }
+  });
+
+  it('mint 100 tokens', async () => {
+    const n = new BN('100');
 
     for (var i = 0; i < n; i++) {
-      await this.multisig.mintSecurityAssetToken(
-        alice,
-        ETHER_100,
-        DATE_SHIFT,
-        { from: operator },
-      );
+      await mintSat(this, alice, ETHER_100, MATURITY_LONG);
     }
 
-    // await this.ddp.withdraw(TOKEN_1, { from: alice });
-    // await this.multisig.burnSecurityAssetToken(TOKEN_1);
-
-    for (var i = 2; i < n; i++) {
-      await this.ddp.withdraw(new BN(i), { from: alice });
-      await this.multisig.burnSecurityAssetToken(new BN(i));
+    for (i = 1; i < n; i++) {
+      await burnSat(this, new BN(i), alice);
     }
+
+    await burnSat(this, TOKEN_0, alice);
   });
+
+  it('single transfer success', async () => {
+    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 does not exist');
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be alice').equal(alice);
+    await approve(this, TOKEN_0, alice, bob);
+    await transferToken(this, TOKEN_0, alice, bob);
+    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be bob').equal(bob);
+  });
+
+  it('transfer approved for all success', async () => {
+    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 does not exist');
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be alice').equal(alice);
+
+    assert(!await this.bond.hasToken(TOKEN_1), 'token 1 does not exist');
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    expect(await this.sat.ownerOf(TOKEN_1), 'owner must be alice').equal(alice);
+
+    await approveForAll(this, alice, bob);
+    await transferToken(this, TOKEN_0, alice, bob);
+    await transferToken(this, TOKEN_1, alice, bob);
+
+    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be bob').equal(bob);
+    expect(await this.sat.ownerOf(TOKEN_1), 'owner must be bob').equal(bob);
+  });
+
+
+  it('withdraw before maturity ends', async () => {
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    assert(await this.bond.hasToken(TOKEN_0), 'bond token 0 exists');
+    expect(await this.sat.ownerOf(TOKEN_0), 'alice owns sat token 0').equal(alice);
+
+    await this.ddp.withdraw(TOKEN_0, { from: alice });
+
+    expect(await this.sat.ownerOf(TOKEN_0), 'alice still owns sat token 0').equal(alice);
+    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 was burned');
+
+    await this.multisig.burnSecurityAssetToken(TOKEN_0, { from: operator });
+    await expectRevert(
+      this.sat.ownerOf(TOKEN_0),
+      'owner query for nonexistent token'
+    );
+  });
+
+  it('withdraw different user not enough eurxb failure', async () => {
+    await this.multisig.setClaimPeriod(MATURITY_SHORT, { from: operator });
+    await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
+
+    // bob has no eurxb
+
+    await increaseTime(2*DAY);
+
+    await expectRevert(
+      this.ddp.withdraw(TOKEN_0, { from: bob }),
+      'not enough EURxb to withdraw',
+    );
+  });
+
+  it('withdraw different user before maturity ended failure', async () => {
+    await this.multisig.setClaimPeriod(MATURITY_LONG, { from: operator });
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, bob, ETHER_100, MATURITY_LONG); // to give bob money
+
+    await expectRevert(
+      this.ddp.withdraw(TOKEN_0, { from: bob }),
+      'claim period is not finished yet',
+    );
+  });
+
+  it('withdraw different user after claim period ended', async () => {
+    await this.multisig.setClaimPeriod(MATURITY_SHORT, { from: operator });
+    await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
+    await mintSat(this, bob, ETHER_100, MATURITY_LONG); // to give bob money
+
+    await increaseTime(2*DAY);
+
+    await this.ddp.withdraw(TOKEN_0, { from: bob });
+  });
+
+  // takes 3 hours, do not uncomment if not absolutely necessarily
+  // it('mint stress test success', async () => {
+  //   const n = new BN('10000');
+  //
+  //   for (var i = 0; i < n; i++) {
+  //     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+  //   }
+  //
+  //   for (var i = 2; i < n; i++) {
+  //     await burnSat(this, new BN(i), alice);
+  //   }
+  // });
 });
