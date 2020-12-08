@@ -167,15 +167,15 @@ contract('EURxb', (accounts) => {
     assert.equal(await token.getLastMaturity(), timestamp3);
   });
 
-  it('should throw an exception when the configure is called', async () => {
-    await expectRevert(token.configure(sender, { from: sender }), 'Caller is not an admin');
-  });
-
-  it('should throw an exception when the mint and burn is called', async () => {
-    await token.configure(recipient);
-    await expectRevert(token.mint(sender, 0, { from: sender }), 'Caller is not an minter');
-    await expectRevert(token.burn(sender, 0, { from: sender }), 'Caller is not an burner');
-  });
+  // it('should throw an exception when the configure is called', async () => {
+  //   await expectRevert(token.configure(sender, { from: sender }), 'Caller is not an admin');
+  // });
+  //
+  // it('should throw an exception when the mint and burn is called', async () => {
+  //   await token.configure(recipient);
+  //   await expectRevert(token.mint(sender, 0, { from: sender }), 'Caller is not an minter');
+  //   await expectRevert(token.burn(sender, 0, { from: sender }), 'Caller is not an burner');
+  // });
 
   it('should throw an exception when the addNewMaturity is called', async () => {
     await expectRevert(token.addNewMaturity(0, 0), 'The amount must be greater than zero');

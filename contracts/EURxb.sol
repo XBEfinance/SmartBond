@@ -21,12 +21,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     using Address for address;
     using LinkedList for LinkedList.List;
 
-    LinkedList.List private _list;
-
-    address private _ddp;
-
-    uint256 private _unit = 10**18;
-    uint256 private _perYear = _unit.mul(365).mul(86400);
+    uint256 private constant UNIT = 10**18;
+    uint256 private constant PER_YEAR = 31536000 * 10 ** 18; // UNIT.mul(365).mul(86400);
 
     uint256 private _countMaturity;
     uint256 private _totalActiveValue;
@@ -35,11 +31,20 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     uint256 private _expIndex;
 
     mapping(address => uint256) private _holderIndex;
-    mapping(uint256 => uint256) private _deleteMaturity;
+
+    LinkedList.List private _list; // list of maturity ends and amounts
+    mapping(uint256 => uint256) private _deletedMaturity; // timestamp->amount
+
+    address private _ddp;
+
+    modifier onlyDDP() {
+        require(_msgSender() == _ddp, "Caller is not allowed this function");
+        _;
+    }
 
     constructor(address admin) public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
-        _expIndex = _unit;
+        _expIndex = UNIT;
         _countMaturity = 100;
 
         _setupRole(TokenAccessRoles.admin(), admin);
@@ -128,11 +133,10 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             hasRole(TokenAccessRoles.minter(), _msgSender()),
             "Caller is not an minter"
         );
-
+        require(account != address(0), "Mint to zero address");
         accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
+        _updateBalance(account);
+
         super._mint(account, amount);
     }
 
@@ -146,11 +150,10 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             hasRole(TokenAccessRoles.burner(), _msgSender()),
             "Caller is not an burner"
         );
-
+        require(account != address(0), "Burn from zero address");
         accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
+        _updateBalance(account);
+
         super._burn(account, amount);
     }
 
@@ -159,56 +162,44 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param amount number of tokens
      * @param maturityEnd end date of interest accrual
      */
-    function addNewMaturity(uint256 amount, uint256 maturityEnd) external {
-        require(_msgSender() == _ddp, "Caller is not allowed to addNewMaturity");
+    function addNewMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
 
         _totalActiveValue = _totalActiveValue.add(amount);
 
-        if (_list.listExists()) {
-            uint256 id = _list.getEnd();
-
-            // TODO: maybe many elements
-            // TODO: maybe you need to add close dates
-            while (true) {
-                (, uint256 maturityNode, uint256 prevIDNode, ) = _list.getNodeValue(id);
-
-                if (maturityNode == maturityEnd) {
-                    _list.updateElementAmount(id, amount);
-                    break;
-                }
-
-                if (maturityNode < maturityEnd) {
-                    _list.pushBack(amount, maturityEnd);
-                    break;
-                }
-
-                if (id == _list.getHead() && maturityNode > maturityEnd) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    uint256 newPrev;
-                    (, , newPrev, ) = _list.getNodeValue(id);
-                    _list.setHead(newPrev);
-                    break;
-                }
-
-                if (prevIDNode == 0) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    break;
-                }
-
-                uint256 maturityPrevNode;
-                (, maturityPrevNode, , ) = _list.getNodeValue(prevIDNode);
-
-                if (maturityPrevNode < maturityEnd && maturityEnd < maturityNode) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    break;
-                }
-
-                id = prevIDNode;
-            }
-        } else {
+        if (!_list.listExists()) {
             _list.pushBack(amount, maturityEnd);
+            return;
+        }
+
+        uint256 id = _list.getEnd();
+        (, uint256 maturityNode, , uint256 nextIDNode) = _list.getNodeValue(id);
+
+        if (maturityNode < maturityEnd) { // Check end list
+            _list.pushBack(amount, maturityEnd);
+            return;
+        }
+
+        // TODO: maybe many elements
+        // TODO: maybe you need to add close dates
+        while (true) {
+            if (maturityNode == maturityEnd) { // Check equal
+                _list.addElementAmount(id, amount);
+                break;
+            }
+
+            if (id == _list.getHead() && maturityNode > maturityEnd) { // Check before first
+                _list.pushBefore(id, amount, maturityEnd);
+                break;
+            }
+
+            (, maturityNode, id, nextIDNode) = _list.getNodeValue(id);
+
+            if (maturityNode < maturityEnd) { // Check between periods
+                _list.pushBefore(nextIDNode, amount, maturityEnd);
+                break;
+            }
         }
     }
 
@@ -217,14 +208,13 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param amount number of tokens
      * @param maturityEnd end date of interest accrual
      */
-    function removeMaturity(uint256 amount, uint256 maturityEnd) external {
-        require(_msgSender() == _ddp, "Caller is not allowed to removeMaturity");
+    function removeMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
         require(_list.listExists(), "The list does not exist");
 
         _totalActiveValue = _totalActiveValue.sub(amount);
-        _deleteMaturity[maturityEnd] = _deleteMaturity[maturityEnd].add(amount);
+        _deletedMaturity[maturityEnd] = _deletedMaturity[maturityEnd].add(amount);
     }
 
     /**
@@ -256,7 +246,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
                 }
 
                 if (maturityEnd <= now) {
-                    uint256 deleteAmount = _deleteMaturity[maturityEnd];
+                    uint256 deleteAmount = _deletedMaturity[maturityEnd];
                     tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
                     head = next;
                 } else {
@@ -287,8 +277,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             }
 
             if (maturityEnd <= now) {
-                uint256 deleteAmount = _deleteMaturity[maturityEnd];
-                _deleteMaturity[maturityEnd] = 0;
+                uint256 deleteAmount = _deletedMaturity[maturityEnd];
+                _deletedMaturity[maturityEnd] = 0;
                 _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
                 _list.setHead(next);
             } else {
@@ -340,7 +330,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
                 return prevIndex;
             }
             uint256 interestFactor = interest.mul(period);
-            newExpIndex = (interestFactor.mul(prevIndex).div(_perYear).div(totalSupply()))
+            newExpIndex = (interestFactor.mul(prevIndex).div(PER_YEAR).div(totalSupply()))
                 .add(prevIndex);
         }
         return newExpIndex;
