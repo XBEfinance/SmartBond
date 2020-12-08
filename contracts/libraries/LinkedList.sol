@@ -98,16 +98,19 @@ library LinkedList {
      * @param maturityEnd end date of interest accrual
      */
     function pushBack(List storage self, uint256 amount, uint256 maturityEnd) external {
+        self.counter += 1;
+
         if (self.end != 0) {
-            self.list[self.end].next = self.counter + 1;
+            self.list[self.end].next = self.counter;
         }
-        self.list[self.counter + 1] = Node(
+
+        self.list[self.counter] = Node(
             amount,
             maturityEnd,
             self.end,
             0
         );
-        self.counter += 1;
+
         self.end = self.counter;
         self.head = self.head == 0 ? self.counter : self.head;
     }
@@ -128,23 +131,23 @@ library LinkedList {
         external
     {
         require(id > 0, "ID must be greater than 0");
+        self.counter += 1;
 
         uint256 nodeIDPrev = self.list[id].prev;
-        self.list[id].prev = self.counter + 1;
+        self.list[id].prev = self.counter;
 
         if (nodeIDPrev > 0) {
-            self.list[nodeIDPrev].next = self.counter + 1;
+            self.list[nodeIDPrev].next = self.counter;
         } else {
-            self.head = self.counter + 1;
+            self.head = self.counter;
         }
 
-        self.list[self.counter + 1] = Node(
+        self.list[self.counter] = Node(
             amount,
             maturityEnd,
             nodeIDPrev,
             id
         );
-        self.counter += 1;
     }
 
     /**
