@@ -183,11 +183,11 @@ contract('IntegrationSatTest', (accounts) => {
   it('mint 100 tokens', async () => {
     const n = new BN('100');
 
-    for (var i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       await mintSat(this, alice, ETHER_100, MATURITY_LONG);
     }
 
-    for (i = 2; i < n; i++) {
+    for (let i = 2; i < n; i++) {
       await burnSat(this, new BN(i), alice);
     }
 
@@ -220,7 +220,6 @@ contract('IntegrationSatTest', (accounts) => {
     expect(await this.sat.ownerOf(TOKEN_2), 'owner must be bob').equal(bob);
   });
 
-
   it('withdraw before maturity ends', async () => {
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
     assert(await this.bond.hasToken(TOKEN_1), 'bond token 0 exists');
@@ -234,7 +233,7 @@ contract('IntegrationSatTest', (accounts) => {
     await this.multisig.burnSecurityAssetToken(TOKEN_1, { from: operator });
     await expectRevert(
       this.sat.ownerOf(TOKEN_1),
-      'owner query for nonexistent token'
+      'owner query for nonexistent token',
     );
   });
 
@@ -244,7 +243,7 @@ contract('IntegrationSatTest', (accounts) => {
 
     // bob has no eurxb
 
-    await increaseTime(2*DAY);
+    await increaseTime(2 * DAY);
 
     await expectRevert(
       this.ddp.withdraw(TOKEN_1, { from: bob }),
@@ -268,7 +267,7 @@ contract('IntegrationSatTest', (accounts) => {
     await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
     await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
-    await increaseTime(2*DAY);
+    await increaseTime(2 * DAY);
 
     await this.ddp.withdraw(TOKEN_1, { from: bob });
   });
