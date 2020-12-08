@@ -47,6 +47,7 @@ contract SecurityAssetToken is ERC721, AccessControl, ISecurityAssetToken {
         _setBaseURI(baseURI);
         _bond = bond;
         _allowList = allowList;
+        _counter.increment();
 
         // setup roles
         _setupRole(TokenAccessRoles.minter(), miris);

@@ -22,8 +22,8 @@ contract('SecurityAssetTokenTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const DATE_SHIFT = new BN('10000');
-  const TOKEN_0 = new BN('0');
   const TOKEN_1 = new BN('1');
+  const TOKEN_2 = new BN('2');
 
   beforeEach(async () => {
     this.list = await AllowList.new(miris);
@@ -41,13 +41,13 @@ contract('SecurityAssetTokenTest', (accounts) => {
   it('mint new SAT and Bond tokens', async () => {
     await this.list.allowAccount(alice, { from: miris });
     assert(
-      !(await this.bond.hasToken(TOKEN_0)),
+      !(await this.bond.hasToken(TOKEN_1)),
       'bond token must not exist at this time point',
     );
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(
-      await this.bond.hasToken(TOKEN_0),
+      await this.bond.hasToken(TOKEN_1),
       'Bond token `0` must has being created',
     );
   });
@@ -55,26 +55,26 @@ contract('SecurityAssetTokenTest', (accounts) => {
   it('when minting tokenId increases', async () => {
     await this.list.allowAccount(alice, { from: miris });
     assert(
-      !(await this.bond.hasToken(TOKEN_0)),
+      !(await this.bond.hasToken(TOKEN_1)),
       'bond token must not exist at this time point',
     );
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
     assert(
-      !(await this.bond.hasToken(TOKEN_1)),
+      !(await this.bond.hasToken(TOKEN_2)),
       'bond token `1` must not exist at this time point',
     );
 
     assert(
-      await this.bond.hasToken(TOKEN_0),
+      await this.bond.hasToken(TOKEN_1),
       'Bond token `0` must has being created',
     );
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
     assert(
-      await this.bond.hasToken(TOKEN_1),
+      await this.bond.hasToken(TOKEN_2),
       'bond token `1` must exist at this time point',
     );
   });
@@ -91,10 +91,10 @@ contract('SecurityAssetTokenTest', (accounts) => {
   it('burning SAT is not allowed for non-miris account', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    await this.bond.burn(TOKEN_0); // tokenId
+    await this.bond.burn(TOKEN_1); // tokenId
     // owner cannot burn his token either
     await expectRevert(
-      this.sat.burn(TOKEN_0, { from: alice }),
+      this.sat.burn(TOKEN_1, { from: alice }),
       'user is not allowed to burn',
     );
   });
@@ -102,9 +102,9 @@ contract('SecurityAssetTokenTest', (accounts) => {
   it('burning SAT is not allowed when corresponding Bond is still alive', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'bond token doesn\'t exist');
+    assert(await this.bond.hasToken(TOKEN_1), 'bond token doesn\'t exist');
     await expectRevert(
-      this.sat.burn(TOKEN_0, { from: miris }),
+      this.sat.burn(TOKEN_1, { from: miris }),
       'bond token is still alive',
     );
   });
@@ -112,9 +112,9 @@ contract('SecurityAssetTokenTest', (accounts) => {
   it('burn SAT', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    await this.bond.burn(TOKEN_0);
-    assert(!(await this.bond.hasToken(TOKEN_0)), 'bond token was not burned');
-    await this.sat.burn(TOKEN_0, { from: miris });
+    await this.bond.burn(TOKEN_1);
+    assert(!(await this.bond.hasToken(TOKEN_1)), 'bond token was not burned');
+    await this.sat.burn(TOKEN_1, { from: miris });
   });
 
   // ----------- check transfers -----------
@@ -122,8 +122,8 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     await this.list.allowAccount(bob, { from: miris });
-    await this.sat.approve(bob, TOKEN_0, { from: alice });
-    await this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris });
+    await this.sat.approve(bob, TOKEN_1, { from: alice });
+    await this.sat.transferFrom(alice, bob, TOKEN_1, { from: miris });
   });
 
   it('transfer token from alice to bob (approve for all)', async () => {
@@ -133,7 +133,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
     await this.sat.setApprovalForAll(bob, true, { from: alice });
-    await this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris });
+    await this.sat.transferFrom(alice, bob, TOKEN_1, { from: miris });
   });
 
   it('transfer token from alice to bob: no approval failure', async () => {
@@ -143,7 +143,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
 
     await expectRevert(
-      this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris }),
+      this.sat.transferFrom(alice, bob, TOKEN_1, { from: miris }),
       'transfer was not approved',
     );
   });
@@ -155,7 +155,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     await this.sat.setApprovalForAll(bob, true, { from: alice });
     await expectRevert(
-      this.sat.transferFrom(alice, bob, TOKEN_1, { from: alice }),
+      this.sat.transferFrom(alice, bob, TOKEN_2, { from: alice }),
       'user is not allowed to transfer',
     );
   });
@@ -165,7 +165,7 @@ contract('SecurityAssetTokenTest', (accounts) => {
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     await this.sat.setApprovalForAll(bob, true, { from: alice });
     await expectRevert(
-      this.sat.transferFrom(alice, bob, TOKEN_0, { from: miris }),
+      this.sat.transferFrom(alice, bob, TOKEN_1, { from: miris }),
       'user is not allowed to receive tokens',
     );
   });
@@ -204,8 +204,8 @@ contract('SecurityAssetTokenTest', (accounts) => {
       (await this.sat.totalValue()) == ETHER_100,
       'total value is wrong after minting',
     );
-    await this.bond.burn(TOKEN_0); // burn bond before sat
-    await this.sat.burn(TOKEN_0, { from: miris });
+    await this.bond.burn(TOKEN_1); // burn bond before sat
+    await this.sat.burn(TOKEN_1, { from: miris });
     assert(
       (await this.sat.totalValue()) == ETHER_0,
       'total value must be 0 again',

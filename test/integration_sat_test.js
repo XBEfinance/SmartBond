@@ -41,9 +41,9 @@ contract('IntegrationSatTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const MATURITY_LONG = new BN('10000000');
-  const MATURITY_SHORT = new BN('1');
-  const TOKEN_0 = new BN('0');
+  const MATURITY_SHORT = new BN('100');
   const TOKEN_1 = new BN('1');
+  const TOKEN_2 = new BN('2');
 
   const FOUNDERS = [
     yorick,
@@ -150,7 +150,7 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('mint and then burn success', async () => {
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
-    await burnSat(this, TOKEN_0, alice);
+    await burnSat(this, TOKEN_1, alice);
   });
 
   it('mint to several different users', async () => {
@@ -187,53 +187,53 @@ contract('IntegrationSatTest', (accounts) => {
       await mintSat(this, alice, ETHER_100, MATURITY_LONG);
     }
 
-    for (i = 1; i < n; i++) {
+    for (i = 2; i < n; i++) {
       await burnSat(this, new BN(i), alice);
     }
 
-    await burnSat(this, TOKEN_0, alice);
+    await burnSat(this, TOKEN_1, alice);
   });
 
   it('single transfer success', async () => {
-    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 does not exist');
+    assert(!await this.bond.hasToken(TOKEN_1), 'token 0 does not exist');
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
-    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be alice').equal(alice);
-    await approve(this, TOKEN_0, alice, bob);
-    await transferToken(this, TOKEN_0, alice, bob);
-    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be bob').equal(bob);
+    expect(await this.sat.ownerOf(TOKEN_1), 'owner must be alice').equal(alice);
+    await approve(this, TOKEN_1, alice, bob);
+    await transferToken(this, TOKEN_1, alice, bob);
+    expect(await this.sat.ownerOf(TOKEN_1), 'owner must be bob').equal(bob);
   });
 
   it('transfer approved for all success', async () => {
-    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 does not exist');
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
-    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be alice').equal(alice);
-
-    assert(!await this.bond.hasToken(TOKEN_1), 'token 1 does not exist');
+    assert(!await this.bond.hasToken(TOKEN_1), 'token 0 does not exist');
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
     expect(await this.sat.ownerOf(TOKEN_1), 'owner must be alice').equal(alice);
 
-    await approveForAll(this, alice, bob);
-    await transferToken(this, TOKEN_0, alice, bob);
-    await transferToken(this, TOKEN_1, alice, bob);
+    assert(!await this.bond.hasToken(TOKEN_2), 'token 1 does not exist');
+    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    expect(await this.sat.ownerOf(TOKEN_2), 'owner must be alice').equal(alice);
 
-    expect(await this.sat.ownerOf(TOKEN_0), 'owner must be bob').equal(bob);
+    await approveForAll(this, alice, bob);
+    await transferToken(this, TOKEN_1, alice, bob);
+    await transferToken(this, TOKEN_2, alice, bob);
+
     expect(await this.sat.ownerOf(TOKEN_1), 'owner must be bob').equal(bob);
+    expect(await this.sat.ownerOf(TOKEN_2), 'owner must be bob').equal(bob);
   });
 
 
   it('withdraw before maturity ends', async () => {
     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
-    assert(await this.bond.hasToken(TOKEN_0), 'bond token 0 exists');
-    expect(await this.sat.ownerOf(TOKEN_0), 'alice owns sat token 0').equal(alice);
+    assert(await this.bond.hasToken(TOKEN_1), 'bond token 0 exists');
+    expect(await this.sat.ownerOf(TOKEN_1), 'alice owns sat token 0').equal(alice);
 
-    await this.ddp.withdraw(TOKEN_0, { from: alice });
+    await this.ddp.withdraw(TOKEN_1, { from: alice });
 
-    expect(await this.sat.ownerOf(TOKEN_0), 'alice still owns sat token 0').equal(alice);
-    assert(!await this.bond.hasToken(TOKEN_0), 'token 0 was burned');
+    expect(await this.sat.ownerOf(TOKEN_1), 'alice still owns sat token 0').equal(alice);
+    assert(!await this.bond.hasToken(TOKEN_1), 'token 0 was burned');
 
-    await this.multisig.burnSecurityAssetToken(TOKEN_0, { from: operator });
+    await this.multisig.burnSecurityAssetToken(TOKEN_1, { from: operator });
     await expectRevert(
-      this.sat.ownerOf(TOKEN_0),
+      this.sat.ownerOf(TOKEN_1),
       'owner query for nonexistent token'
     );
   });
@@ -247,7 +247,7 @@ contract('IntegrationSatTest', (accounts) => {
     await increaseTime(2*DAY);
 
     await expectRevert(
-      this.ddp.withdraw(TOKEN_0, { from: bob }),
+      this.ddp.withdraw(TOKEN_1, { from: bob }),
       'not enough EURxb to withdraw',
     );
   });
@@ -258,7 +258,7 @@ contract('IntegrationSatTest', (accounts) => {
     await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
     await expectRevert(
-      this.ddp.withdraw(TOKEN_0, { from: bob }),
+      this.ddp.withdraw(TOKEN_1, { from: bob }),
       'claim period is not finished yet',
     );
   });
@@ -270,7 +270,7 @@ contract('IntegrationSatTest', (accounts) => {
 
     await increaseTime(2*DAY);
 
-    await this.ddp.withdraw(TOKEN_0, { from: bob });
+    await this.ddp.withdraw(TOKEN_1, { from: bob });
   });
 
   // takes 3 hours, do not uncomment if not absolutely necessarily
