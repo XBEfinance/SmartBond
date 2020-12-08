@@ -82,7 +82,7 @@ contract DDP is IDDP, AccessControl, Initializable {
                 IAllowList(_allowList).isAllowedAccount(user),
                 "user is not allowed");
             require(
-                block.timestamp <= maturity + _claimPeriod,
+                block.timestamp > maturity + _claimPeriod,
                 "claim period is not finished yet");
         }
 

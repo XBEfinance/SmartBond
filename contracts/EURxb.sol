@@ -4,8 +4,10 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./templates/OverrideERC20.sol";
+import "./interfaces/IEURxb.sol";
 import "./libraries/LinkedList.sol";
+import "./templates/Initializable.sol";
+import "./templates/OverrideERC20.sol";
 
 import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
 
@@ -14,7 +16,7 @@ import { TokenAccessRoles } from "./libraries/TokenAccessRoles.sol";
  * @title EURxb
  * @dev EURxb token
  */
-contract EURxb is AccessControl, OverrideERC20 {
+contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     using SafeMath for uint256;
     using Address for address;
     using LinkedList for LinkedList.List;
@@ -43,12 +45,7 @@ contract EURxb is AccessControl, OverrideERC20 {
         _setupRole(TokenAccessRoles.admin(), admin);
     }
 
-    function configure(address ddp) external {
-        require(
-            hasRole(TokenAccessRoles.admin(), _msgSender()),
-            "Caller is not an admin"
-        );
-
+    function configure(address ddp) external initializer {
         _ddp = ddp;
 
         _setupRole(TokenAccessRoles.minter(), ddp);
@@ -304,7 +301,7 @@ contract EURxb is AccessControl, OverrideERC20 {
      * @param account user address
      * @param amount number of tokens
      */
-    function mint(address account, uint256 amount) public {
+    function mint(address account, uint256 amount) public override {
         require(
             hasRole(TokenAccessRoles.minter(), _msgSender()),
             "Caller is not an minter"
@@ -322,7 +319,7 @@ contract EURxb is AccessControl, OverrideERC20 {
      * @param account user address
      * @param amount number of tokens
      */
-    function burn(address account, uint256 amount) public {
+    function burn(address account, uint256 amount) public override {
         require(
             hasRole(TokenAccessRoles.burner(), _msgSender()),
             "Caller is not an burner"

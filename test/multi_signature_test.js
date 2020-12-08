@@ -38,8 +38,8 @@ contract('MultiSignatureTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const DATE_SHIFT = new BN('10000');
-  const TOKEN_0 = new BN('0');
-  const TOKEN_1 = new BN('1');
+  const TOKEN_1 = new BN('0');
+  const TOKEN_2 = new BN('2');
   const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
   beforeEach(async () => {
@@ -172,7 +172,7 @@ contract('MultiSignatureTest', (accounts) => {
 
   it('burn success', async () => {
     const { tx } = await this.multisig.burnSecurityAssetToken(
-      TOKEN_0,
+      TOKEN_1,
       { from: operator },
     );
 
@@ -180,13 +180,13 @@ contract('MultiSignatureTest', (accounts) => {
       tx,
       this.sat,
       'BurnInvoked',
-      { tokenId: TOKEN_0 },
+      { tokenId: TOKEN_1 },
     );
   });
 
   it('non-operator burn failure', async () => {
     await expectRevert(
-      this.multisig.burnSecurityAssetToken(TOKEN_0, { from: bob }),
+      this.multisig.burnSecurityAssetToken(TOKEN_1, { from: bob }),
       'user is not the operator',
     );
   });
@@ -202,7 +202,7 @@ contract('MultiSignatureTest', (accounts) => {
     const { tx } = await this.multisig.transferSecurityAssetToken(
       alice,
       bob,
-      TOKEN_0,
+      TOKEN_1,
       { from: operator },
     );
 
@@ -210,7 +210,7 @@ contract('MultiSignatureTest', (accounts) => {
       tx,
       this.sat,
       'TransferInvoked',
-      { from: alice, to: bob, tokenId: TOKEN_0 },
+      { from: alice, to: bob, tokenId: TOKEN_1 },
     );
   });
 
@@ -225,7 +225,7 @@ contract('MultiSignatureTest', (accounts) => {
       this.multisig.transferSecurityAssetToken(
         alice,
         bob,
-        TOKEN_0,
+        TOKEN_1,
         { from: bob },
       ),
       'user is not the operator',

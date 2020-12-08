@@ -36,8 +36,8 @@ contract('OperatorVoteTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const DATE_SHIFT = new BN('10000');
-  const TOKEN_0 = new BN('0');
   const TOKEN_1 = new BN('1');
+  const TOKEN_2 = new BN('2');
   const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
   beforeEach(async () => {

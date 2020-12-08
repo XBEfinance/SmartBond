@@ -28,8 +28,8 @@ contract('BondTokenTest', (accounts) => {
   const ETHER_100 = web3.utils.toWei('100', 'ether');
   const ETHER_0 = web3.utils.toWei('0', 'ether');
   const DATE_SHIFT = new BN('10000');
-  const TOKEN_0 = '0';
-  const TOKEN_1 = '1';
+  const TOKEN_1 = new BN('1');
+  const TOKEN_2 = new BN('2');
 
   beforeEach(async () => {
     this.list = await AllowList.new(miris);
@@ -47,13 +47,13 @@ contract('BondTokenTest', (accounts) => {
   // just mint sat, which mints bond and check token info
   it('mint new SAT and Bond tokens', async () => {
     await this.list.allowAccount(alice, { from: miris });
-    assert(!await this.bond.hasToken(TOKEN_0),
+    assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
     // check bond info
-    const { value, interest } = await this.bond.getTokenInfo(TOKEN_0);
+    const { value, interest } = await this.bond.getTokenInfo(TOKEN_1);
     const expectedValue = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
     expect(value, 'wrong bond value')
       .to.be.bignumber.equal(expectedValue);
@@ -67,40 +67,40 @@ contract('BondTokenTest', (accounts) => {
   // ensure that mint bond invokes ddp.deposit()
   it('during mint ddp.deposit() is invoked', async () => {
     await this.list.allowAccount(alice, { from: miris });
-    assert(!await this.bond.hasToken(TOKEN_0),
+    assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
     const { tx } = await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    const { value, interest, maturity } = await this.bond.getTokenInfo(TOKEN_0);
+    const { value, interest, maturity } = await this.bond.getTokenInfo(TOKEN_1);
 
     expectEvent
       .inTransaction(
         tx,
         this.ddp,
         'DepositInvoked',
-        { tokenId: TOKEN_0, value: value, maturityEnds: maturity },
+        { tokenId: TOKEN_1, value: value, maturityEnds: maturity },
       );
   });
 
   it('id of new token increases', async () => {
     await this.list.allowAccount(alice, { from: miris });
-    assert(!await this.bond.hasToken(TOKEN_0),
-      'bond token must not exist at this time point');
     assert(!await this.bond.hasToken(TOKEN_1),
+      'bond token must not exist at this time point');
+    assert(!await this.bond.hasToken(TOKEN_2),
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    assert(await this.bond.hasToken(TOKEN_2), 'Bond token 0 must be created');
   });
 
   it('Bond burn success', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
-    await this.ddp.burnToken(TOKEN_0);
-    assert(!await this.bond.hasToken(TOKEN_0));
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    await this.ddp.burnToken(TOKEN_1);
+    assert(!await this.bond.hasToken(TOKEN_1));
   });
 
   it('total value increases after mint and decreases after burn', async () => {
@@ -120,11 +120,11 @@ contract('BondTokenTest', (accounts) => {
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(value2);
 
-    await this.ddp.burnToken(TOKEN_0);
+    await this.ddp.burnToken(TOKEN_1);
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(value1);
 
-    await this.ddp.burnToken(TOKEN_1);
+    await this.ddp.burnToken(TOKEN_2);
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(ETHER_0);
   });
@@ -133,18 +133,18 @@ contract('BondTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.list.allowAccount(bob, { from: miris });
 
-    assert(!await this.bond.hasToken(TOKEN_0),
+    assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
 
-    const { tx } = await this.ddp.callTransfer(alice, bob, TOKEN_0);
+    const { tx } = await this.ddp.callTransfer(alice, bob, TOKEN_1);
     await expectEvent.inTransaction(
       tx,
       this.bond,
       'Transfer',
-      { from: alice, to: bob, tokenId: TOKEN_0 },
+      { from: alice, to: bob, tokenId: TOKEN_1 },
     );
   });
 
@@ -172,9 +172,9 @@ contract('BondTokenTest', (accounts) => {
   it('Non-burner cannot burn', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
     await expectRevert(
-      this.bond.burn(TOKEN_0, { from: bob }),
+      this.bond.burn(TOKEN_1, { from: bob }),
       'user is not allowed to burn tokens',
     );
   });
@@ -184,14 +184,14 @@ contract('BondTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.list.allowAccount(bob, { from: miris });
 
-    assert(!await this.bond.hasToken(TOKEN_1),
+    assert(!await this.bond.hasToken(TOKEN_2),
       'bond token `1` does not exist');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0),
+    assert(await this.bond.hasToken(TOKEN_1),
       'Bond token 0 must be created');
 
-    assert(!await this.bond.hasToken(TOKEN_1),
+    assert(!await this.bond.hasToken(TOKEN_2),
       'bond token `1` still does not exist');
   });
 
@@ -200,17 +200,17 @@ contract('BondTokenTest', (accounts) => {
     await this.list.allowAccount(alice, { from: miris });
     await this.list.allowAccount(bob, { from: miris });
 
-    assert(!await this.bond.hasToken(TOKEN_0),
+    assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
 
     await expectRevert(
       this.bond.transferFrom(
         alice,
         bob,
-        TOKEN_0,
+        TOKEN_1,
         { from: alice },
       ),
       'user is not allowed to transfer tokens',
@@ -220,14 +220,14 @@ contract('BondTokenTest', (accounts) => {
   it('user is not allowed to receive tokens failure', async () => {
     await this.list.allowAccount(alice, { from: miris });
 
-    assert(!await this.bond.hasToken(TOKEN_0),
+    assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_0), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
 
     await expectRevert(
-      this.ddp.callTransfer(alice, bob, TOKEN_0),
+      this.ddp.callTransfer(alice, bob, TOKEN_1),
       'user is not allowed to receive tokens',
     );
   });
@@ -235,29 +235,29 @@ contract('BondTokenTest', (accounts) => {
   // prohibited approve operations
   it('approve is not supported', async () => {
     await expectRevert(
-      this.bond.approve(alice, ETHER_100), 
-      'method is not supported'
+      this.bond.approve(alice, ETHER_100),
+      'method is not supported',
     );
   });
 
   it('getApproved is not supported', async () => {
     await expectRevert(
-      this.bond.getApproved(alice), 
-      'method is not supported'
+      this.bond.getApproved(alice),
+      'method is not supported',
     );
   });
 
   it('setApprovalForAll is not supported', async () => {
     await expectRevert(
-      this.bond.setApprovalForAll(alice, true), 
-      'method is not supported'
+      this.bond.setApprovalForAll(alice, true),
+      'method is not supported',
     );
   });
 
   it('isApprovedForAll is not supported', async () => {
     await expectRevert(
-      this.bond.setApprovalForAll(alice, bob), 
-      'method is not supported'
+      this.bond.setApprovalForAll(alice, bob),
+      'method is not supported',
     );
   });
 });
