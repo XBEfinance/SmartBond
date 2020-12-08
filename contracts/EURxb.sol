@@ -55,113 +55,61 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     /**
      * @dev Return countMaturity
      */
-    function countMaturity() public view returns (uint256) {
+    function countMaturity() external view returns (uint256) {
         return _countMaturity;
     }
 
     /**
      * @dev Return totalActiveValue
      */
-    function totalActiveValue() public view returns (uint256) {
+    function totalActiveValue() external view returns (uint256) {
         return _totalActiveValue;
     }
 
     /**
      * @dev Return annualInterest
      */
-    function annualInterest() public view returns (uint256) {
+    function annualInterest() external view returns (uint256) {
         return _annualInterest;
     }
 
     /**
      * @dev Return accrualTimestamp
      */
-    function accrualTimestamp() public view returns (uint256) {
+    function accrualTimestamp() external view returns (uint256) {
         return _accrualTimestamp;
     }
 
     /**
      * @dev Return expIndex
      */
-    function expIndex() public view returns (uint256) {
+    function expIndex() external view returns (uint256) {
         return _expIndex;
     }
 
     /**
      * @dev Return first added maturity
      */
-    function getFirstMaturity() public view returns (uint256) {
+    function getFirstMaturity() external view returns (uint256) {
         uint256 head = _list.getHead();
-        uint256 maturityEnd;
-        (, maturityEnd, , ) = _list.getNodeValue(head);
+        (, uint256 maturityEnd, , ) = _list.getNodeValue(head);
         return maturityEnd;
     }
 
     /**
      * @dev Return last added maturity
      */
-    function getLastMaturity() public view returns (uint256) {
+    function getLastMaturity() external view returns (uint256) {
         uint256 end = _list.getEnd();
-        uint256 maturityEnd;
-        (, maturityEnd, , ) = _list.getNodeValue(end);
+        (, uint256 maturityEnd, , ) = _list.getNodeValue(end);
         return maturityEnd;
-    }
-
-    /**
-     * @dev Return user balance
-     * @param account user address
-     */
-    function balanceOf(address account) public override view returns (uint256) {
-        return balanceByTime(account, block.timestamp);
-    }
-
-    /**
-     * @dev User balance calculation
-     * @param account user address
-     * @param timestamp date
-     */
-    function balanceByTime(address account, uint256 timestamp)
-        public
-        view
-        returns (uint256)
-    {
-        if (_balances[account] > 0 && _holderIndex[account] > 0) {
-            uint256 tempTotalActiveValue = _totalActiveValue;
-            uint256 head = _list.getHead();
-            while (_list.listExists()) {
-                uint256 amount;
-                uint256 maturityEnd;
-                uint256 next;
-                (amount, maturityEnd, , next) = _list.getNodeValue(head);
-
-                if (next == 0) {
-                    break;
-                }
-
-                if (maturityEnd <= now) {
-                    uint256 deleteAmount = _deleteMaturity[maturityEnd];
-                    tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
-                    head = next;
-                } else {
-                    break;
-                }
-            }
-            uint256 newExpIndex = _calculateInterest(
-                timestamp,
-                _annualInterest.mul(tempTotalActiveValue),
-                _expIndex
-            );
-            return
-                _balances[account].mul(newExpIndex).div(_holderIndex[account]);
-        }
-        return super.balanceOf(account);
     }
 
     /**
      * @dev Set countMaturity
      * @param count maturity
      */
-    function setCountMaturity(uint256 count) public {
+    function setCountMaturity(uint256 count) external {
         require(
             hasRole(TokenAccessRoles.admin(), _msgSender()),
             "Caller is not an admin"
@@ -171,37 +119,39 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     }
 
     /**
-     * @dev Calculation of accrued interest
+     * @dev Mint tokens
+     * @param account user address
+     * @param amount number of tokens
      */
-    function accrueInterest() public {
-        for (uint256 i = 0; i < _countMaturity && _list.listExists(); i++) {
-            uint256 head = _list.getHead();
-            uint256 amount;
-            uint256 maturityEnd;
-            uint256 next;
-            (amount, maturityEnd, , next) = _list.getNodeValue(head);
-
-            if (next == 0) {
-                break;
-            }
-
-            if (maturityEnd <= now) {
-                uint256 deleteAmount = _deleteMaturity[maturityEnd];
-                _deleteMaturity[maturityEnd] = 0;
-                _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
-                _list.setHead(next);
-            } else {
-                break;
-            }
-        }
-
-        _expIndex = _calculateInterest(
-            block.timestamp,
-            _annualInterest.mul(_totalActiveValue),
-            _expIndex
+    function mint(address account, uint256 amount) external override {
+        require(
+            hasRole(TokenAccessRoles.minter(), _msgSender()),
+            "Caller is not an minter"
         );
 
-        _accrualTimestamp = block.timestamp;
+        accrueInterest();
+        if (account != address(0)) {
+            _updateBalance(account);
+        }
+        super._mint(account, amount);
+    }
+
+    /**
+     * @dev Burn tokens
+     * @param account user address
+     * @param amount number of tokens
+     */
+    function burn(address account, uint256 amount) external override {
+        require(
+            hasRole(TokenAccessRoles.burner(), _msgSender()),
+            "Caller is not an burner"
+        );
+
+        accrueInterest();
+        if (account != address(0)) {
+            _updateBalance(account);
+        }
+        super._burn(account, amount);
     }
 
     /**
@@ -209,7 +159,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param amount number of tokens
      * @param maturityEnd end date of interest accrual
      */
-    function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
+    function addNewMaturity(uint256 amount, uint256 maturityEnd) external {
         require(_msgSender() == _ddp, "Caller is not allowed to addNewMaturity");
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
@@ -222,9 +172,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             // TODO: maybe many elements
             // TODO: maybe you need to add close dates
             while (true) {
-                uint256 maturityNode;
-                uint256 prevIDNode;
-                (, maturityNode, prevIDNode, ) = _list.getNodeValue(id);
+                (, uint256 maturityNode, uint256 prevIDNode, ) = _list.getNodeValue(id);
 
                 if (maturityNode == maturityEnd) {
                     _list.updateElementAmount(id, amount);
@@ -269,7 +217,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param amount number of tokens
      * @param maturityEnd end date of interest accrual
      */
-    function removeMaturity(uint256 amount, uint256 maturityEnd) public {
+    function removeMaturity(uint256 amount, uint256 maturityEnd) external {
         require(_msgSender() == _ddp, "Caller is not allowed to removeMaturity");
         require(amount > 0, "The amount must be greater than zero");
         require(maturityEnd > 0, "End date must be greater than zero");
@@ -277,6 +225,84 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
 
         _totalActiveValue = _totalActiveValue.sub(amount);
         _deleteMaturity[maturityEnd] = _deleteMaturity[maturityEnd].add(amount);
+    }
+
+    /**
+     * @dev Return user balance
+     * @param account user address
+     */
+    function balanceOf(address account) public override view returns (uint256) {
+        return balanceByTime(account, block.timestamp);
+    }
+
+    /**
+     * @dev User balance calculation
+     * @param account user address
+     * @param timestamp date
+     */
+    function balanceByTime(address account, uint256 timestamp)
+        public
+        view
+        returns (uint256)
+    {
+        if (_balances[account] > 0 && _holderIndex[account] > 0) {
+            uint256 tempTotalActiveValue = _totalActiveValue;
+            uint256 head = _list.getHead();
+            while (_list.listExists()) {
+                (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+
+                if (next == 0) {
+                    break;
+                }
+
+                if (maturityEnd <= now) {
+                    uint256 deleteAmount = _deleteMaturity[maturityEnd];
+                    tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
+                    head = next;
+                } else {
+                    break;
+                }
+            }
+            uint256 newExpIndex = _calculateInterest(
+                timestamp,
+                _annualInterest.mul(tempTotalActiveValue),
+                _expIndex
+            );
+            return
+                _balances[account].mul(newExpIndex).div(_holderIndex[account]);
+        }
+        return super.balanceOf(account);
+    }
+
+    /**
+     * @dev Calculation of accrued interest
+     */
+    function accrueInterest() public {
+        for (uint256 i = 0; i < _countMaturity && _list.listExists(); i++) {
+            uint256 head = _list.getHead();
+            (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+
+            if (next == 0) {
+                break;
+            }
+
+            if (maturityEnd <= now) {
+                uint256 deleteAmount = _deleteMaturity[maturityEnd];
+                _deleteMaturity[maturityEnd] = 0;
+                _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
+                _list.setHead(next);
+            } else {
+                break;
+            }
+        }
+
+        _expIndex = _calculateInterest(
+            block.timestamp,
+            _annualInterest.mul(_totalActiveValue),
+            _expIndex
+        );
+
+        _accrualTimestamp = block.timestamp;
     }
 
     /**
@@ -294,42 +320,6 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             _updateBalance(recipient);
         }
         super._transfer(sender, recipient, amount);
-    }
-
-    /**
-     * @dev Mint tokens
-     * @param account user address
-     * @param amount number of tokens
-     */
-    function mint(address account, uint256 amount) public override {
-        require(
-            hasRole(TokenAccessRoles.minter(), _msgSender()),
-            "Caller is not an minter"
-        );
-
-        accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
-        super._mint(account, amount);
-    }
-
-    /**
-     * @dev Burn tokens
-     * @param account user address
-     * @param amount number of tokens
-     */
-    function burn(address account, uint256 amount) public override {
-        require(
-            hasRole(TokenAccessRoles.burner(), _msgSender()),
-            "Caller is not an burner"
-        );
-
-        accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
-        super._burn(account, amount);
     }
 
     /**
