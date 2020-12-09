@@ -23,21 +23,23 @@ contract('Router', ([owner, alice, bob]) => {
     assert.equal(await eurxb.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
     assert.equal(await usdt.balanceOf(owner), web3.utils.toWei('12042213561', 'ether'));
 
-    let timestamp = await currentTimestamp();
-    timestamp += DAY;
+    await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
+    await usdt.approve(router.address, web3.utils.toWei('12042213561', 'ether'));
+
+    const timestamp = (await currentTimestamp()) + DAY;
     await router.addLiquidity(
       eurxb.address,
       usdt.address,
-      web3.utils.toWei('1000', 'ether'),
-      web3.utils.toWei('1000', 'ether'),
+      web3.utils.toWei('10000', 'ether'),
+      web3.utils.toWei('10000', 'ether'),
       0,
       0,
       alice,
-      timestamp,
+      timestamp
     );
 
     const factory = await UniswapV2Factory.deployed();
-    const pairAddress = factory.allPairs.call(new BN('0'));
+    const pairAddress = await factory.allPairs.call(new BN('0'));
     console.log(pairAddress);
   });
 });

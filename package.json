@@ -23,6 +23,7 @@
     "audit": "0.0.6"
   },
   "devDependencies": {
+    "@ethersproject/solidity": "^5.0.7",
     "@openzeppelin/test-helpers": "^0.5.9",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
