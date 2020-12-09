@@ -111,6 +111,20 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     }
 
     /**
+    * @dev Return first maturity id
+    */
+    function getFirstMaturityId() external view returns (uint256) {
+        return _list.getHead();
+    }
+
+    /**
+    * @dev Return maturity info by id
+    */
+    function getMaturityInfo(uint256 id) external view returns (uint256 amount, uint256 maturity, uint256 prev ,uint256 next) {
+        (amount, maturity, prev , next) = _list.getNodeValue(id);
+    }
+
+    /**
      * @dev Set countMaturity
      * @param count maturity
      */
@@ -174,7 +188,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
         }
 
         uint256 id = _list.getEnd();
-        (, uint256 maturityNode, , uint256 nextIDNode) = _list.getNodeValue(id);
+        (, uint256 maturityNode, uint256 prevIDNode, uint256 nextIDNode) = _list.getNodeValue(id);
 
         if (maturityNode < maturityEnd) { // Check end list
             _list.pushBack(amount, maturityEnd);
@@ -194,7 +208,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
                 break;
             }
 
-            (, maturityNode, id, nextIDNode) = _list.getNodeValue(id);
+            id = prevIDNode;
+            (, maturityNode, prevIDNode, nextIDNode) = _list.getNodeValue(id);
 
             if (maturityNode < maturityEnd) { // Check between periods
                 _list.pushBefore(nextIDNode, amount, maturityEnd);
