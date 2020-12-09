@@ -1,17 +1,20 @@
-const BFactory = artifacts.require('./BFactory');
-const TetherToken = artifacts.require('./TetherToken'); // USDT
-const BUSDImplementation = artifacts.require('./BUSDImplementation'); // BUSD
-const FiatTokenV2 = artifacts.require('./FiatTokenV2'); // USDC
-const Dai = artifacts.require('./Dai'); // DAI
+const TransferHelper = artifacts.require('TransferHelper'); // TransferHelper Uniswap library
+const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
+const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
+const BFactory = artifacts.require('BFactory'); // Balancer
+const TetherToken = artifacts.require('TetherToken'); // USDT
+const BUSDImplementation = artifacts.require('BUSDImplementation'); // BUSD
+const FiatTokenV2 = artifacts.require('FiatTokenV2'); // USDC
+const Dai = artifacts.require('Dai'); // DAI
 
-const LinkedList = artifacts.require('./LinkedList');
-const MockLinkedList = artifacts.require('./MockLinkedList');
+const LinkedList = artifacts.require('LinkedList');
+const MockLinkedList = artifacts.require('MockLinkedList');
 
-const EURxb = artifacts.require('./EURxb');
-const XBG = artifacts.require('./XBG');
+const EURxb = artifacts.require('EURxb');
+const XBG = artifacts.require('XBG');
 
-const Router = artifacts.require('./Router');
-const StakingManager = artifacts.require('./StakingManager');
+const Router = artifacts.require('Router');
+const StakingManager = artifacts.require('StakingManager');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondTokenMock = artifacts.require('BondTokenMock');
@@ -20,7 +23,7 @@ const TokenAccessRoles = artifacts.require('TokenAccessRoles');
 const DDPMock = artifacts.require('DDPMock');
 const DDP = artifacts.require('DDP');
 const EURxbMock = artifacts.require('EURxbMock');
-
+const MockToken = artifacts.require('MockToken');
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -29,10 +32,16 @@ const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
 const teamAddress = "0x0000000000000000000000000000000000000000";
 
-module.exports = function (deployer) {
+module.exports = function (deployer, network, [owner]) {
   deployer.then(async () => {
+    await deployer.deploy(TransferHelper);
+    await deployer.link(TransferHelper, UniswapV2Router02);
+    const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
+    const wethMock = await deployer.deploy(MockToken, 'Wrapper Eth', 'WETH', web3.utils.toWei('1000000', 'ether'));
+    await deployer.deploy(UniswapV2Router02, uniswapFactory.address, wethMock.address);
+
     await deployer.deploy(BFactory);
-    await deployer.deploy(TetherToken, web3.utils.toWei('12042213561', 'ether'), "Tether USD", "USDT", 6);
+    await deployer.deploy(TetherToken, web3.utils.toWei('12042213561', 'ether'), 'Tether USD', 'USDT', 6);
     await deployer.deploy(BUSDImplementation);
     await deployer.deploy(FiatTokenV2);
     await deployer.deploy(Dai, 1);

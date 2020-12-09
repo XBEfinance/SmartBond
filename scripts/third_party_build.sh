@@ -2,6 +2,18 @@
 
 source ./scripts/utils/generate_truffle_config.sh
 
+# build uniswap
+generate_truffle_config "0.5.16" ".\/third-party-contracts\/Uniswap"
+truffle compile
+
+# build uniswap-lib
+generate_truffle_config "0.6.12" ".\/third-party-contracts\/UniswapLib"
+truffle compile
+
+# build uniswap-router
+generate_truffle_config "0.6.6" ".\/third-party-contracts\/UniswapRouter" "true" 1
+truffle compile
+
 # build balancer
 generate_truffle_config "0.5.12" ".\/third-party-contracts\/balancer" "true" 1
 truffle compile
