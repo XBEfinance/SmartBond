@@ -32,7 +32,8 @@ contract('Router', ([owner, alice, bob]) => {
     await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
     await usdt.approve(router.address, web3.utils.toWei('12042213561', 'ether'));
 
-    const timestamp = (await currentTimestamp()) + DAY;
+    let timestamp = await currentTimestamp();
+    timestamp += DAY;
     await router.addLiquidity(
       eurxb.address,
       usdt.address,
@@ -41,7 +42,7 @@ contract('Router', ([owner, alice, bob]) => {
       0,
       0,
       alice,
-      timestamp
+      timestamp,
     );
 
     // const factory = await UniswapV2Factory.deployed();
