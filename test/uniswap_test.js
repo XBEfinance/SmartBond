@@ -1,9 +1,14 @@
 const { assert } = require('chai');
 
-const { currentTimestamp } = require('./common');
+const {
+  BN,
+} = require('@openzeppelin/test-helpers');
+
+const { currentTimestamp, DAY } = require('./common');
 
 const TetherToken = artifacts.require('TetherToken');
-const UniswapV2Router02 = artifacts.require('./UniswapV2Router02');
+const UniswapV2Factory = artifacts.require('UniswapV2Factory');
+const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const EURxb = artifacts.require('EURxb');
 
 contract('Router', ([owner, alice, bob]) => {
@@ -18,7 +23,9 @@ contract('Router', ([owner, alice, bob]) => {
     assert.equal(await eurxb.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
     assert.equal(await usdt.balanceOf(owner), web3.utils.toWei('12042213561', 'ether'));
 
-    router.addLiquidity(
+    let timestamp = await currentTimestamp();
+    timestamp += DAY;
+    await router.addLiquidity(
       eurxb.address,
       usdt.address,
       web3.utils.toWei('1000', 'ether'),
@@ -26,7 +33,11 @@ contract('Router', ([owner, alice, bob]) => {
       0,
       0,
       alice,
-      currentTimestamp + 86400,
+      timestamp,
     );
+
+    const factory = await UniswapV2Factory.deployed();
+    const pairAddress = factory.allPairs.call(new BN('0'));
+    console.log(pairAddress);
   });
 });
