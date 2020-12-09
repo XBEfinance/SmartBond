@@ -8,6 +8,7 @@ const { currentTimestamp, DAY } = require('./common');
 
 const TetherToken = artifacts.require('TetherToken');
 const UniswapV2Factory = artifacts.require('UniswapV2Factory');
+const UniswapV2Pair = artifacts.require('UniswapV2Pair');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const EURxb = artifacts.require('EURxb');
 
@@ -40,6 +41,24 @@ contract('Router', ([owner, alice, bob]) => {
 
     const factory = await UniswapV2Factory.deployed();
     const pairAddress = await factory.allPairs.call(new BN('0'));
-    console.log(pairAddress);
+    const pair = await UniswapV2Pair.at(pairAddress);
+
+    const balanceAlice = await pair.balanceOf(alice);
+    console.log('balanceAlice: ', balanceAlice.toString());
+
+    await router.addLiquidity(
+      eurxb.address,
+      usdt.address,
+      web3.utils.toWei('10000', 'ether'),
+      web3.utils.toWei('5000', 'ether'),
+      0,
+      0,
+      bob,
+      timestamp
+    );
+
+
+    const balanceBob = await pair.balanceOf(bob);
+    console.log('balanceBob: ', balanceBob.toString());
   });
 });
