@@ -17,6 +17,7 @@ contract('Router', ([owner, alice, bob]) => {
 
     assert.equal(await eurxb.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
     assert.equal(await usdt.balanceOf(owner), web3.utils.toWei('12042213561', 'ether'));
+
     router.addLiquidity(
       eurxb.address,
       usdt.address,

@@ -1,4 +1,5 @@
 const TransferHelper = artifacts.require('TransferHelper'); // TransferHelper Uniswap library
+const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
 const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
 const BFactory = artifacts.require('BFactory'); // Balancer
@@ -23,7 +24,6 @@ const TokenAccessRoles = artifacts.require('TokenAccessRoles');
 const DDPMock = artifacts.require('DDPMock');
 const DDP = artifacts.require('DDP');
 const EURxbMock = artifacts.require('EURxbMock');
-const MockToken = artifacts.require('MockToken');
 
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -37,8 +37,8 @@ module.exports = function (deployer, network, [owner]) {
     await deployer.deploy(TransferHelper);
     await deployer.link(TransferHelper, UniswapV2Router02);
     const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
-    const wethMock = await deployer.deploy(MockToken, 'Wrapper Eth', 'WETH', web3.utils.toWei('1000000', 'ether'));
-    await deployer.deploy(UniswapV2Router02, uniswapFactory.address, wethMock.address);
+    const weth = await deployer.deploy(WETH9);
+    await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
 
     await deployer.deploy(BFactory);
     await deployer.deploy(TetherToken, web3.utils.toWei('12042213561', 'ether'), 'Tether USD', 'USDT', 6);
