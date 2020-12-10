@@ -61,7 +61,7 @@ contract('EURxb', (accounts) => {
   it('should return correct balance approximation values', async () => {
     let timestamp = await currentTimestamp();
     timestamp += DAY * daysAYear;
-    
+
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * 182);
     await token.mint(sender, web3.utils.toWei('100', 'ether'));
@@ -277,14 +277,14 @@ contract('EURxb', (accounts) => {
   //   await expectRevert(token.burn(sender, 0, { from: sender }), 'Caller is not an burner');
   // });
 
-  it('should throw an exception when the addNewMaturity is called', async () => {
-    await expectRevert(token.addNewMaturity(0, 0), 'The amount must be greater than zero');
-    await expectRevert(token.addNewMaturity(1, 0), 'End date must be greater than zero');
-  });
-
-  it('should throw an exception when the removeMaturity is called', async () => {
-    await expectRevert(token.removeMaturity(0, 0), 'The amount must be greater than zero');
-    await expectRevert(token.removeMaturity(1, 0), 'End date must be greater than zero');
-    await expectRevert(token.removeMaturity(1, 1), 'The list does not exist');
-  });
+  // it('should throw an exception when the addNewMaturity is called', async () => {
+  //   await expectRevert(token.addNewMaturity(0, 0), 'The amount must be greater than zero');
+  //   await expectRevert(token.addNewMaturity(1, 0), 'End date must be greater than zero');
+  // });
+  //
+  // it('should throw an exception when the removeMaturity is called', async () => {
+  //   await expectRevert(token.removeMaturity(0, 0), 'The amount must be greater than zero');
+  //   await expectRevert(token.removeMaturity(1, 0), 'End date must be greater than zero');
+  //   await expectRevert(token.removeMaturity(1, 1), 'The list does not exist');
+  // });
 });

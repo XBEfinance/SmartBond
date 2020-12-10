@@ -177,8 +177,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param maturityEnd end date of interest accrual
      */
     function addNewMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
-        require(amount > 0, "The amount must be greater than zero");
-        require(maturityEnd > 0, "End date must be greater than zero");
+//        require(amount > 0, "The amount must be greater than zero"); // TODO: check into DDP
+//        require(maturityEnd > 0, "End date must be greater than zero");
 
         _totalActiveValue = _totalActiveValue.add(amount);
 
@@ -224,8 +224,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param maturityEnd end date of interest accrual
      */
     function removeMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
-        require(amount > 0, "The amount must be greater than zero");
-        require(maturityEnd > 0, "End date must be greater than zero");
+//        require(amount > 0, "The amount must be greater than zero"); // TODO: check into DDP
+//        require(maturityEnd > 0, "End date must be greater than zero");
         require(_list.listExists(), "The list does not exist");
 
         _totalActiveValue = _totalActiveValue.sub(amount);
@@ -311,23 +311,6 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     }
 
     /**
-     * @dev Transfer tokens
-     * @param sender user address
-     * @param recipient user address
-     * @param amount number of tokens
-     */
-    function _transfer(address sender, address recipient, uint256 amount) internal override {
-        accrueInterest();
-        if (sender != address(0)) {
-            _updateBalance(sender);
-        }
-        if (recipient != address(0)) {
-            _updateBalance(recipient);
-        }
-        super._transfer(sender, recipient, amount);
-    }
-
-    /**
      * @dev Calculate interest
      * @param timestampNow the current date
      * @param interest percent
@@ -338,16 +321,18 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
         view
         returns (uint256)
     {
-        uint256 newExpIndex = prevIndex;
-        if (totalSupply() > 0) {
-            uint256 period = timestampNow.sub(_accrualTimestamp);
-            if (period < 60) {
-                return prevIndex;
-            }
-            uint256 interestFactor = interest.mul(period);
-            newExpIndex = (interestFactor.mul(prevIndex).div(PER_YEAR).div(totalSupply()))
-                .add(prevIndex);
+        if (totalSupply() == 0) {
+            return prevIndex;
         }
+
+        uint256 period = timestampNow.sub(_accrualTimestamp);
+        if (period < 60) {
+            return prevIndex;
+        }
+
+        uint256 interestFactor = interest.mul(period);
+        uint256 newExpIndex = (interestFactor.mul(prevIndex).div(PER_YEAR).div(totalSupply()))
+            .add(prevIndex);
         return newExpIndex;
     }
 
@@ -367,5 +352,22 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             }
         }
         _holderIndex[account] = _expIndex;
+    }
+
+    /**
+     * @dev Transfer tokens
+     * @param sender user address
+     * @param recipient user address
+     * @param amount number of tokens
+     */
+    function _transfer(address sender, address recipient, uint256 amount) internal override {
+        accrueInterest();
+        if (sender != address(0)) {
+            _updateBalance(sender);
+        }
+        if (recipient != address(0)) {
+            _updateBalance(recipient);
+        }
+        super._transfer(sender, recipient, amount);
     }
 }
