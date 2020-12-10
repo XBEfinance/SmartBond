@@ -251,30 +251,39 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
         returns (uint256)
     {
         if (_balances[account] > 0 && _holderIndex[account] > 0) {
-            uint256 tempTotalActiveValue = _totalActiveValue;
+            uint256 currentTotalActiveValue = _totalActiveValue;
+            uint256 currentExpIndex = _expIndex;
             uint256 head = _list.getHead();
-            while (_list.listExists()) {
-                (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+            uint256 currentAccrualTimestamp = _accrualTimestamp;
+            (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+            while (
+                _list.listExists() && maturityEnd <= block.timestamp && currentAccrualTimestamp < maturityEnd
+            ) {
+                currentExpIndex = _calculateInterest(
+                    maturityEnd,
+                    _annualInterest.mul(currentTotalActiveValue),
+                    currentExpIndex,
+                    currentAccrualTimestamp
+                );
+                currentAccrualTimestamp = maturityEnd;
 
-                if (next == 0) {
-                    break;
-                }
+                uint256 deleteAmount = _deletedMaturity[maturityEnd];
+                currentTotalActiveValue = currentTotalActiveValue.sub(amount.sub(deleteAmount));
 
-                if (maturityEnd <= now) {
-                    uint256 deleteAmount = _deletedMaturity[maturityEnd];
-                    tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
-                    head = next;
+                if (next != 0) {
+                    (amount, maturityEnd, , next) = _list.getNodeValue(next);
                 } else {
                     break;
                 }
             }
-            uint256 newExpIndex = _calculateInterest(
+
+            currentExpIndex = _calculateInterest(
                 timestamp,
-                _annualInterest.mul(tempTotalActiveValue),
-                _expIndex
+                _annualInterest.mul(currentTotalActiveValue),
+                currentExpIndex,
+                currentAccrualTimestamp
             );
-            return
-                _balances[account].mul(newExpIndex).div(_holderIndex[account]);
+            return super.balanceOf(account).mul(currentExpIndex).div(_holderIndex[account]);
         }
         return super.balanceOf(account);
     }
@@ -283,30 +292,42 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @dev Calculation of accrued interest
      */
     function accrueInterest() public {
-        for (uint256 i = 0; i < _countMaturity && _list.listExists(); i++) {
-            uint256 head = _list.getHead();
-            (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+        uint256 head = _list.getHead();
+        (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
 
-            if (next == 0) {
+        for (uint256 i = 1;
+            _list.listExists() && maturityEnd <= block.timestamp && _accrualTimestamp < maturityEnd;
+            i++) {
+            _expIndex = _calculateInterest(
+                maturityEnd,
+                _annualInterest.mul(_totalActiveValue),
+                _expIndex,
+                _accrualTimestamp
+            );
+            _accrualTimestamp = maturityEnd;
+
+            uint256 deleteAmount = _deletedMaturity[maturityEnd];
+            _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
+//                delete _deletedMaturity[maturityEnd]; // save for history
+
+            if (next != 0) {
+                _list.setHead(next);
+                (amount, maturityEnd, , next) = _list.getNodeValue(next);
+            } else {
                 break;
             }
 
-            if (maturityEnd <= now) {
-                uint256 deleteAmount = _deletedMaturity[maturityEnd];
-                _deletedMaturity[maturityEnd] = 0;
-                _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
-                _list.setHead(next);
-            } else {
-                break;
+            if (i == _countMaturity) {
+                return; // pagination counter overflow
             }
         }
 
         _expIndex = _calculateInterest(
             block.timestamp,
             _annualInterest.mul(_totalActiveValue),
-            _expIndex
+            _expIndex,
+            _accrualTimestamp
         );
-
         _accrualTimestamp = block.timestamp;
     }
 
@@ -316,7 +337,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param interest percent
      * @param prevIndex previous index
      */
-    function _calculateInterest(uint256 timestampNow, uint256 interest, uint256 prevIndex)
+    function _calculateInterest(uint256 timestampNow, uint256 interest, uint256 prevIndex, uint256 lastAccrualTimestamp)
         internal
         view
         returns (uint256)
@@ -325,7 +346,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             return prevIndex;
         }
 
-        uint256 period = timestampNow.sub(_accrualTimestamp);
+        uint256 period = timestampNow.sub(lastAccrualTimestamp);
         if (period < 60) {
             return prevIndex;
         }
