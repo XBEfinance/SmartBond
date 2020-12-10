@@ -1,4 +1,3 @@
-const TransferHelper = artifacts.require('TransferHelper'); // TransferHelper Uniswap library
 const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
 const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
@@ -34,8 +33,6 @@ const teamAddress = "0x0000000000000000000000000000000000000000";
 
 module.exports = function (deployer, network, [owner]) {
   deployer.then(async () => {
-    await deployer.deploy(TransferHelper);
-    await deployer.link(TransferHelper, UniswapV2Router02);
     const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
     const weth = await deployer.deploy(WETH9);
     await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
