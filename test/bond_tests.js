@@ -51,7 +51,7 @@ contract('BondTokenTest', (accounts) => {
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     // check bond info
     const { value, interest } = await this.bond.getTokenInfo(TOKEN_1);
     const expectedValue = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
@@ -90,15 +90,15 @@ contract('BondTokenTest', (accounts) => {
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_2), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_2), 'Bond token 1 must be created');
   });
 
   it('Bond burn success', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     await this.ddp.burnToken(TOKEN_1);
     assert(!await this.bond.hasToken(TOKEN_1));
   });
@@ -153,26 +153,40 @@ contract('BondTokenTest', (accounts) => {
   // configure
   it('non-admin configure fails', async () => {
     await expectRevert(
-      this.bond.configure(this.sat.address, this.ddp.address, { from: alice }),
-      'caller is not an admin',
+      this.bond.configure(
+        this.list.address,
+        this.sat.address,
+        this.ddp.address,
+        { from: alice },
+      ),
+      'user not allowed to initialize',
     );
   });
 
-  // cannot check for invalid sat and ddp addresses yet
+  it('reinitialization fails', async () => {
+    await expectRevert(
+      this.bond.configure(
+        this.list.address,
+        this.sat.address,
+        this.ddp.address, // use deployer account
+      ),
+      'contract already initialize',
+    );
+  });
 
   // mint
-  // it('non-minter fails to mint', async () => {
-  //   await expectRevert(
-  //     this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris }),
-  //     'user is not allowed to mint',
-  //   );
-  // });
+  it('non-minter fails to mint', async () => {
+    await expectRevert(
+      this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: bob }),
+      'user is not allowed to mint',
+    );
+  });
 
   // burn
   it('Non-burner cannot burn', async () => {
     await this.list.allowAccount(alice, { from: miris });
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     await expectRevert(
       this.bond.burn(TOKEN_1, { from: bob }),
       'user is not allowed to burn tokens',
@@ -185,14 +199,14 @@ contract('BondTokenTest', (accounts) => {
     await this.list.allowAccount(bob, { from: miris });
 
     assert(!await this.bond.hasToken(TOKEN_2),
-      'bond token `1` does not exist');
+      'bond token `2` does not exist');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
     assert(await this.bond.hasToken(TOKEN_1),
-      'Bond token 0 must be created');
+      'Bond token `1` must be created');
 
     assert(!await this.bond.hasToken(TOKEN_2),
-      'bond token `1` still does not exist');
+      'bond token `2` still does not exist');
   });
 
   // transfer
@@ -204,7 +218,7 @@ contract('BondTokenTest', (accounts) => {
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
 
     await expectRevert(
       this.bond.transferFrom(
@@ -224,7 +238,7 @@ contract('BondTokenTest', (accounts) => {
       'bond token must not exist at this time point');
 
     await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
-    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
+    assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
 
     await expectRevert(
       this.ddp.callTransfer(alice, bob, TOKEN_1),

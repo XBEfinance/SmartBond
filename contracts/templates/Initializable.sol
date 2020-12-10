@@ -16,8 +16,8 @@ contract Initializable is Context {
     }
 
     modifier initializer {
-        require(!_isContractInitialized, "contract already initialized");
         require(_msgSender() == _deployer, "user not allowed to initialize");
+        require(!_isContractInitialized, "contract already initialized");
         _;
         _isContractInitialized = true;
     }
