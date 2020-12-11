@@ -18,25 +18,25 @@ contract('EURxb', (accounts) => {
     await token.configure(owner);
   });
 
-  // it('should create EURxb contract and show default parameters', async () => {
-  //   assert.equal(await token.name(), 'EURxb');
-  //   assert.equal(await token.symbol(), 'EURxb');
-  //   assert.equal(await token.decimals(), 18);
-  //   assert.equal(await token.totalSupply(), 0);
-  //
-  //   assert.equal(await token.countMaturity(), 100);
-  //   assert.equal(await token.totalActiveValue(), 0);
-  //   assert.equal(await token.annualInterest(), web3.utils.toWei('70', 'finney'));
-  //   assert.equal(await token.accrualTimestamp(), 0);
-  //   assert.equal(await token.expIndex(), web3.utils.toWei('1', 'ether'));
-  // });
-  //
-  // it('should correct change EURxb parameters', async () => {
-  //   assert.equal(await token.countMaturity(), 100);
-  //   await expectRevert(token.setCountMaturity(0), 'The amount must be greater than zero');
-  //   await token.setCountMaturity(200);
-  //   assert.equal(await token.countMaturity(), 200);
-  // });
+  it('should create EURxb contract and show default parameters', async () => {
+    assert.equal(await token.name(), 'EURxb');
+    assert.equal(await token.symbol(), 'EURxb');
+    assert.equal(await token.decimals(), 18);
+    assert.equal(await token.totalSupply(), 0);
+
+    assert.equal(await token.countMaturity(), 100);
+    assert.equal(await token.totalActiveValue(), 0);
+    assert.equal(await token.annualInterest(), web3.utils.toWei('70', 'finney'));
+    assert.equal(await token.accrualTimestamp(), 0);
+    assert.equal(await token.expIndex(), web3.utils.toWei('1', 'ether'));
+  });
+
+  it('should correct change EURxb parameters', async () => {
+    assert.equal(await token.countMaturity(), 100);
+    await expectRevert(token.setCountMaturity(0), 'The amount must be greater than zero');
+    await token.setCountMaturity(200);
+    assert.equal(await token.countMaturity(), 200);
+  });
 
   it('should return correct balance values', async () => {
     const timestamp = await currentTimestamp();
@@ -44,236 +44,236 @@ contract('EURxb', (accounts) => {
     await token.mint(recipient, web3.utils.toWei('100', 'ether'));
     await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * daysAYear / 2);
     await token.mint(sender, web3.utils.toWei('100', 'ether'));
-    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * daysAYear - DAY);
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * daysAYear + DAY);
 
     let balanceRecipient = await token.balanceOf(recipient);
     assert(balanceRecipient >= web3.utils.toWei('100', 'ether'));
     assert(balanceRecipient < web3.utils.toWei('100.0000000000009', 'ether'));
 
-    // await increaseTime(DAY * daysAYear);
+    await increaseTime(DAY * daysAYear);
 
-    balanceRecipient = await token.balanceByTime(recipient, timestamp + DAY * daysAYear);
-    assert(balanceRecipient > web3.utils.toWei('105.1999999999999', 'ether'));
-    assert(balanceRecipient < web3.utils.toWei('107.000000000009', 'ether'));
+    balanceRecipient = await token.balanceOf(recipient);
+    assert(balanceRecipient > web3.utils.toWei('105.311239999999', 'ether'));
+    assert(balanceRecipient < web3.utils.toWei('105.311250000009', 'ether'));
 
-    const balanceSender = await token.balanceByTime(sender, timestamp + DAY * daysAYear);
-    assert(balanceSender > web3.utils.toWei('105.1999999999999', 'ether'));
-    assert(balanceSender < web3.utils.toWei('105.6990000000009', 'ether'));
+    const balanceSender = await token.balanceOf(sender);
+    assert(balanceSender > web3.utils.toWei('105.311239999999', 'ether'));
+    assert(balanceSender < web3.utils.toWei('105.311250000009', 'ether'));
   });
 
-  // it('should return correct balance approximation values', async () => {
-  //   let timestamp = await currentTimestamp();
-  //   timestamp += DAY * daysAYear;
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * 182);
-  //   await token.mint(sender, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * 364);
-  //
-  //   let year = daysAYear;
-  //   while (year > 0) {
-  //     /* eslint-disable */
-  //     await increaseTime(DAY);
-  //     await token.accrueInterest();
-  //     year--;
-  //     /* eslint-enable */
-  //   }
-  //
-  //   // TODO
-  //   // const balance = await token.balanceOf(recipient);
-  //   // assert(balance > web3.utils.toWei('107200000000000000000', 'wei'));
-  //   // assert(balance < web3.utils.toWei('107290000000000000000', 'wei'));
-  // });
-  //
-  // it('should return correct adding maturity', async () => {
-  //   let timestamp = await currentTimestamp();
-  //   // Because in the previous tests the time goes 2 years ahead
-  //   timestamp += DAY * (daysAYear * 2);
-  //
-  //   const timestamp1 = timestamp + (DAY * daysAYear) + 1;
-  //   const timestamp2 = timestamp + (DAY * daysAYear) + 2;
-  //   const timestamp3 = timestamp + (DAY * daysAYear) + 3;
-  //   const timestamp4 = timestamp + (DAY * daysAYear) + 4;
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp2);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('100', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('100', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp2);
-  //   assert.equal(await token.getLastMaturity(), timestamp2);
-  //
-  //   let headId = await token.getFirstMaturityId();
-  //   assert.equal(headId, 1);
-  //   let node0 = await token.getMaturityInfo(headId);
-  //   assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node0[1], timestamp2);
-  //   assert.equal(node0[2], 0);
-  //   assert.equal(node0[3], 0);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp4);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('200', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('200', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp2);
-  //   assert.equal(await token.getLastMaturity(), timestamp4);
-  //
-  //   headId = await token.getFirstMaturityId();
-  //   assert.equal(headId, 1);
-  //   node0 = await token.getMaturityInfo(headId);
-  //   assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node0[1], timestamp2);
-  //   assert.equal(node0[2], 0);
-  //   assert.equal(node0[3], 2);
-  //   let node1 = await token.getMaturityInfo(2);
-  //   assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node1[1], timestamp4);
-  //   assert.equal(node1[2], 1);
-  //   assert.equal(node1[3], 0);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('300', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('300', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp2);
-  //   assert.equal(await token.getLastMaturity(), timestamp4);
-  //
-  //   headId = await token.getFirstMaturityId();
-  //   node0 = await token.getMaturityInfo(headId);
-  //   assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node0[1], timestamp2);
-  //   assert.equal(node0[2], 0);
-  //   assert.equal(node0[3], 3);
-  //   node1 = await token.getMaturityInfo(3);
-  //   assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node1[1], timestamp3);
-  //   assert.equal(node1[2], 1);
-  //   assert.equal(node1[3], 2);
-  //   let node2 = await token.getMaturityInfo(2);
-  //   assert.equal(node2[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node2[1], timestamp4);
-  //   assert.equal(node2[2], 3);
-  //   assert.equal(node2[3], 0);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('400', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('400', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp1);
-  //   assert.equal(await token.getLastMaturity(), timestamp4);
-  //
-  //   headId = await token.getFirstMaturityId();
-  //   node0 = await token.getMaturityInfo(headId);
-  //   assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node0[1], timestamp1);
-  //   assert.equal(node0[2], 0);
-  //   assert.equal(node0[3], 1);
-  //   node1 = await token.getMaturityInfo(1);
-  //   assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node1[1], timestamp2);
-  //   assert.equal(node1[2], 4);
-  //   assert.equal(node1[3], 3);
-  //   node2 = await token.getMaturityInfo(3);
-  //   assert.equal(node2[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node2[1], timestamp3);
-  //   assert.equal(node2[2], 1);
-  //   assert.equal(node2[3], 2);
-  //   let node3 = await token.getMaturityInfo(2);
-  //   assert.equal(node3[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node3[1], timestamp4);
-  //   assert.equal(node3[2], 3);
-  //   assert.equal(node3[3], 0);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('500', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('500', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp1);
-  //   assert.equal(await token.getLastMaturity(), timestamp4);
-  //
-  //   headId = await token.getFirstMaturityId();
-  //   node0 = await token.getMaturityInfo(headId);
-  //   assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node0[1], timestamp1);
-  //   assert.equal(node0[2], 0);
-  //   assert.equal(node0[3], 1);
-  //   node1 = await token.getMaturityInfo(1);
-  //   assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node1[1], timestamp2);
-  //   assert.equal(node1[2], 4);
-  //   assert.equal(node1[3], 3);
-  //   node2 = await token.getMaturityInfo(3);
-  //   assert.equal(node2[0], web3.utils.toWei('200', 'ether'));
-  //   assert.equal(node2[1], timestamp3);
-  //   assert.equal(node2[2], 1);
-  //   assert.equal(node2[3], 2);
-  //   node3 = await token.getMaturityInfo(2);
-  //   assert.equal(node3[0], web3.utils.toWei('100', 'ether'));
-  //   assert.equal(node3[1], timestamp4);
-  //   assert.equal(node3[2], 3);
-  //   assert.equal(node3[3], 0);
-  // });
-  //
-  // it('should return correct calculate interest', async () => {
-  //   let timestamp = await currentTimestamp();
-  //   timestamp += DAY * (daysAYear * 2);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('150', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 364);
-  //
-  //   let expIndex = await token.expIndex();
-  //   assert.equal(expIndex, web3.utils.toWei('1', 'ether'));
-  //
-  //   await token.mint(recipient, web3.utils.toWei('150', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 365);
-  //
-  //   expIndex = await token.expIndex();
-  //   assert.equal(expIndex, web3.utils.toWei('1', 'ether'));
-  //
-  //   await increaseTime(DAY);
-  //   await token.accrueInterest();
-  //
-  //   expIndex = await token.expIndex();
-  //   assert(expIndex > web3.utils.toWei('1', 'ether'));
-  //   assert(expIndex < web3.utils.toWei('1001', 'finney')); // 1 ether = 1000 finney
-  // });
-  //
-  // it('should return correct remove maturity', async () => {
-  //   let timestamp = await currentTimestamp();
-  //   timestamp += DAY * (daysAYear * 2) + DAY; // Line 133
-  //
-  //   const timestamp1 = timestamp + (DAY * daysAYear) + 1;
-  //   const timestamp2 = timestamp + (DAY * daysAYear) + 2;
-  //   const timestamp3 = timestamp + (DAY * daysAYear) + 3;
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp2);
-  //
-  //   await token.mint(recipient, web3.utils.toWei('100', 'ether'));
-  //   await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
-  //
-  //   assert.equal(await token.totalSupply(), web3.utils.toWei('300', 'ether'));
-  //   assert.equal(await token.totalActiveValue(), web3.utils.toWei('300', 'ether'));
-  //   assert.equal(await token.getFirstMaturity(), timestamp1);
-  //   assert.equal(await token.getLastMaturity(), timestamp3);
-  //
-  //   await token.removeMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
-  //   // Deletion does not occur, but only records that this
-  //   // maturity should not be taken into account in the calculations.
-  //   // Made for optimization
-  //   assert.equal(await token.getLastMaturity(), timestamp3);
-  // });
+  it('should return correct balance approximation values', async () => {
+    let timestamp = await currentTimestamp();
+    timestamp += DAY * daysAYear;
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * daysAYear / 2);
+    await token.mint(sender, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp + DAY * daysAYear + DAY);
+
+    let year = daysAYear;
+    while (year > 0) {
+      /* eslint-disable */
+      await increaseTime(DAY);
+      await token.accrueInterest();
+      year--;
+      /* eslint-enable */
+    }
+
+    // TODO: calculate right value
+    // const balanceRecipient = await token.balanceOf(recipient);
+    // assert(balanceRecipient > web3.utils.toWei('105.311239999999', 'ether'));
+    // assert(balanceRecipient < web3.utils.toWei('107.311250000009', 'ether'));
+  });
+
+  it('should return correct adding maturity', async () => {
+    let timestamp = await currentTimestamp();
+    // Because in the previous tests the time goes 2 years ahead
+    timestamp += DAY * (daysAYear * 2);
+
+    const timestamp1 = timestamp + (DAY * daysAYear) + 1;
+    const timestamp2 = timestamp + (DAY * daysAYear) + 2;
+    const timestamp3 = timestamp + (DAY * daysAYear) + 3;
+    const timestamp4 = timestamp + (DAY * daysAYear) + 4;
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp2);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('100', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('100', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp2);
+    assert.equal(await token.getLastMaturity(), timestamp2);
+
+    let headId = await token.getFirstMaturityId();
+    assert.equal(headId, 1);
+    let node0 = await token.getMaturityInfo(headId);
+    assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node0[1], timestamp2);
+    assert.equal(node0[2], 0);
+    assert.equal(node0[3], 0);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp4);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('200', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('200', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp2);
+    assert.equal(await token.getLastMaturity(), timestamp4);
+
+    headId = await token.getFirstMaturityId();
+    assert.equal(headId, 1);
+    node0 = await token.getMaturityInfo(headId);
+    assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node0[1], timestamp2);
+    assert.equal(node0[2], 0);
+    assert.equal(node0[3], 2);
+    let node1 = await token.getMaturityInfo(2);
+    assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node1[1], timestamp4);
+    assert.equal(node1[2], 1);
+    assert.equal(node1[3], 0);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('300', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('300', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp2);
+    assert.equal(await token.getLastMaturity(), timestamp4);
+
+    headId = await token.getFirstMaturityId();
+    node0 = await token.getMaturityInfo(headId);
+    assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node0[1], timestamp2);
+    assert.equal(node0[2], 0);
+    assert.equal(node0[3], 3);
+    node1 = await token.getMaturityInfo(3);
+    assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node1[1], timestamp3);
+    assert.equal(node1[2], 1);
+    assert.equal(node1[3], 2);
+    let node2 = await token.getMaturityInfo(2);
+    assert.equal(node2[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node2[1], timestamp4);
+    assert.equal(node2[2], 3);
+    assert.equal(node2[3], 0);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('400', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('400', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp1);
+    assert.equal(await token.getLastMaturity(), timestamp4);
+
+    headId = await token.getFirstMaturityId();
+    node0 = await token.getMaturityInfo(headId);
+    assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node0[1], timestamp1);
+    assert.equal(node0[2], 0);
+    assert.equal(node0[3], 1);
+    node1 = await token.getMaturityInfo(1);
+    assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node1[1], timestamp2);
+    assert.equal(node1[2], 4);
+    assert.equal(node1[3], 3);
+    node2 = await token.getMaturityInfo(3);
+    assert.equal(node2[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node2[1], timestamp3);
+    assert.equal(node2[2], 1);
+    assert.equal(node2[3], 2);
+    let node3 = await token.getMaturityInfo(2);
+    assert.equal(node3[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node3[1], timestamp4);
+    assert.equal(node3[2], 3);
+    assert.equal(node3[3], 0);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('500', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('500', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp1);
+    assert.equal(await token.getLastMaturity(), timestamp4);
+
+    headId = await token.getFirstMaturityId();
+    node0 = await token.getMaturityInfo(headId);
+    assert.equal(node0[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node0[1], timestamp1);
+    assert.equal(node0[2], 0);
+    assert.equal(node0[3], 1);
+    node1 = await token.getMaturityInfo(1);
+    assert.equal(node1[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node1[1], timestamp2);
+    assert.equal(node1[2], 4);
+    assert.equal(node1[3], 3);
+    node2 = await token.getMaturityInfo(3);
+    assert.equal(node2[0], web3.utils.toWei('200', 'ether'));
+    assert.equal(node2[1], timestamp3);
+    assert.equal(node2[2], 1);
+    assert.equal(node2[3], 2);
+    node3 = await token.getMaturityInfo(2);
+    assert.equal(node3[0], web3.utils.toWei('100', 'ether'));
+    assert.equal(node3[1], timestamp4);
+    assert.equal(node3[2], 3);
+    assert.equal(node3[3], 0);
+  });
+
+  it('should return correct calculate interest', async () => {
+    let timestamp = await currentTimestamp();
+    timestamp += DAY * (daysAYear * 2);
+
+    await token.mint(recipient, web3.utils.toWei('150', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 364);
+
+    let expIndex = await token.expIndex();
+    assert.equal(expIndex, web3.utils.toWei('1', 'ether'));
+
+    await token.mint(recipient, web3.utils.toWei('150', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('150', 'ether'), timestamp + DAY * 365);
+
+    expIndex = await token.expIndex();
+    assert.equal(expIndex, web3.utils.toWei('1', 'ether'));
+
+    await increaseTime(DAY);
+    await token.accrueInterest();
+
+    expIndex = await token.expIndex();
+    assert(expIndex > web3.utils.toWei('1', 'ether'));
+    assert(expIndex < web3.utils.toWei('1001', 'finney')); // 1 ether = 1000 finney
+  });
+
+  it('should return correct remove maturity', async () => {
+    let timestamp = await currentTimestamp();
+    timestamp += DAY * (daysAYear * 2) + DAY; // Line 133
+
+    const timestamp1 = timestamp + (DAY * daysAYear) + 1;
+    const timestamp2 = timestamp + (DAY * daysAYear) + 2;
+    const timestamp3 = timestamp + (DAY * daysAYear) + 3;
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp1);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp2);
+
+    await token.mint(recipient, web3.utils.toWei('100', 'ether'));
+    await token.addNewMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
+
+    assert.equal(await token.totalSupply(), web3.utils.toWei('300', 'ether'));
+    assert.equal(await token.totalActiveValue(), web3.utils.toWei('300', 'ether'));
+    assert.equal(await token.getFirstMaturity(), timestamp1);
+    assert.equal(await token.getLastMaturity(), timestamp3);
+
+    await token.removeMaturity(web3.utils.toWei('100', 'ether'), timestamp3);
+    // Deletion does not occur, but only records that this
+    // maturity should not be taken into account in the calculations.
+    // Made for optimization
+    assert.equal(await token.getLastMaturity(), timestamp3);
+  });
 
   // it('should throw an exception when the configure is called', async () => {
   //   await expectRevert(token.configure(sender, { from: sender }), 'Caller is not an admin');
   // });
-  //
+
   // it('should throw an exception when the mint and burn is called', async () => {
   //   await token.configure(recipient);
   //   await expectRevert(token.mint(sender, 0, { from: sender }), 'Caller is not an minter');

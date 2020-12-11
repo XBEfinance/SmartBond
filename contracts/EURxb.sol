@@ -257,7 +257,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             uint256 currentAccrualTimestamp = _accrualTimestamp;
             (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
             while (
-                _list.listExists() && maturityEnd <= block.timestamp && currentAccrualTimestamp < maturityEnd
+                _list.listExists() && maturityEnd <= timestamp && currentAccrualTimestamp < maturityEnd
             ) {
                 currentExpIndex = _calculateInterest(
                     maturityEnd,
