@@ -4,10 +4,10 @@ source ./scripts/utils/generate_truffle_config.sh
 
 generate_truffle_config "0.6.3" ".\/contracts"
 
-if [ -n $1 ]; then
-    truffle-flattener $1 >> contracts/Flattened.sol
+if [ -z $1 ]; then
+    truffle-flattener contracts/ForFlattened.sol | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' | awk '/pragma experimental ABIEncoderV2;/&&c++>0 {next} 1' > contracts/Flattened.sol
 else
-    truffle-flattener contracts/ForFlattened.sol >> contracts/Flattened.sol
+    truffle-flattener $1 | awk '/SPDX-License-Identifier/&&c++>0 {next} 1' | awk '/pragma experimental ABIEncoderV2;/&&c++>0 {next} 1' > contracts/Flattened.sol
 fi
 
 # remove config file
