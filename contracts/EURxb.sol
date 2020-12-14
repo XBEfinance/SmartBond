@@ -250,7 +250,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
         view
         returns (uint256)
     {
-        if (_balances[account] > 0 && _holderIndex[account] > 0) {
+        if (super.balanceOf(account) > 0 && _holderIndex[account] > 0) {
             uint256 currentTotalActiveValue = _totalActiveValue;
             uint256 currentExpIndex = _expIndex;
             uint256 head = _list.getHead();
@@ -270,11 +270,11 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
                 uint256 deleteAmount = _deletedMaturity[maturityEnd];
                 currentTotalActiveValue = currentTotalActiveValue.sub(amount.sub(deleteAmount));
 
-                if (next != 0) {
-                    (amount, maturityEnd, , next) = _list.getNodeValue(next);
-                } else {
+                if (next == 0) {
                     break;
                 }
+
+                (amount, maturityEnd, , next) = _list.getNodeValue(next);
             }
 
             currentExpIndex = _calculateInterest(
@@ -310,12 +310,12 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
 //                delete _deletedMaturity[maturityEnd]; // save for history
 
-            if (next != 0) {
-                _list.setHead(next);
-                (amount, maturityEnd, , next) = _list.getNodeValue(next);
-            } else {
+            if (next == 0) {
                 break;
             }
+
+            _list.setHead(next);
+            (amount, maturityEnd, , next) = _list.getNodeValue(next);
 
             if (i == _countMaturity) {
                 return; // pagination counter overflow
@@ -362,11 +362,12 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
      * @param account user address
      */
     function _updateBalance(address account) internal {
+        uint256 balance = super.balanceOf(account);
         if (_holderIndex[account] > 0) {
-            uint256 newBalance = _balances[account].mul(_expIndex).div(
+            uint256 newBalance = balance.mul(_expIndex).div(
                 _holderIndex[account]
             );
-            uint256 delta = newBalance.sub(_balances[account]);
+            uint256 delta = newBalance.sub(balance);
 
             if (delta != 0) {
                 super._mint(account, delta);

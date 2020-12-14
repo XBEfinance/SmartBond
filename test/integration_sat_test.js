@@ -13,7 +13,7 @@ chai.use(require('chai-as-promised'));
 
 const { expect, assert } = chai;
 
-const { increaseTime, currentTimestamp, DAY } = require('./common');
+const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
