@@ -1,3 +1,5 @@
+const { BN } = require('@openzeppelin/test-helpers');
+
 /* eslint-disable */
 function increaseTime(duration) {
   const id = Date.now();
@@ -28,8 +30,17 @@ async function currentTimestamp() {
   return Math.trunc(timestamp / 1000);
 }
 
+/* eslint-disable */
+const compactView = value_BN => web3.utils.fromWei(value_BN.toString(), 'ether');
+const Ether = value_str => new BN(web3.utils.toWei(value_str, 'ether'));
+const newBN = (value_str = '1.0') => new BN(web3.utils.toWei(value_str, 'ether'));
+/* eslint-enable */
+
 module.exports = {
   increaseTime,
   currentTimestamp,
-  DAY: 3600 * 24,
+  compactView,
+  Ether,
+  newBN,
+  DAY: 86400,
 };

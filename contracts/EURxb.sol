@@ -122,6 +122,7 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     */
     function getMaturityInfo(uint256 id) external view returns (uint256 amount, uint256 maturity, uint256 prev ,uint256 next) {
         (amount, maturity, prev , next) = _list.getNodeValue(id);
+        amount = amount.sub(_deletedMaturity[maturity]);
     }
 
     /**
