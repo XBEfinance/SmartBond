@@ -8,7 +8,6 @@ import "./interfaces/IBalancerPool.sol";
 import "./interfaces/IStakingManager.sol";
 import "../third-party-contracts/Uniswap/interfaces/IUniswapV2Pair.sol";
 import "../third-party-contracts/UniswapLib/libraries/TransferHelper.sol";
-import "../third-party-contracts/UniswapRouter/libraries/UniswapV2Library.sol";
 import "../third-party-contracts/UniswapRouter/interfaces/IUniswapV2Router01.sol";
 
 /**
@@ -159,8 +158,6 @@ contract Router is Ownable {
         require(pairAddress != address(0), "Unsupported token");
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
-//        uint256 totalSupply = pair.totalSupply();
-
         uint256 exchangeTokens = amount.div(2);
         (uint256 tokenRatio, uint256 eurRatio) = getUinswapReservesRatio(token);
 
@@ -174,45 +171,43 @@ contract Router is Ownable {
         TransferHelper.safeApprove(token, address(pair), exchangeTokens);
         _tEURxb.approve(address(pair), amountEUR);
 
-        (uint amountA, uint amountB, uint amountBPT) = _uniswapRouter.addLiquidity(
+        (uint amountA, uint amountB, uint liquidityAmount) = _uniswapRouter.addLiquidity(
             token,
             address(_tEURxb),
             exchangeTokens, // token A
-            amountEUR,      // token B
+            amountEUR, // token B
             0,
             0,
             address(this), // mint BPT to router, not user
             now + 2 minutes // deadline 2 minutes
         );
 
-        // send back the difference
-        if (amountA < exchangeTokens) {
-            TransferHelper.safeTransferFrom(
-                token,
-                address(this),
-                sender,
-                exchangeTokens.sub(amountA)
-            );
-
-        }
-
-        if (amountB < amountEUR) {
-            TransferHelper.safeTransferFrom(
-                address(_tEURxb),
-                address(this),
-                sender,
-                amountEUR.sub(amountB)
-            );
-        }
+//        // send back the difference
+//        if (amountA < exchangeTokens) {
+//            TransferHelper.safeTransferFrom(
+//                token,
+//                address(this),
+//                sender,
+//                exchangeTokens.sub(amountA)
+//            );
+//        }
+//
+//        if (amountB < amountEUR) {
+//            TransferHelper.safeTransferFrom(
+//                address(_tEURxb),
+//                address(this),
+//                sender,
+//                amountEUR.sub(amountB)
+//            );
+//        }
 
         // reward user with BPT
         if (_startTime + 7 days < now) {
-            TransferHelper.safeTransfer(address(this), sender, amountBPT);
+            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
         } else {
-            // TODO: refactor stakingManager to use uniswap pairs as well
-//            IStakingManager manager = IStakingManager(_stakingManager);
-//            TransferHelper.safeApprove(address(this), _stakingManager, amountBPT);
-//            manager.addStaker(sender, address(this), amountBPT);
+            IStakingManager manager = IStakingManager(_stakingManager);
+            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
+            manager.addStaker(sender, pairAddress, liquidityAmount);
         }
     }
 
@@ -240,7 +235,7 @@ contract Router is Ownable {
             _tEURxb.approve(poolAddress, userEurAmount);
 
             uint256 balance = pool.getBalance(address(_tEURxb));
-            uint256 SAFETY_MULTIPLIER = 10**18;
+            uint256 SAFETY_MULTIPLIER = 10 ** 18;
             uint256 ratio = userEurAmount.mul(SAFETY_MULTIPLIER).div(balance);
             amountBPT = totalSupply.mul(ratio).div(SAFETY_MULTIPLIER);
             amountBPT = amountBPT.mul(99).div(100);
@@ -279,23 +274,23 @@ contract Router is Ownable {
     }
 
     function getUinswapReservesRatio(address token)
-        internal
-        view
-        returns (uint256 tokenRes, uint256 eurRes)
+    internal
+    view
+    returns (uint256 tokenRes, uint256 eurRes)
     {
-        (uint112 res0, uint112 res1, ) = IUniswapV2Pair(_uniswapPairs[token]).getReserves();
+        (uint112 res0, uint112 res1,) = IUniswapV2Pair(_uniswapPairs[token]).getReserves();
         if (res0 == 0 || res1 == 0) {
             (tokenRes, eurRes) = (27, 23);
         } else {
-            (address token0, ) = UniswapV2Library.sortTokens(token, address(_tEURxb));
+            (address token0,) = sortTokens(token, address(_tEURxb));
             (tokenRes, eurRes) = (token == token0) ? (res0, res1) : (res1, res0);
         }
     }
 
     function getBalancerReservesRatio(address token)
-        internal
-        view
-        returns (uint256, uint256)
+    internal
+    view
+    returns (uint256, uint256)
     {
         return (27, 23);
     }
@@ -332,5 +327,16 @@ contract Router is Ownable {
         if (_msgSender() != address(this)) {
             _tEURxb.transfer(_msgSender(), amountEUR);
         }
+    }
+
+    // returns sorted token addresses, used to handle return values from pairs sorted in this order
+    function sortTokens(address tokenA, address tokenB)
+        internal
+        pure
+        returns (address token0, address token1)
+    {
+        require(tokenA != tokenB, "identical tokens");
+        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        require(token0 != address(0), 'zero address');
     }
 }
