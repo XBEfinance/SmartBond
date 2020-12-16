@@ -137,7 +137,7 @@ contract Router is Ownable {
      * @param amount number of tokens
      */
     function addLiquidity(address token, uint256 amount) external {
-        if (token == _tUSDC || _token == _tDAI) {
+        if (token == _tUSDC || token == _tDAI) {
             _addLiquidityBalancer(_msgSender(), token, amount);
         } else {
             _addLiquidityUniswap(_msgSender(), token, amount);
@@ -159,7 +159,7 @@ contract Router is Ownable {
         require(pairAddress != address(0), "Unsupported token");
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
-        uint256 totalSupply = pair.totalSupply();
+//        uint256 totalSupply = pair.totalSupply();
 
         uint256 exchangeTokens = amount.div(2);
         (uint256 tokenRatio, uint256 eurRatio) = getUinswapReservesRatio(token);
@@ -171,8 +171,8 @@ contract Router is Ownable {
 
         exchange(token, exchangeTokens);
 
-        TransferHelper.safeApprove(token, pair, exchangeTokens);
-        _tEURxb.approve(pair, amountEUR);
+        TransferHelper.safeApprove(token, address(pair), exchangeTokens);
+        _tEURxb.approve(address(pair), amountEUR);
 
         (uint amountA, uint amountB, uint amountBPT) = _uniswapRouter.addLiquidity(
             token,
@@ -185,17 +185,24 @@ contract Router is Ownable {
             now + 2 minutes // deadline 2 minutes
         );
 
-        // should we check if amount is less than taken from user?
+        // send back the difference
         if (amountA < exchangeTokens) {
-            // send back the difference
-            uint256 difference = exchangeTokens.sub(amountA);
-            TransferHelper.safeTransferFrom(token, address(this), sender, difference);
+            TransferHelper.safeTransferFrom(
+                token,
+                address(this),
+                sender,
+                exchangeTokens.sub(amountA)
+            );
+
         }
 
         if (amountB < amountEUR) {
-            // send back the difference
-            uint256 difference = amountEUR.sub(amountB);
-            TransferHelper.safeTransferFrom(address(_tEURxb), address(this), sender, difference);
+            TransferHelper.safeTransferFrom(
+                address(_tEURxb),
+                address(this),
+                sender,
+                amountEUR.sub(amountB)
+            );
         }
 
         // reward user with BPT
@@ -232,8 +239,8 @@ contract Router is Ownable {
             TransferHelper.safeApprove(token, poolAddress, userExchangeTokens);
             _tEURxb.approve(poolAddress, userEurAmount);
 
-            uint256 balance = pool.getBalance(_tEURxb);
-            uint256 memory SAFETY_MULTIPLIER = 10**18;
+            uint256 balance = pool.getBalance(address(_tEURxb));
+            uint256 SAFETY_MULTIPLIER = 10**18;
             uint256 ratio = userEurAmount.mul(SAFETY_MULTIPLIER).div(balance);
             amountBPT = totalSupply.mul(ratio).div(SAFETY_MULTIPLIER);
             amountBPT = amountBPT.mul(99).div(100);
@@ -281,7 +288,7 @@ contract Router is Ownable {
             (tokenRes, eurRes) = (27, 23);
         } else {
             (address token0, ) = UniswapV2Library.sortTokens(token, address(_tEURxb));
-            (tokenRes, eurRes) = (token == res0) ? (res0, res1) : (res1, res0);
+            (tokenRes, eurRes) = (token == token0) ? (res0, res1) : (res1, res0);
         }
     }
 
@@ -308,7 +315,7 @@ contract Router is Ownable {
         uint256 reserve0;
         uint256 reserve1;
 
-        if (token == _tUSDT || token == _TBUSD) {
+        if (token == _tUSDT || token == _tBUSD) {
             (reserve0, reserve1) = getUinswapReservesRatio(token);
         } else {
             (reserve0, reserve1) = getBalancerReservesRatio(token);
