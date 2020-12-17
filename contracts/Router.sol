@@ -1,3 +1,4 @@
+
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -6,6 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./interfaces/IBalancerPool.sol";
 import "./interfaces/IStakingManager.sol";
+import "./templates/Initializable.sol";
 import "../third-party-contracts/Uniswap/interfaces/IUniswapV2Pair.sol";
 import "../third-party-contracts/UniswapLib/libraries/TransferHelper.sol";
 import "../third-party-contracts/UniswapRouter/interfaces/IUniswapV2Router01.sol";
@@ -14,8 +16,13 @@ import "../third-party-contracts/UniswapRouter/interfaces/IUniswapV2Router01.sol
  * @title Router
  * @dev Liquidity management contract
  */
-contract Router is Ownable {
+contract Router is Ownable, Initializable {
     using SafeMath for uint256;
+
+    /**
+     * @dev informs that EURxb router balance is empty
+     */
+    event EmptyEurXBBalance();
 
     address private _teamAddress;
     address private _stakingManager;
@@ -26,13 +33,13 @@ contract Router is Ownable {
     address private _tDAI;
     IERC20 private _tEURxb;
 
-    IUniswapV2Pair private _pairUSDT;
-    IUniswapV2Pair private _pairBUSD;
     IUniswapV2Router01 private _uniswapRouter;
 
     bool _isClosedContract = false;
 
-    mapping(address => address) private _balancerPools; // token address => pool pool address
+    /// token address => balancer pool address
+    mapping(address => address) private _balancerPools;
+    /// token address => uniswap pair (token, eurxb) address
     mapping(address => address) private _uniswapPairs;
 
     constructor(
@@ -43,8 +50,7 @@ contract Router is Ownable {
         address tUSDC,
         address tBUSD,
         address tDAI,
-        address tEURxb,
-        address uniswapRouter
+        address tEURxb
     ) public {
         _teamAddress = teamAddress;
         _stakingManager = stakingManager;
@@ -54,6 +60,13 @@ contract Router is Ownable {
         _tBUSD = tBUSD;
         _tDAI = tDAI;
         _tEURxb = IERC20(tEURxb);
+    }
+
+    /**
+     * @dev setup uniswap router
+     */
+    function configure(address uniswapRouter) external initializer {
+        require(uniswapRouter != address(0), "invalid router address");
         _uniswapRouter = IUniswapV2Router01(uniswapRouter);
     }
 
@@ -138,8 +151,10 @@ contract Router is Ownable {
     function addLiquidity(address token, uint256 amount) external {
         if (token == _tUSDC || token == _tDAI) {
             _addLiquidityBalancer(_msgSender(), token, amount);
-        } else {
+        } else if (token == _tUSDT || token == _tBUSD) {
             _addLiquidityUniswap(_msgSender(), token, amount);
+        } else {
+            revert("token is not supported");
         }
     }
 
@@ -152,8 +167,6 @@ contract Router is Ownable {
         require(now >= _startTime, "The time has not come yet");
         require(!_isClosedContract, "Contract closed");
 
-        TransferHelper.safeTransferFrom(token, sender, address(this), amount);
-
         address pairAddress = _uniswapPairs[token];
         require(pairAddress != address(0), "Unsupported token");
         IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
@@ -164,23 +177,45 @@ contract Router is Ownable {
         uint256 amountEUR = exchangeTokens.mul(eurRatio).div(tokenRatio);
         uint256 balanceEUR = _tEURxb.balanceOf(address(this));
 
-        require(balanceEUR >= amountEUR, "not enough eur balance");
+        // check if we don't have enough eurxb tokens
+        if (balanceEUR < amountEUR) {
+            // we can take only that much
+            amountEUR = balanceEUR;
+            exchangeTokens = amountEUR.mul(tokenRatio).div(eurRatio);
 
-        exchange(token, exchangeTokens);
+            emit EmptyEurXBBalance();
+        }
 
+        // take user tokens
+        TransferHelper.safeTransferFrom(
+            token,
+            sender,
+            address(this),
+            exchangeTokens.mul(2)
+        );
+
+        // exchange half of user tokens for eurxb
+        exchangeForEuroXB(token, exchangeTokens);
+
+        // approve transfering tokens and eurxb to uniswap pair
         TransferHelper.safeApprove(token, address(pair), exchangeTokens);
         _tEURxb.approve(address(pair), amountEUR);
 
+        // finally transfer tokens and produce liquidity
         (uint amountA, uint amountB, uint liquidityAmount) = _uniswapRouter.addLiquidity(
             token,
             address(_tEURxb),
             exchangeTokens, // token A
-            amountEUR, // token B
-            0,
-            0,
-            address(this), // mint BPT to router, not user
+            amountEUR,      // token B
+            0, // min A amount
+            0, // min B amount
+            address(this), // mint liquidity to router, not user
             now + 2 minutes // deadline 2 minutes
         );
+
+        // amountA and amountB should be very close to exchangeTokens and amountEUR
+        // sending back rest of tokens doesn't seem to be necessarily
+        // when amounts calculated properly, there is no change
 
 //        // send back the difference
 //        if (amountA < exchangeTokens) {
@@ -229,7 +264,7 @@ contract Router is Ownable {
         uint256 amountBPT;
 
         if (routerEurBalance >= userEurAmount) {
-            exchange(token, userExchangeTokens);
+            exchangeForEuroXB(token, userExchangeTokens);
 
             TransferHelper.safeApprove(token, poolAddress, userExchangeTokens);
             _tEURxb.approve(poolAddress, userEurAmount);
@@ -273,6 +308,10 @@ contract Router is Ownable {
         }
     }
 
+    /**
+     * @dev returns uniswap pair reserves numbers or default numbers
+     * used to get token/eurxb ratio
+     */
     function getUinswapReservesRatio(address token)
     internal
     view
@@ -287,12 +326,27 @@ contract Router is Ownable {
         }
     }
 
+    /**
+     * @dev returns balancer pair reserves numbers or default numbers
+     * used to get token/eurxb ratio
+     * guarantees, that returned numbers greater than zero
+     */
     function getBalancerReservesRatio(address token)
     internal
     view
     returns (uint256, uint256)
     {
-        return (27, 23);
+        address poolAddress = _balancerPools[token];
+        require(poolAddress != address(0), "Invalid pool address");
+        IBalancerPool pool = IBalancerPool(poolAddress);
+        uint256 balanceEurXB = pool.getBalance(address(_tEURxb));
+        uint256 balanceToken = pool.getBalance(token);
+
+        if (balanceEurXB == 0 || balanceToken == 0) {
+            return (27, 23);
+        }
+
+        return (balanceToken, balanceEurXB);
     }
 
     /**
@@ -300,7 +354,7 @@ contract Router is Ownable {
      * @param token token address
      * @param amount number of tokens
      */
-    function exchange(address token, uint256 amount) public {
+    function exchangeForEuroXB(address token, uint256 amount) public {
         require(!_isClosedContract, "Contract closed");
         require(
             token == _tUSDT || token == _tUSDC || token == _tBUSD || token == _tDAI,
@@ -310,10 +364,10 @@ contract Router is Ownable {
         uint256 reserve0;
         uint256 reserve1;
 
-        if (token == _tUSDT || token == _tBUSD) {
-            (reserve0, reserve1) = getUinswapReservesRatio(token);
-        } else {
+        if (token == _tUSDC || token == _tDAI) {
             (reserve0, reserve1) = getBalancerReservesRatio(token);
+        } else {
+            (reserve0, reserve1) = getUinswapReservesRatio(token);
         }
 
         uint256 amountEUR = amount.mul(reserve1).div(reserve0);
@@ -323,13 +377,15 @@ contract Router is Ownable {
 
         // transfer tokens from user to team
         TransferHelper.safeTransferFrom(token, _msgSender(), _teamAddress, amount);
-        // give him euro in exchange
+        // give him euro in exchangeForEuroXB
         if (_msgSender() != address(this)) {
             _tEURxb.transfer(_msgSender(), amountEUR);
         }
     }
 
-    // returns sorted token addresses, used to handle return values from pairs sorted in this order
+    /**
+     * @dev sorts token addresses just like uniswap router does
+     */
     function sortTokens(address tokenA, address tokenB)
         internal
         pure
