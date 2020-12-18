@@ -4,13 +4,13 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import "./interfaces/IBalancerPool.sol";
 import "./interfaces/IStakingManager.sol";
 import "./templates/Initializable.sol";
-import "../third-party-contracts/Uniswap/interfaces/IUniswapV2Pair.sol";
-import "../third-party-contracts/UniswapLib/libraries/TransferHelper.sol";
-import "../third-party-contracts/UniswapRouter/interfaces/IUniswapV2Router01.sol";
 
 /**
  * @title Router
@@ -33,7 +33,7 @@ contract Router is Ownable, Initializable {
     address private _tDAI;
     IERC20 private _tEURxb;
 
-    IUniswapV2Router01 private _uniswapRouter;
+    IUniswapV2Router02 private _uniswapRouter;
 
     bool _isClosedContract = false;
 
@@ -67,7 +67,7 @@ contract Router is Ownable, Initializable {
      */
     function configure(address uniswapRouter) external initializer {
         require(uniswapRouter != address(0), "invalid router address");
-        _uniswapRouter = IUniswapV2Router01(uniswapRouter);
+        _uniswapRouter = IUniswapV2Router02(uniswapRouter);
     }
 
     /**

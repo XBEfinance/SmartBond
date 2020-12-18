@@ -60,7 +60,7 @@ contract('Router', ([owner, alice, bob]) => {
       0,
       0,
       bob,
-      timestamp
+      timestamp,
     );
 
     const balanceBob = await pair.balanceOf(bob);
