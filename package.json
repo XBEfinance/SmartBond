@@ -1,5 +1,5 @@
 {
-  "name": "Miris",
+  "name": "miris",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -13,7 +13,7 @@
     "coverage": "bash ./scripts/coverage.sh",
     "build": "bash ./scripts/build.sh",
     "test": "bash ./scripts/test.sh",
-    "flatten": "truffle-flattener $PROJECT_NAME.sol >> contracts/Flattened.sol"
+    "flatten": "bash ./scripts/flatten.sh"
   },
   "keywords": [],
   "author": "",
