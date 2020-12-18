@@ -1,6 +1,7 @@
-const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
-const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
-const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
+// const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
+// const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
+// const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
+
 const BFactory = artifacts.require('BFactory'); // Balancer
 const TetherToken = artifacts.require('TetherToken'); // USDT
 const BUSDImplementation = artifacts.require('BUSDImplementation'); // BUSD
@@ -33,9 +34,9 @@ const teamAddress = "0x0000000000000000000000000000000000000000";
 
 module.exports = function (deployer, network, [owner]) {
   deployer.then(async () => {
-    const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
-    const weth = await deployer.deploy(WETH9);
-    await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
+    // const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
+    // const weth = await deployer.deploy(WETH9);
+    // await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
 
     await deployer.deploy(BFactory);
     await deployer.deploy(TetherToken, web3.utils.toWei('12042213561', 'ether'), 'Tether USD', 'USDT', 6);

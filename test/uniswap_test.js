@@ -4,9 +4,10 @@ const {
   BN,
 } = require('@openzeppelin/test-helpers');
 
-const { currentTimestamp, DAY } = require('./common');
+const { currentTimestamp, DAY } = require('./utils/common');
 
 const TetherToken = artifacts.require('TetherToken');
+const WETH9 = artifacts.require('WETH9');
 const UniswapV2Factory = artifacts.require('UniswapV2Factory');
 const UniswapV2Pair = artifacts.require('UniswapV2Pair');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
@@ -14,7 +15,11 @@ const EURxb = artifacts.require('EURxb');
 
 contract('Router', ([owner, alice, bob]) => {
   it('test using uniswap', async () => {
-    const router = await UniswapV2Router02.deployed();
+    const factory = await UniswapV2Factory.new(owner);
+    const weth = await WETH9.new();
+    const router = await UniswapV2Router02.new(factory.address, weth.address);
+
+    // const router = await UniswapV2Router02.deployed();
 
     const eurxb = await EURxb.new(owner);
     await eurxb.configure(owner);
@@ -39,7 +44,7 @@ contract('Router', ([owner, alice, bob]) => {
       timestamp
     );
 
-    const factory = await UniswapV2Factory.deployed();
+    // const factory = await UniswapV2Factory.deployed();
     const pairAddress = await factory.allPairs.call(new BN('0'));
     const pair = await UniswapV2Pair.at(pairAddress);
 
@@ -56,7 +61,6 @@ contract('Router', ([owner, alice, bob]) => {
       bob,
       timestamp
     );
-
 
     const balanceBob = await pair.balanceOf(bob);
     console.log('balanceBob: ', balanceBob.toString());
