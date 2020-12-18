@@ -25,8 +25,8 @@ contract('Router', (accounts) => {
 
   const mockStableToken = accounts[6];
 
-  // TODO: USDT not supported in balancer
-  const tokens = ['USDC', 'DAI'];
+  const balancerTokens = ['USDC', 'DAI'];
+  const uniswapTokens = ['USDT', 'BUSD'];
 
   let EURxb;
   let xbg;
@@ -47,13 +47,13 @@ contract('Router', (accounts) => {
       await increaseTime(DAY);
     });
 
-    for (let i = 0; i < tokens.length; i++) {
-      describe('Token tests for '.concat(tokens[i]), async () => {
+    for (let i = 0; i < balancerTokens.length; i++) {
+      describe('Token tests for '.concat(balancerTokens[i]), async () => {
         let bFactory;
         let balancer;
         let token;
         beforeEach(async () => {
-          if (tokens[i] === 'USDC') {
+          if (balancerTokens[i] === 'USDC') {
             token = await FiatTokenV2.new();
             await token.updateMasterMinter(owner);
             await token.configureMinter(owner, web3.utils.toWei('1000', 'ether'));
@@ -76,7 +76,7 @@ contract('Router', (accounts) => {
           //   );
           // }
 
-          if (tokens[i] === 'DAI') {
+          if (balancerTokens[i] === 'DAI') {
             token = await Dai.new(1);
             await token.mint(owner, web3.utils.toWei('1000', 'ether'));
 
@@ -156,6 +156,59 @@ contract('Router', (accounts) => {
 
           assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
           assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('81', 'ether'));
+        });
+      });
+    }
+
+    for (let i = 0; i < uniswapTokens.length; i++) {
+      describe('Token tests for '.concat(balancerTokens[i]), async () => {
+        let bFactory;
+        let balancer;
+        let token;
+        beforeEach(async () => {
+          if (balancerTokens[i] === 'USDC') {
+            // token = await FiatTokenV2.new();
+            // await token.updateMasterMinter(owner);
+            // await token.configureMinter(owner, web3.utils.toWei('1000', 'ether'));
+            // await token.mint(owner, web3.utils.toWei('1000', 'ether'));
+            //
+            // router = await Router.new(
+            //   team, staking.address, timestamp,
+            //   mockStableToken, token.address, mockStableToken, mockStableToken, EURxb.address,
+            // );
+          }
+
+          if (tokens[i] === 'BUSD') {
+            // token = await BUSDImplementation.new();
+            // await token.increaseSupply(web3.utils.toWei('1000', 'ether'));
+            // await token.unpause();
+            //
+            // router = await Router.new(
+            //   team, staking.address, timestamp,
+            //   mockStableToken, mockStableToken, token.address, mockStableToken, EURxb.address,
+            // );
+          }
+
+          await token.transfer(recipient, web3.utils.toWei('200', 'ether'));
+          await token.transfer(staker, web3.utils.toWei('200', 'ether'));
+
+          bFactory = await BFactory.deployed();
+          await bFactory.newBPool();
+          const balancerAddress = await bFactory.getLastBPool();
+          balancer = await BPool.at(balancerAddress);
+
+          await EURxb.approve(balancer.address, web3.utils.toWei('46', 'ether'));
+          await token.approve(balancer.address, web3.utils.toWei('54', 'ether'));
+          await balancer.bind(EURxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
+          await balancer.bind(token.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+          await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
+          await balancer.finalize();
+
+          await router.setBalancerPool(token.address, balancer.address);
+          await staking.setBalancerPool(balancer.address);
+        });
+
+        it('should do good', async () => {
         });
       });
     }
