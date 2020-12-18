@@ -21,12 +21,8 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     using Address for address;
     using LinkedList for LinkedList.List;
 
-    LinkedList.List private _list;
-
-    address private _ddp;
-
-    uint256 private _unit = 10**18;
-    uint256 private _perYear = _unit.mul(365).mul(86400);
+    uint256 private constant UNIT = 10**18;
+    uint256 private constant PER_YEAR = 31536000 * 10 ** 18; // UNIT.mul(365).mul(86400);
 
     uint256 private _countMaturity;
     uint256 private _totalActiveValue;
@@ -35,11 +31,20 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     uint256 private _expIndex;
 
     mapping(address => uint256) private _holderIndex;
-    mapping(uint256 => uint256) private _deleteMaturity;
+
+    LinkedList.List private _list; // list of maturity ends and amounts
+    mapping(uint256 => uint256) private _deletedMaturity; // timestamp->amount
+
+    address private _ddp;
+
+    modifier onlyDDP() {
+        require(_msgSender() == _ddp, "Caller is not allowed this function");
+        _;
+    }
 
     constructor(address admin) public OverrideERC20("EURxb", "EURxb") {
         _annualInterest = 7 * 10**16;
-        _expIndex = _unit;
+        _expIndex = UNIT;
         _countMaturity = 100;
 
         _setupRole(TokenAccessRoles.admin(), admin);
@@ -55,56 +60,177 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
     /**
      * @dev Return countMaturity
      */
-    function countMaturity() public view returns (uint256) {
+    function countMaturity() external view returns (uint256) {
         return _countMaturity;
     }
 
     /**
      * @dev Return totalActiveValue
      */
-    function totalActiveValue() public view returns (uint256) {
+    function totalActiveValue() external view returns (uint256) {
         return _totalActiveValue;
     }
 
     /**
      * @dev Return annualInterest
      */
-    function annualInterest() public view returns (uint256) {
+    function annualInterest() external view returns (uint256) {
         return _annualInterest;
     }
 
     /**
      * @dev Return accrualTimestamp
      */
-    function accrualTimestamp() public view returns (uint256) {
+    function accrualTimestamp() external view returns (uint256) {
         return _accrualTimestamp;
     }
 
     /**
      * @dev Return expIndex
      */
-    function expIndex() public view returns (uint256) {
+    function expIndex() external view returns (uint256) {
         return _expIndex;
     }
 
     /**
      * @dev Return first added maturity
      */
-    function getFirstMaturity() public view returns (uint256) {
+    function getFirstMaturity() external view returns (uint256) {
         uint256 head = _list.getHead();
-        uint256 maturityEnd;
-        (, maturityEnd, , ) = _list.getNodeValue(head);
+        (, uint256 maturityEnd, , ) = _list.getNodeValue(head);
         return maturityEnd;
     }
 
     /**
      * @dev Return last added maturity
      */
-    function getLastMaturity() public view returns (uint256) {
+    function getLastMaturity() external view returns (uint256) {
         uint256 end = _list.getEnd();
-        uint256 maturityEnd;
-        (, maturityEnd, , ) = _list.getNodeValue(end);
+        (, uint256 maturityEnd, , ) = _list.getNodeValue(end);
         return maturityEnd;
+    }
+
+    /**
+    * @dev Return first maturity id
+    */
+    function getFirstMaturityId() external view returns (uint256) {
+        return _list.getHead();
+    }
+
+    /**
+    * @dev Return maturity info by id
+    */
+    function getMaturityInfo(uint256 id) external view returns (uint256 amount, uint256 maturity, uint256 prev ,uint256 next) {
+        (amount, maturity, prev , next) = _list.getNodeValue(id);
+        amount = amount.sub(_deletedMaturity[maturity]);
+    }
+
+    /**
+     * @dev Set countMaturity
+     * @param count maturity
+     */
+    function setCountMaturity(uint256 count) external {
+        require(
+            hasRole(TokenAccessRoles.admin(), _msgSender()),
+            "Caller is not an admin"
+        );
+        require(count > 0, "The amount must be greater than zero");
+        _countMaturity = count;
+    }
+
+    /**
+     * @dev Mint tokens
+     * @param account user address
+     * @param amount number of tokens
+     */
+    function mint(address account, uint256 amount) external override {
+        require(
+            hasRole(TokenAccessRoles.minter(), _msgSender()),
+            "Caller is not an minter"
+        );
+        require(account != address(0), "Mint to zero address");
+        accrueInterest();
+        _updateBalance(account);
+
+        super._mint(account, amount);
+    }
+
+    /**
+     * @dev Burn tokens
+     * @param account user address
+     * @param amount number of tokens
+     */
+    function burn(address account, uint256 amount) external override {
+        require(
+            hasRole(TokenAccessRoles.burner(), _msgSender()),
+            "Caller is not an burner"
+        );
+        require(account != address(0), "Burn from zero address");
+        accrueInterest();
+        _updateBalance(account);
+
+        super._burn(account, amount);
+    }
+
+    /**
+     * @dev Added new maturity
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
+    function addNewMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
+//        require(amount > 0, "The amount must be greater than zero"); // TODO: check into DDP
+//        require(maturityEnd > 0, "End date must be greater than zero");
+
+        _totalActiveValue = _totalActiveValue.add(amount);
+
+        if (!_list.listExists()) {
+            _list.pushBack(amount, maturityEnd);
+            return;
+        }
+
+        uint256 id = _list.getEnd();
+        (, uint256 maturityNode, uint256 prevIDNode, uint256 nextIDNode) = _list.getNodeValue(id);
+
+        if (maturityNode < maturityEnd) { // Check end list
+            _list.pushBack(amount, maturityEnd);
+            return;
+        }
+
+        // TODO: maybe many elements
+        // TODO: maybe you need to add close dates
+        while (true) {
+            if (maturityNode == maturityEnd) { // Check equal
+                _list.addElementAmount(id, amount);
+                break;
+            }
+
+            if (id == _list.getHead() && maturityNode > maturityEnd) { // Check before first
+                _list.pushBefore(id, amount, maturityEnd);
+                break;
+            }
+
+            id = prevIDNode;
+            (, maturityNode, prevIDNode, nextIDNode) = _list.getNodeValue(id);
+
+            if (maturityNode < maturityEnd) { // Check between periods
+                _list.pushBefore(nextIDNode, amount, maturityEnd);
+                break;
+            }
+        }
+    }
+
+    /**
+     * @dev Remove maturity
+     * @param amount number of tokens
+     * @param maturityEnd end date of interest accrual
+     */
+    function removeMaturity(uint256 amount, uint256 maturityEnd) onlyDDP external override {
+//        require(amount > 0, "The amount must be greater than zero"); // TODO: check into DDP
+//        require(maturityEnd > 0, "End date must be greater than zero");
+        require(_list.listExists(), "The list does not exist");
+
+        _totalActiveValue = _totalActiveValue.sub(amount);
+        _deletedMaturity[maturityEnd] = _deletedMaturity[maturityEnd].add(amount);
     }
 
     /**
@@ -125,158 +251,130 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
         view
         returns (uint256)
     {
-        if (_balances[account] > 0 && _holderIndex[account] > 0) {
-            uint256 tempTotalActiveValue = _totalActiveValue;
+        if (super.balanceOf(account) > 0 && _holderIndex[account] > 0) {
+            uint256 currentTotalActiveValue = _totalActiveValue;
+            uint256 currentExpIndex = _expIndex;
             uint256 head = _list.getHead();
-            while (_list.listExists()) {
-                uint256 amount;
-                uint256 maturityEnd;
-                uint256 next;
-                (amount, maturityEnd, , next) = _list.getNodeValue(head);
+            uint256 currentAccrualTimestamp = _accrualTimestamp;
+            (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+            while (
+                _list.listExists() && maturityEnd <= timestamp && currentAccrualTimestamp < maturityEnd
+            ) {
+                currentExpIndex = _calculateInterest(
+                    maturityEnd,
+                    _annualInterest.mul(currentTotalActiveValue),
+                    currentExpIndex,
+                    currentAccrualTimestamp
+                );
+                currentAccrualTimestamp = maturityEnd;
+
+                uint256 deleteAmount = _deletedMaturity[maturityEnd];
+                currentTotalActiveValue = currentTotalActiveValue.sub(amount.sub(deleteAmount));
 
                 if (next == 0) {
                     break;
                 }
 
-                if (maturityEnd <= now) {
-                    uint256 deleteAmount = _deleteMaturity[maturityEnd];
-                    tempTotalActiveValue = tempTotalActiveValue.sub(amount.sub(deleteAmount));
-                    head = next;
-                } else {
-                    break;
-                }
+                (amount, maturityEnd, , next) = _list.getNodeValue(next);
             }
-            uint256 newExpIndex = _calculateInterest(
+
+            currentExpIndex = _calculateInterest(
                 timestamp,
-                _annualInterest.mul(tempTotalActiveValue),
-                _expIndex
+                _annualInterest.mul(currentTotalActiveValue),
+                currentExpIndex,
+                currentAccrualTimestamp
             );
-            return
-                _balances[account].mul(newExpIndex).div(_holderIndex[account]);
+            return super.balanceOf(account).mul(currentExpIndex).div(_holderIndex[account]);
         }
         return super.balanceOf(account);
-    }
-
-    /**
-     * @dev Set countMaturity
-     * @param count maturity
-     */
-    function setCountMaturity(uint256 count) public {
-        require(
-            hasRole(TokenAccessRoles.admin(), _msgSender()),
-            "Caller is not an admin"
-        );
-        require(count > 0, "The amount must be greater than zero");
-        _countMaturity = count;
     }
 
     /**
      * @dev Calculation of accrued interest
      */
     function accrueInterest() public {
-        for (uint256 i = 0; i < _countMaturity && _list.listExists(); i++) {
-            uint256 head = _list.getHead();
-            uint256 amount;
-            uint256 maturityEnd;
-            uint256 next;
-            (amount, maturityEnd, , next) = _list.getNodeValue(head);
+        uint256 head = _list.getHead();
+        (uint256 amount, uint256 maturityEnd, , uint256 next) = _list.getNodeValue(head);
+
+        for (uint256 i = 1;
+            _list.listExists() && maturityEnd <= block.timestamp && _accrualTimestamp < maturityEnd;
+            i++) {
+            _expIndex = _calculateInterest(
+                maturityEnd,
+                _annualInterest.mul(_totalActiveValue),
+                _expIndex,
+                _accrualTimestamp
+            );
+            _accrualTimestamp = maturityEnd;
+
+            uint256 deleteAmount = _deletedMaturity[maturityEnd];
+            _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
+//                delete _deletedMaturity[maturityEnd]; // save for history
 
             if (next == 0) {
                 break;
             }
 
-            if (maturityEnd <= now) {
-                uint256 deleteAmount = _deleteMaturity[maturityEnd];
-                _deleteMaturity[maturityEnd] = 0;
-                _totalActiveValue = _totalActiveValue.sub(amount.sub(deleteAmount));
-                _list.setHead(next);
-            } else {
-                break;
+            _list.setHead(next);
+            (amount, maturityEnd, , next) = _list.getNodeValue(next);
+
+            if (i == _countMaturity) {
+                return; // pagination counter overflow
             }
         }
 
         _expIndex = _calculateInterest(
             block.timestamp,
             _annualInterest.mul(_totalActiveValue),
-            _expIndex
+            _expIndex,
+            _accrualTimestamp
         );
-
         _accrualTimestamp = block.timestamp;
     }
 
     /**
-     * @dev Added new maturity
-     * @param amount number of tokens
-     * @param maturityEnd end date of interest accrual
+     * @dev Calculate interest
+     * @param timestampNow the current date
+     * @param interest percent
+     * @param prevIndex previous index
      */
-    function addNewMaturity(uint256 amount, uint256 maturityEnd) public {
-        require(_msgSender() == _ddp, "Caller is not allowed to addNewMaturity");
-        require(amount > 0, "The amount must be greater than zero");
-        require(maturityEnd > 0, "End date must be greater than zero");
-
-        _totalActiveValue = _totalActiveValue.add(amount);
-
-        if (_list.listExists()) {
-            uint256 id = _list.getEnd();
-
-            // TODO: maybe many elements
-            // TODO: maybe you need to add close dates
-            while (true) {
-                uint256 maturityNode;
-                uint256 prevIDNode;
-                (, maturityNode, prevIDNode, ) = _list.getNodeValue(id);
-
-                if (maturityNode == maturityEnd) {
-                    _list.updateLastAmount(amount);
-                    break;
-                }
-
-                if (maturityNode < maturityEnd) {
-                    _list.pushBack(amount, maturityEnd);
-                    break;
-                }
-
-                if (id == _list.getHead() && maturityNode > maturityEnd) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    uint256 newPrev;
-                    (, , newPrev, ) = _list.getNodeValue(id);
-                    _list.setHead(newPrev);
-                    break;
-                }
-
-                if (prevIDNode == 0) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    break;
-                }
-
-                uint256 maturityPrevNode;
-                (, maturityPrevNode, , ) = _list.getNodeValue(prevIDNode);
-
-                if (maturityPrevNode < maturityEnd && maturityEnd < maturityNode) {
-                    _list.pushBefore(id, amount, maturityEnd);
-                    break;
-                }
-
-                id = prevIDNode;
-            }
-        } else {
-            _list.pushBack(amount, maturityEnd);
+    function _calculateInterest(uint256 timestampNow, uint256 interest, uint256 prevIndex, uint256 lastAccrualTimestamp)
+        internal
+        view
+        returns (uint256)
+    {
+        if (totalSupply() == 0) {
+            return prevIndex;
         }
+
+        uint256 period = timestampNow.sub(lastAccrualTimestamp);
+        if (period < 60) {
+            return prevIndex;
+        }
+
+        uint256 interestFactor = interest.mul(period);
+        uint256 newExpIndex = (interestFactor.mul(prevIndex).div(PER_YEAR).div(totalSupply()))
+            .add(prevIndex);
+        return newExpIndex;
     }
 
     /**
-     * @dev Remove maturity
-     * @param amount number of tokens
-     * @param maturityEnd end date of interest accrual
+     * @dev Update user balance
+     * @param account user address
      */
-    function removeMaturity(uint256 amount, uint256 maturityEnd) public {
-        require(_msgSender() == _ddp, "Caller is not allowed to removeMaturity");
-        require(amount > 0, "The amount must be greater than zero");
-        require(maturityEnd > 0, "End date must be greater than zero");
-        require(_list.listExists(), "The list does not exist");
+    function _updateBalance(address account) internal {
+        uint256 balance = super.balanceOf(account);
+        if (_holderIndex[account] > 0) {
+            uint256 newBalance = balance.mul(_expIndex).div(
+                _holderIndex[account]
+            );
+            uint256 delta = newBalance.sub(balance);
 
-        _totalActiveValue = _totalActiveValue.sub(amount);
-        _deleteMaturity[maturityEnd] = _deleteMaturity[maturityEnd].add(amount);
+            if (delta != 0) {
+                super._mint(account, delta);
+            }
+        }
+        _holderIndex[account] = _expIndex;
     }
 
     /**
@@ -294,83 +392,5 @@ contract EURxb is AccessControl, OverrideERC20, IEURxb, Initializable {
             _updateBalance(recipient);
         }
         super._transfer(sender, recipient, amount);
-    }
-
-    /**
-     * @dev Mint tokens
-     * @param account user address
-     * @param amount number of tokens
-     */
-    function mint(address account, uint256 amount) public override {
-        require(
-            hasRole(TokenAccessRoles.minter(), _msgSender()),
-            "Caller is not an minter"
-        );
-
-        accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
-        super._mint(account, amount);
-    }
-
-    /**
-     * @dev Burn tokens
-     * @param account user address
-     * @param amount number of tokens
-     */
-    function burn(address account, uint256 amount) public override {
-        require(
-            hasRole(TokenAccessRoles.burner(), _msgSender()),
-            "Caller is not an burner"
-        );
-
-        accrueInterest();
-        if (account != address(0)) {
-            _updateBalance(account);
-        }
-        super._burn(account, amount);
-    }
-
-    /**
-     * @dev Calculate interest
-     * @param timestampNow the current date
-     * @param interest percent
-     * @param prevIndex previous index
-     */
-    function _calculateInterest(uint256 timestampNow, uint256 interest, uint256 prevIndex)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 newExpIndex = prevIndex;
-        if (totalSupply() > 0) {
-            uint256 period = timestampNow.sub(_accrualTimestamp);
-            if (period < 60) {
-                return prevIndex;
-            }
-            uint256 interestFactor = interest.mul(period);
-            newExpIndex = (interestFactor.mul(prevIndex).div(_perYear).div(totalSupply()))
-                .add(prevIndex);
-        }
-        return newExpIndex;
-    }
-
-    /**
-     * @dev Update user balance
-     * @param account user address
-     */
-    function _updateBalance(address account) internal {
-        if (_holderIndex[account] > 0) {
-            uint256 newBalance = _balances[account].mul(_expIndex).div(
-                _holderIndex[account]
-            );
-            uint256 delta = newBalance.sub(_balances[account]);
-
-            if (delta != 0) {
-                super._mint(account, delta);
-            }
-        }
-        _holderIndex[account] = _expIndex;
     }
 }

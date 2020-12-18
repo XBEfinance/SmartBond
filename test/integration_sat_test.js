@@ -1,5 +1,6 @@
 /* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
+const fs = require('fs');
 
 const {
   BN,
@@ -13,7 +14,7 @@ chai.use(require('chai-as-promised'));
 
 const { expect, assert } = chai;
 
-const { increaseTime, currentTimestamp, DAY } = require('./common');
+const { increaseTime, currentTimestamp, Ether, DAY } = require('./utils/common');
 
 const SecurityAssetToken = artifacts.require('SecurityAssetToken');
 const BondToken = artifacts.require('BondToken');
@@ -119,6 +120,7 @@ contract('IntegrationSatTest', (accounts) => {
 
     this.ddp = await DDP.new(this.multisig.address, { from: deployer });
     this.eurxb = await EURxb.new(this.multisig.address, { from: deployer });
+
     await this.eurxb.configure(this.ddp.address, { from: deployer });
 
     await this.bond.configure(
@@ -135,7 +137,7 @@ contract('IntegrationSatTest', (accounts) => {
       { from: deployer },
     );
 
-    this.ddp.configure(
+    await this.ddp.configure(
       this.bond.address,
       this.eurxb.address,
       this.list.address,
@@ -149,14 +151,14 @@ contract('IntegrationSatTest', (accounts) => {
   });
 
   it('mint and then burn success', async () => {
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     await burnSat(this, TOKEN_1, alice);
   });
 
   it('mint to several different users', async () => {
     for (const user of FOUNDERS) {
       await this.multisig.allowAccount(user);
-      await mintSat(this, user, ETHER_100, MATURITY_LONG);
+      await mintSat(this, user, SAT_VALUE, MATURITY_LONG);
 
       expect(
         new BN(await this.eurxb.balanceOf(user)),
@@ -184,7 +186,7 @@ contract('IntegrationSatTest', (accounts) => {
     const n = new BN('100');
 
     for (let i = 0; i < n; i++) {
-      await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+      await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     }
 
     for (let i = 2; i < n; i++) {
@@ -196,7 +198,7 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('single transfer success', async () => {
     assert(!await this.bond.hasToken(TOKEN_1), 'token 0 does not exist');
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     expect(await this.sat.ownerOf(TOKEN_1), 'owner must be alice').equal(alice);
     await approve(this, TOKEN_1, alice, bob);
     await transferToken(this, TOKEN_1, alice, bob);
@@ -205,11 +207,11 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('transfer approved for all success', async () => {
     assert(!await this.bond.hasToken(TOKEN_1), 'token 0 does not exist');
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     expect(await this.sat.ownerOf(TOKEN_1), 'owner must be alice').equal(alice);
 
     assert(!await this.bond.hasToken(TOKEN_2), 'token 1 does not exist');
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     expect(await this.sat.ownerOf(TOKEN_2), 'owner must be alice').equal(alice);
 
     await approveForAll(this, alice, bob);
@@ -221,7 +223,7 @@ contract('IntegrationSatTest', (accounts) => {
   });
 
   it('withdraw before maturity ends', async () => {
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     assert(await this.bond.hasToken(TOKEN_1), 'bond token 0 exists');
     expect(await this.sat.ownerOf(TOKEN_1), 'alice owns sat token 0').equal(alice);
 
@@ -239,7 +241,7 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('withdraw different user not enough eurxb failure', async () => {
     await this.multisig.setClaimPeriod(MATURITY_SHORT, { from: operator });
-    await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_SHORT);
 
     // bob has no eurxb
 
@@ -253,7 +255,7 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('withdraw different user before maturity ended failure', async () => {
     await this.multisig.setClaimPeriod(MATURITY_LONG, { from: operator });
-    await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
     await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
     await expectRevert(
@@ -264,7 +266,7 @@ contract('IntegrationSatTest', (accounts) => {
 
   it('withdraw different user after claim period ended', async () => {
     await this.multisig.setClaimPeriod(MATURITY_SHORT, { from: operator });
-    await mintSat(this, alice, ETHER_100, MATURITY_SHORT);
+    await mintSat(this, alice, SAT_VALUE, MATURITY_SHORT);
     await this.eurxb.transfer(bob, BOND_VALUE, { from: alice }); // give bob money
 
     await increaseTime(2 * DAY);
@@ -272,16 +274,84 @@ contract('IntegrationSatTest', (accounts) => {
     await this.ddp.withdraw(TOKEN_1, { from: bob });
   });
 
-  // takes 3 hours, do not uncomment if not absolutely necessarily
+  // // takes 3 hours, do not uncomment if not absolutely necessarily
   // it('mint stress test success', async () => {
-  //   const n = new BN('10000');
   //
-  //   for (var i = 0; i < n; i++) {
-  //     await mintSat(this, alice, ETHER_100, MATURITY_LONG);
+  //   await web3.eth.sendTransaction({from: alice, to: operator, value: Ether('95.0')});
+  //   await web3.eth.sendTransaction({from: bob, to: operator, value: Ether('95.0')});
+  //   const balance = await web3.eth.getBalance(operator);
+  //   assert(balance >= Ether('279'));
+  //
+  //   const n = new BN('10000');
+  //   const timestamp = await currentTimestamp();
+  //   await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
+  //   for (var i = 1; i < n; i++) {
+  //     const deltaTimestamp = (await currentTimestamp()) - timestamp;
+  //     await mintSat(this, alice, SAT_VALUE, (MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp)));
+  //     // if (!(i % 100)) {
+  //     //   console.log('token #', i, 'was minted');
+  //     // }
+  //     const log = ':';
+  //     fs.appendFile('./logger.log', log.concat('timestamp:', timestamp.toString(), 'delta:', deltaTimestamp.toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('timestamp:', timestamp, 'delta:', deltaTimestamp);
+  //     });
+  //     fs.appendFile('./logger.log', log.concat('token #', i.toString(), 'was minted at time:', ((MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp))).toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('token #', i, 'was minted at time:', ((MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp))).toString());
+  //     });
+  //   }
+  //
+  //   let headId = await this.eurxb.getFirstMaturityId();
+  //   let node = await this.eurxb.getMaturityInfo(headId);
+  //   while (true) {
+  //     const log = ':';
+  //     fs.appendFile('./logger2.log', log.concat('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString());
+  //     });
+  //     headId = node[3];
+  //     if (headId.toString() === '0') {
+  //       break;
+  //     }
+  //     node = await this.eurxb.getMaturityInfo(headId);
   //   }
   //
   //   for (var i = 2; i < n; i++) {
   //     await burnSat(this, new BN(i), alice);
+  //     // if (!(i % 100)) {
+  //     //   console.log('token #', i, 'was minted');
+  //     // }
+  //     const log = ':';
+  //     fs.appendFile('./logger3.log', log.concat('token #', i, 'was burned', '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('token #', i, 'was burned');
+  //     });
+  //   }
+  //
+  //   headId = await this.eurxb.getFirstMaturityId();
+  //   node = await this.eurxb.getMaturityInfo(headId);
+  //   while (true) {
+  //     const log = ':';
+  //     fs.appendFile('./logger4.log', log.concat('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString());
+  //     });
+  //     headId = node[3];
+  //     if (headId.toString() === '0') {
+  //       break;
+  //     }
+  //     node = await this.eurxb.getMaturityInfo(headId);
   //   }
   // });
 });

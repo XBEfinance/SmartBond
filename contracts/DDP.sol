@@ -57,6 +57,7 @@ contract DDP is IDDP, AccessControl, Initializable {
 
         // mint EURxb tokens: amount of EURxb FT tokens = value of Bond NFT token.
         IEURxb(_eurxb).mint(to, value);
+        IEURxb(_eurxb).addNewMaturity(value, maturity);
     }
 
     /**
@@ -92,6 +93,10 @@ contract DDP is IDDP, AccessControl, Initializable {
 
         // burn EURxb
         IEURxb(_eurxb).burn(user, value);
+        if (maturity > block.timestamp) {
+            // only if maturity has not arrived yet
+            IEURxb(_eurxb).removeMaturity(value, maturity);
+        }
 
         if (!isOwner) {
             // if not owner, need to transfer ownership first

@@ -1,6 +1,6 @@
 const { assert } = require('chai');
 const { expectRevert } = require('@openzeppelin/test-helpers');
-const { increaseTime, currentTimestamp, DAY } = require('./common');
+const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
 
 const MockToken = artifacts.require('MockToken');
 const StakingManager = artifacts.require('StakingManager');
@@ -72,15 +72,15 @@ contract('StakingManager', (accounts) => {
 
     resultRecipient = await staking.getRewardInfo(recipient, BPT.address);
     resultStaker = await staking.getRewardInfo(staker, BPT.address);
-    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('1500', 'ether'));
-    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('1000', 'ether'));
+    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('1200', 'ether'));
+    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('800', 'ether'));
 
     await staking.claimBPT(BPT.address, { from: recipient });
     await staking.claimBPT(BPT.address, { from: staker });
     assert.equal(await BPT.balanceOf(recipient), web3.utils.toWei('100', 'ether'));
     assert.equal(await BPT.balanceOf(staker), web3.utils.toWei('100', 'ether'));
-    assert.equal(await xbg.balanceOf(recipient), web3.utils.toWei('1500', 'ether'));
-    assert.equal(await xbg.balanceOf(staker), web3.utils.toWei('1000', 'ether'));
+    assert.equal(await xbg.balanceOf(recipient), web3.utils.toWei('1200', 'ether'));
+    assert.equal(await xbg.balanceOf(staker), web3.utils.toWei('800', 'ether'));
   });
 
   it('should throw an exception when the unfreezeTokens is called', async () => {

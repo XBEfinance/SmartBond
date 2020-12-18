@@ -1,6 +1,6 @@
 const { assert } = require('chai');
 const { expectRevert } = require('@openzeppelin/test-helpers');
-const { increaseTime, currentTimestamp, DAY } = require('./common');
+const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
 
 // const TetherToken = artifacts.require('TetherToken'); // USDT
 const BUSDImplementation = artifacts.require('BUSDImplementation'); // BUSD

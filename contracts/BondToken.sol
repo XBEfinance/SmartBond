@@ -111,11 +111,11 @@ contract BondToken is IBondToken, AccessControl, ERC721, Initializable {
             "user is not allowed to burn tokens"
         );
 
+        _burn(tokenId);
+
         uint256 value = _bondInfo[tokenId].value;
         delete _bondInfo[tokenId];
         _totalValue = _totalValue.sub(value);
-
-        _burn(tokenId);
     }
 
     // approval functions must be prohibited
