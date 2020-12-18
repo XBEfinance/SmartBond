@@ -1,5 +1,6 @@
 /* eslint no-unused-vars: 0 */
 /* eslint eqeqeq: 0 */
+const fs = require('fs');
 
 const {
   BN,
@@ -281,46 +282,76 @@ contract('IntegrationSatTest', (accounts) => {
   //   const balance = await web3.eth.getBalance(operator);
   //   assert(balance >= Ether('279'));
   //
-  //   const n = new BN('10');
+  //   const n = new BN('10000');
   //   const timestamp = await currentTimestamp();
   //   await mintSat(this, alice, SAT_VALUE, MATURITY_LONG);
   //   for (var i = 1; i < n; i++) {
   //     const deltaTimestamp = (await currentTimestamp()) - timestamp;
-  //     await mintSat(this, alice, SAT_VALUE, (MATURITY_LONG.mul(new BN('2'))).sub(new BN(i)).sub(new BN(deltaTimestamp)));
-  //     if (!(i % 100)) {
-  //       console.log("token #", i, "was minted");
-  //     }
+  //     await mintSat(this, alice, SAT_VALUE, (MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp)));
+  //     // if (!(i % 100)) {
+  //     //   console.log('token #', i, 'was minted');
+  //     // }
+  //     const log = ':';
+  //     fs.appendFile('./logger.log', log.concat('timestamp:', timestamp.toString(), 'delta:', deltaTimestamp.toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('timestamp:', timestamp, 'delta:', deltaTimestamp);
+  //     });
+  //     fs.appendFile('./logger.log', log.concat('token #', i.toString(), 'was minted at time:', ((MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp))).toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('token #', i, 'was minted at time:', ((MATURITY_LONG.mul(new BN('2'))).sub(new BN(deltaTimestamp))).toString());
+  //     });
   //   }
-  //
   //
   //   let headId = await this.eurxb.getFirstMaturityId();
   //   let node = await this.eurxb.getMaturityInfo(headId);
   //   while (true) {
-  //     console.log("node #", headId.toString(), "maturity:", node[1].toString(), "amount:", node[0].toString());
+  //     const log = ':';
+  //     fs.appendFile('./logger2.log', log.concat('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString());
+  //     });
   //     headId = node[3];
   //     if (headId.toString() === '0') {
-  //       console.log(headId.toString());
   //       break;
   //     }
-  //     node = await this.eurxb.getMaturityInfo(headId)
+  //     node = await this.eurxb.getMaturityInfo(headId);
   //   }
   //
   //   for (var i = 2; i < n; i++) {
   //     await burnSat(this, new BN(i), alice);
-  //     if (!(i % 100)) {
-  //       console.log("token #", i, "was burned");
-  //     }
+  //     // if (!(i % 100)) {
+  //     //   console.log('token #', i, 'was minted');
+  //     // }
+  //     const log = ':';
+  //     fs.appendFile('./logger3.log', log.concat('token #', i, 'was burned', '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('token #', i, 'was burned');
+  //     });
   //   }
   //
   //   headId = await this.eurxb.getFirstMaturityId();
   //   node = await this.eurxb.getMaturityInfo(headId);
   //   while (true) {
-  //     console.log("node #", headId.toString(), "maturity:", node[1].toString(), "amount:", node[0].toString());
+  //     const log = ':';
+  //     fs.appendFile('./logger4.log', log.concat('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString(), '\n'), function(err) {
+  //       if (err) {
+  //         return console.log(err);
+  //       }
+  //       console.log('node #', headId.toString(), 'maturity:', node[1].toString(), 'amount:', node[0].toString());
+  //     });
   //     headId = node[3];
-  //     if (headId.toString() === '0')  {
+  //     if (headId.toString() === '0') {
   //       break;
   //     }
-  //     node = await this.eurxb.getMaturityInfo(headId)
+  //     node = await this.eurxb.getMaturityInfo(headId);
   //   }
   // });
 });
