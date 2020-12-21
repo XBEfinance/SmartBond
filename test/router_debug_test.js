@@ -121,7 +121,7 @@ contract('Router tests for USDT', (accounts) => {
     await printBalances('at the beginning');
 
     // await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-    // await eurxb.transfer(router.address, web3.utils.toWei('1000000', 'ether'));
+    await eurxb.transfer(router.address, web3.utils.toWei('10000', 'ether'));
 
     await printBalances('transfer eurxb to router');
 
@@ -142,30 +142,16 @@ contract('Router tests for USDT', (accounts) => {
     const eurResult = await router.calculateEuroAmount(token.address, web3.utils.toWei('50', 'ether'));
     console.log('euro amount = ', eurResult.toString());
 
-    // await eurxb.approve(router.address, web3.utils.toWei('10000', 'ether'));
-    // await token.approve(router.address, web3.utils.toWei('10000', 'ether'));
-    //
-    // await router.calculateAmounts(
-    //     token.address,
-    //     eurxb.address,
-    //     web3.utils.toWei('50', 'ether'),
-    //     eurResult,
-    //     0,
-    //     0
-    //   );
+    await router.calculateAmounts(
+        token.address,
+        eurxb.address,
+        web3.utils.toWei('50', 'ether'),
+        eurResult,
+        0,
+        0
+      );
 
     // expectEvent.inTransaction(tx, this.router, 'AmountsCalculated', { amountA: 1, amountB: 2});
-
-    // await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
-    //
-    // await printBalances('router liquidity added');
-
-    await increaseTime(DAY);
-    timestamp = await currentTimestamp();
-    timestamp += 10 * DAY;
-
-    await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
-    await token.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
 
     console.log('owner = ', owner);
     console.log('router = ', router.address);
@@ -175,16 +161,32 @@ contract('Router tests for USDT', (accounts) => {
     console.log('eurxb = ', eurxb.address);
     console.log('recipient = ', recipient);
 
-    await uniswap_router.addLiquidity(
-      token.address,
-      eurxb.address,
-      web3.utils.toWei('50', 'ether'),
-      eurResult,
-      0,
-      0,
-      router.address,
-      timestamp,
-    );
+    // owner allows router to spend their money
+
+    // await eurxb.approve(router.address, web3.utils.toWei('10000', 'ether'));
+    await token.approve(router.address, web3.utils.toWei('100', 'ether'));
+
+    await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
+
+    await printBalances('router liquidity added');
+
+    await increaseTime(DAY);
+    timestamp = await currentTimestamp();
+    timestamp += 10 * DAY;
+
+    // await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
+    // await token.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
+
+    // await uniswap_router.addLiquidity(
+    //   token.address,
+    //   eurxb.address,
+    //   web3.utils.toWei('50', 'ether'),
+    //   eurResult,
+    //   0,
+    //   0,
+    //   router.address,
+    //   timestamp,
+    // );
 
     await printRatios();
 

@@ -206,8 +206,8 @@ contract Router is Ownable, Initializable {
         ensureBalance(address(_tEURxb), address(this), amountEUR);
 
         // approve transfer tokens and eurxbs to uniswap pair
-//        TransferHelper.safeApprove(token, address(_uniswapRouter), exchangeAmount);
-        TransferHelper.safeApprove(address(_tEURxb), address(_uniswapRouter), amountEUR.mul(2));
+        TransferHelper.safeApprove(token, address(_uniswapRouter), exchangeAmount);
+        TransferHelper.safeApprove(address(_tEURxb), address(_uniswapRouter), amountEUR);
 
         //         finally transfer tokens and produce liquidity
         (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
@@ -247,10 +247,10 @@ contract Router is Ownable, Initializable {
 
         // reward user with liquidity
         if (_startTime + 7 days < now) {
-            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
+            TransferHelper.safeTransfer(pairAddress, sender, liquidityAmount);
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
-            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
+            TransferHelper.safeApprove(pairAddress, _stakingManager, liquidityAmount);
             manager.addStake(sender, pairAddress, liquidityAmount);
         }
 
