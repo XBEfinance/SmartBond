@@ -125,19 +125,26 @@ contract('Router tests for USDT', (accounts) => {
     const expectedPair = await factory.getPair(token.address, eurxb.address);
     expect(expectedPair, 'wrong pair address').equal(pairAddress);
 
-    await router.addLiquidity(token.address, new BN('100'));
+    const eurResult = await router.calculateEuroAmount(token.address, web3.utils.toWei('50', 'ether'));
+    console.log('euro amount = ', eurResult.toString());
+
+    const { amountToken, amountEur } = await router
+      .calculateAmounts(
+        token.address,
+        web3.utils.toWei('50', 'ether'),
+        eurResult,
+        0,
+        0
+      );
+    console.log('amounts: ', amountToken, amountEur);
+
+    await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
 
     await printBalances('router liquidity added');
-
-    const eurResult = await router.calculateEuroAmount(token.address, 50);
-    console.log('euro amount = ', eurResult.toString());
 
     await increaseTime(DAY);
     timestamp = await currentTimestamp();
     timestamp += 10 * DAY;
-
-    const { amountToken, amountEur } = await router.calculateAmounts(token.address, 50, eurResult, 0, 0);
-    console.log('amounts: ', amountToken, amountEur);
 
     // await uniswap_router.addLiquidity(
     //   token.address,
