@@ -39,7 +39,7 @@ module.exports = function (deployer, network, [owner]) {
     // await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
 
     await deployer.deploy(BFactory);
-    await deployer.deploy(TetherToken, web3.utils.toWei('12042213561', 'ether'), 'Tether USD', 'USDT', 6);
+    await deployer.deploy(TetherToken, web3.utils.toWei('1000000', 'ether'), 'Tether USD', 'USDT', 6);
     await deployer.deploy(BUSDImplementation);
     await deployer.deploy(FiatTokenV2);
     await deployer.deploy(Dai, 1);
