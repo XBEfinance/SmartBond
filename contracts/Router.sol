@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 
 import "./interfaces/IBalancerPool.sol";
 import "./interfaces/IStakingManager.sol";
@@ -34,6 +35,7 @@ contract Router is Ownable, Initializable {
     IERC20 private _tEURxb;
 
     IUniswapV2Router02 private _uniswapRouter;
+    IUniswapV2Factory private _uniswapFactory;
 
     bool _isClosedContract = false;
 
@@ -65,9 +67,12 @@ contract Router is Ownable, Initializable {
     /**
      * @dev setup uniswap router
      */
-    function configure(address uniswapRouter) external initializer {
+    function configure(address uniswapRouter, address uniswapFactory) external initializer {
         require(uniswapRouter != address(0), "invalid router address");
+        require(uniswapFactory != address(0), "invalid factory address");
         _uniswapRouter = IUniswapV2Router02(uniswapRouter);
+        _uniswapFactory = IUniswapV2Factory(uniswapFactory);
+
     }
 
     /**
@@ -201,21 +206,21 @@ contract Router is Ownable, Initializable {
         ensureBalance(address(_tEURxb), address(this), amountEUR);
 
         // approve transfer tokens and eurxbs to uniswap pair
-        TransferHelper.safeApprove(token, pairAddress, exchangeAmount);
-        TransferHelper.safeApprove(address(_tEURxb), pairAddress, amountEUR);
+//        TransferHelper.safeApprove(token, address(_uniswapRouter), exchangeAmount);
+        TransferHelper.safeApprove(address(_tEURxb), address(_uniswapRouter), amountEUR.mul(2));
 
         //         finally transfer tokens and produce liquidity
-//        (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
-//        .addLiquidity(
-//            address(_tEURxb),
-//            token,
-//            amountEUR, // token B
-//            exchangeAmount, // token A
-//            0, // min A amount
-//            0, // min B amount
-//            address(this), // mint liquidity to router, not user
-//            now + 10 minutes // deadline 10 minutes
-//        );
+        (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
+        .addLiquidity(
+            address(_tEURxb),
+            token,
+            amountEUR, // token B
+            exchangeAmount, // token A
+            0, // min A amount
+            0, // min B amount
+            address(this), // mint liquidity to router, not user
+            now + 10 minutes // deadline 10 minutes
+        );
 
         // amountA and amountB should be very close to exchangeTokens and amountEUR
         // sending back rest of tokens doesn't seem to be necessarily
@@ -241,15 +246,15 @@ contract Router is Ownable, Initializable {
         //        }
 
         // reward user with liquidity
-//        if (_startTime + 7 days < now) {
-//            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
-//        } else {
-//            IStakingManager manager = IStakingManager(_stakingManager);
-//            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
-//            manager.addStake(sender, pairAddress, liquidityAmount);
-//        }
-//
-//        emit LiquidityMinted(liquidityAmount);
+        if (_startTime + 7 days < now) {
+            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
+        } else {
+            IStakingManager manager = IStakingManager(_stakingManager);
+            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
+            manager.addStake(sender, pairAddress, liquidityAmount);
+        }
+
+        emit LiquidityMinted(liquidityAmount);
     }
 
     function calculateEuroAmount(address tokenAddress, uint256 tokenAmount) public view returns (uint256) {
@@ -422,7 +427,8 @@ contract Router is Ownable, Initializable {
             (reserve0, reserve1) = getUinswapReservesRatio(token);
         }
 
-        uint256 amountEUR = amount.mul(reserve1).div(reserve0);
+//        uint256 amountEUR = amount.mul(reserve1).div(reserve0);
+        uint256 amountEUR = calculateEuroAmount(token, reserve0);
 
         uint256 routerEurBalance = _tEURxb.balanceOf(address(this));
         require(routerEurBalance >= amountEUR, "Not enough tokens");
@@ -463,34 +469,60 @@ contract Router is Ownable, Initializable {
     }
 
     function quote(uint amountA, uint reserveA, uint reserveB) private pure returns (uint amountB) {
-        require(amountA > 0, 'insufficient amount');
-        require(reserveA > 0 && reserveB > 0, 'insufficient liquidity');
+        require(amountA > 0, 'router: insufficient amount');
+        require(reserveA > 0 && reserveB > 0, 'router: insufficient liquidity');
         amountB = amountA.mul(reserveB) / reserveA;
     }
 
+    function getReserves(address pair, address tokenA, address tokenB) private view returns (uint reserveA, uint reserveB) {
+        (address token0,) = sortTokens(tokenA, tokenB);
+        (uint reserve0, uint reserve1,) = IUniswapV2Pair(pair).getReserves();
+        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+    }
+
+    event AmountsCalculated(uint256 amountA, uint256 amountB);
+
     function calculateAmounts(
-        address token,
-        uint amountTokenDesired,
-        uint amountEurxbDesired,
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
         uint amountAMin,
         uint amountBMin
-    ) public returns (uint amountToken, uint amountEur)
-    {
-        (uint256 tokenRes, uint256 eurRes) = _getUniswapReserves(token);
+    ) external returns (uint amountA, uint amountB) {
+        address token = (address(_tEURxb) == tokenA) ? tokenB : tokenA;
+        address pair = _uniswapPairs[token];
 
-        if (tokenRes == 0 && eurRes == 0) {
-            (amountToken, amountEur) = (amountTokenDesired, amountEurxbDesired);
+        (uint reserveA, uint reserveB) = getReserves(pair, tokenA, tokenB);
+        if (reserveA == 0 && reserveB == 0) {
+            (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint amountBOptimal = quote(amountTokenDesired, tokenRes, eurRes);
-            if (amountBOptimal <= amountEurxbDesired) {
-                require(amountBOptimal >= amountBMin, 'insufficient B amount');
-                (amountToken, amountEur) = (amountTokenDesired, amountBOptimal);
+            uint amountBOptimal = quote(amountADesired, reserveA, reserveB);
+            if (amountBOptimal <= amountBDesired) {
+                require(amountBOptimal >= amountBMin, 'router: INSUFFICIENT_B_AMOUNT');
+                (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint amountAOptimal = quote(amountEurxbDesired, tokenRes, eurRes);
-                assert(amountAOptimal <= amountTokenDesired);
-                require(amountAOptimal >= amountAMin, 'insufficient A amount');
-                (amountToken, amountEur) = (amountAOptimal, amountEurxbDesired);
+                uint amountAOptimal = quote(amountBDesired, reserveB, reserveA);
+                assert(amountAOptimal <= amountADesired);
+                require(amountAOptimal >= amountAMin, 'router: INSUFFICIENT_A_AMOUNT');
+                (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
+
+        emit AmountsCalculated(amountA, amountB);
+    }
+
+    function _pairFor(address factory, address tokenA, address tokenB) private pure returns (address pair) {
+        (address token0, address token1) = sortTokens(tokenA, tokenB);
+        pair = address(uint(keccak256(abi.encodePacked(
+                hex'ff',
+                factory,
+                keccak256(abi.encodePacked(token0, token1)),
+                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
+            ))));
+    }
+
+    function pairFor(address token) public view returns (address) {
+        return _pairFor(address(_uniswapFactory), token, address(_tEURxb));
     }
 }

@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
 
 const TetherToken = artifacts.require('TetherToken'); // USDT
@@ -14,6 +14,7 @@ const WETH9 = artifacts.require('WETH9');
 const UniswapV2Factory = artifacts.require('UniswapV2Factory');
 const UniswapV2Pair = artifacts.require('UniswapV2Pair');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
+
 const EURxb = artifacts.require('EURxb');
 
 contract('Router tests for USDT', (accounts) => {
@@ -70,16 +71,23 @@ contract('Router tests for USDT', (accounts) => {
     );
     // }
 
+    assert.equal(await eurxb.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
+    assert.equal(await token.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
+
     // create uniswap router and dependancies
     factory = await UniswapV2Factory.new(owner);
     weth = await WETH9.new();
     uniswap_router = await UniswapV2Router02.new(factory.address, weth.address);
-    await factory.createPair(token.address, eurxb.address);
+    await factory.createPair(eurxb.address, token.address);
 
     pairAddress = await factory.allPairs.call(new BN('0'));
     pair = await UniswapV2Pair.at(pairAddress);
 
-    await router.configure(uniswap_router.address);
+    // let pp = await uniswap_library.pairFor(factory.address, token.address, eurxb.address);
+    // console.log('uniswap pair = ', pp.address);
+    console.log('test pair = ', pairAddress);
+
+    await router.configure(uniswap_router.address, factory.address);
     await router.setUniswapPair(token.address, pair.address);
 
     //
@@ -112,39 +120,45 @@ contract('Router tests for USDT', (accounts) => {
 
     await printBalances('at the beginning');
 
-    await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-    await eurxb.transfer(router.address, web3.utils.toWei('1000000', 'ether'));
-
-    // await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
-    await token.approve(router.address, web3.utils.toWei('1000000', 'ether'));
+    // await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
+    // await eurxb.transfer(router.address, web3.utils.toWei('1000000', 'ether'));
 
     await printBalances('transfer eurxb to router');
 
     await printRatios();
 
     const expectedPair = await factory.getPair(token.address, eurxb.address);
+    const reversedPair = await factory.getPair(eurxb.address, token.address);
+    const routerPair = await router.pairFor(token.address);
+
+    console.log('factory created pair =', expectedPair);
+    console.log('factory reversed pair =', reversedPair);
+    console.log('factory router library pair =', routerPair);
+
     expect(expectedPair, 'wrong pair address').equal(pairAddress);
+    expect(expectedPair, 'pairs are not equal').equal(reversedPair);
+    expect(routerPair, 'router pair is different').equal(routerPair);
 
     const eurResult = await router.calculateEuroAmount(token.address, web3.utils.toWei('50', 'ether'));
     console.log('euro amount = ', eurResult.toString());
 
-    await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-    await token.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-
-
-    // const { amountToken, amountEur } = await router
-    //   .calculateAmounts(
+    // await eurxb.approve(router.address, web3.utils.toWei('10000', 'ether'));
+    // await token.approve(router.address, web3.utils.toWei('10000', 'ether'));
+    //
+    // await router.calculateAmounts(
     //     token.address,
+    //     eurxb.address,
     //     web3.utils.toWei('50', 'ether'),
     //     eurResult,
     //     0,
     //     0
     //   );
-    // console.log('amounts: ', amountToken, amountEur);
 
-    await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
+    // expectEvent.inTransaction(tx, this.router, 'AmountsCalculated', { amountA: 1, amountB: 2});
 
-    await printBalances('router liquidity added');
+    // await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
+    //
+    // await printBalances('router liquidity added');
 
     await increaseTime(DAY);
     timestamp = await currentTimestamp();
@@ -152,6 +166,14 @@ contract('Router tests for USDT', (accounts) => {
 
     await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
     await token.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
+
+    console.log('owner = ', owner);
+    console.log('router = ', router.address);
+    console.log('uniswap router = ', uniswap_router.address);
+    console.log('pair = ', pairAddress);
+    console.log('token = ', token.address);
+    console.log('eurxb = ', eurxb.address);
+    console.log('recipient = ', recipient);
 
     await uniswap_router.addLiquidity(
       token.address,
