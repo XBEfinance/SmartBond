@@ -205,17 +205,17 @@ contract Router is Ownable, Initializable {
         TransferHelper.safeApprove(address(_tEURxb), pairAddress, amountEUR);
 
         //         finally transfer tokens and produce liquidity
-        (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
-        .addLiquidity(
-            address(_tEURxb),
-            token,
-            amountEUR, // token B
-            exchangeAmount, // token A
-            0, // min A amount
-            0, // min B amount
-            address(this), // mint liquidity to router, not user
-            now + 10 minutes // deadline 10 minutes
-        );
+//        (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
+//        .addLiquidity(
+//            address(_tEURxb),
+//            token,
+//            amountEUR, // token B
+//            exchangeAmount, // token A
+//            0, // min A amount
+//            0, // min B amount
+//            address(this), // mint liquidity to router, not user
+//            now + 10 minutes // deadline 10 minutes
+//        );
 
         // amountA and amountB should be very close to exchangeTokens and amountEUR
         // sending back rest of tokens doesn't seem to be necessarily
@@ -240,16 +240,16 @@ contract Router is Ownable, Initializable {
         //            );
         //        }
 
-        // reward user with BPT
-        if (_startTime + 7 days < now) {
-            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
-        } else {
-            IStakingManager manager = IStakingManager(_stakingManager);
-            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
-            manager.addStake(sender, pairAddress, liquidityAmount);
-        }
-
-        emit LiquidityMinted(liquidityAmount);
+        // reward user with liquidity
+//        if (_startTime + 7 days < now) {
+//            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
+//        } else {
+//            IStakingManager manager = IStakingManager(_stakingManager);
+//            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
+//            manager.addStake(sender, pairAddress, liquidityAmount);
+//        }
+//
+//        emit LiquidityMinted(liquidityAmount);
     }
 
     function calculateEuroAmount(address tokenAddress, uint256 tokenAmount) public view returns (uint256) {

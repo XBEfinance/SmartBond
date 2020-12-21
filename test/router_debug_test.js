@@ -128,15 +128,19 @@ contract('Router tests for USDT', (accounts) => {
     const eurResult = await router.calculateEuroAmount(token.address, web3.utils.toWei('50', 'ether'));
     console.log('euro amount = ', eurResult.toString());
 
-    const { amountToken, amountEur } = await router
-      .calculateAmounts(
-        token.address,
-        web3.utils.toWei('50', 'ether'),
-        eurResult,
-        0,
-        0
-      );
-    console.log('amounts: ', amountToken, amountEur);
+    await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
+    await token.approve(router.address, web3.utils.toWei('1000000', 'ether'));
+
+
+    // const { amountToken, amountEur } = await router
+    //   .calculateAmounts(
+    //     token.address,
+    //     web3.utils.toWei('50', 'ether'),
+    //     eurResult,
+    //     0,
+    //     0
+    //   );
+    // console.log('amounts: ', amountToken, amountEur);
 
     await router.addLiquidity(token.address, web3.utils.toWei('100', 'ether'));
 
@@ -146,16 +150,19 @@ contract('Router tests for USDT', (accounts) => {
     timestamp = await currentTimestamp();
     timestamp += 10 * DAY;
 
-    // await uniswap_router.addLiquidity(
-    //   token.address,
-    //   eurxb.address,
-    //   new BN('50'),
-    //   eurResult,
-    //   new BN('0'),
-    //   new BN('0'),
-    //   router.address,
-    //   timestamp,
-    // );
+    await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
+    await token.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
+
+    await uniswap_router.addLiquidity(
+      token.address,
+      eurxb.address,
+      web3.utils.toWei('50', 'ether'),
+      eurResult,
+      0,
+      0,
+      router.address,
+      timestamp,
+    );
 
     await printRatios();
 
