@@ -91,7 +91,11 @@ contract StakingManager is Ownable, Initializable {
      * @return day number from startTime
      */
     function currentDay() external view returns (uint256) {
-        return (block.timestamp - _startTime) / 1 days;
+        if (block.timestamp < _startTime) {
+            return 0;
+        }
+        uint256 day = (block.timestamp - _startTime) / 1 days;
+        return (day < 7)? (day + 1) : 0;
     }
 
     function tokenXbg() external view returns (address) {
@@ -129,7 +133,7 @@ contract StakingManager is Ownable, Initializable {
         return lpTokens;
     }
 
-    function getStakeInfoPerDays(address user, address pool) external view returns (uint256[7] memory) {
+    function getStakeInfoPerDay(address user, address pool) external view returns (uint256[7] memory) {
         uint256[7] memory lpTokens;
         for (uint256 i = 0; i < 7; ++i) {
             lpTokens[i] = _stakes[user][pool][i];

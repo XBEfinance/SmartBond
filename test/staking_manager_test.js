@@ -1,102 +1,147 @@
-const { assert } = require('chai');
-const { expectRevert } = require('@openzeppelin/test-helpers');
-const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
+const { expect } = require('chai');
+
+const { expectRevert, BN, ether, time } = require('@openzeppelin/test-helpers');
 
 const MockToken = artifacts.require('MockToken');
 const StakingManager = artifacts.require('StakingManager');
 
+function checkStakeInfoPerDay(stakeInfo, expectInfo) {
+  for(let i = 0; i < stakeInfo.length; ++i) {
+    expect(stakeInfo[i]).to.be.bignumber.equal(expectInfo[i]);
+  }
+}
+
 contract('StakingManager', (accounts) => {
   const recipient = accounts[1];
-  const staker = accounts[2];
-
-  let BPT;
-  let xbg;
-  let staking;
-
-  let timestamp;
+  const staker1 = accounts[2];
+  const staker2 = accounts[3];
+  const staker3 = accounts[4];
+  const staker4 = accounts[5];
 
   beforeEach(async () => {
-    BPT = await MockToken.new('BPT', 'BPT', web3.utils.toWei('400', 'ether'));
-    xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('10000', 'ether'));
+    this.lpToken1 = await MockToken.new('LPToken', 'LPT1', ether('400.0'));
+    this.lpToken2 = await MockToken.new('LPToken', 'LPT2', ether('400.0'));
+    this.lpToken3 = await MockToken.new('LPToken', 'LPT3', ether('400.0'));
+    this.lpToken4 = await MockToken.new('LPToken', 'LPT4', ether('400.0'));
+    this.xbg = await MockToken.new('xbg', 'xbg', ether('8000.0'));
 
-    timestamp = await currentTimestamp();
-    staking = await StakingManager.new(xbg.address, timestamp, 150);
-    await increaseTime(DAY / 2);
+    const timestamp = await time.latest();
+    this.startTime = timestamp.add(time.duration.days('1'));
+
+    this.sm = await StakingManager.new(this.xbg.address, this.startTime);
+    await time.increase(time.duration.hours('12'));
   });
 
-  it('should throw an exception when the constructor is called', async () => {
-    await expectRevert(StakingManager.new(xbg.address, timestamp, 50), 'Weight must be over 100');
+  it('should return correct timing parameters', async () => {
+    expect(await this.sm.startTime()).to.be.bignumber.equal(this.startTime);
+    expect(await this.sm.endTime()).to.be.bignumber.equal(this.startTime.add(time.duration.days('7')));
+    expect(await this.sm.currentDay()).to.be.bignumber.equal(new BN('0'));
+    await time.increase(time.duration.days('1'));
+    expect(await this.sm.currentDay()).to.be.bignumber.equal(new BN('1'));
+    await time.increase(time.duration.days('6'));
+    expect(await this.sm.currentDay()).to.be.bignumber.equal(new BN('7'));
+    await time.increase(time.duration.days('1'));
+    expect(await this.sm.currentDay()).to.be.bignumber.equal(new BN('0'));
   });
 
-  it('should return correct staking values', async () => {
-    assert.equal(await staking.isFrozen(), true);
-    assert.equal(await staking.startTime(), timestamp);
-    assert.equal(await staking.bonusWeight(), 150);
-  });
+  describe('when contract has initialized', async () => {
+    beforeEach(async () => {
+      await this.xbg.approve(this.sm.address, ether('8000.0'));
+      await this.sm.configure([this.lpToken1.address, this.lpToken2.address, this.lpToken3.address, this.lpToken4.address]);
+    });
 
-  it('should return correct pool values when adding liquidity through a contract', async () => {
-    await staking.setBalancerPool(BPT.address);
-    await BPT.approve(staking.address, web3.utils.toWei('100', 'ether'));
-    await staking.addStaker(recipient, BPT.address, web3.utils.toWei('100', 'ether'));
-    const result = await staking.getRewardInfo(recipient, BPT.address);
-    assert.equal(result.bptBalance, web3.utils.toWei('100', 'ether'));
-  });
+    it('should return correct pool parameters', async () => {
+      expect(await this.sm.tokenXbg()).to.equal(this.xbg.address);
+      const poolAddresses = await this.sm.getPools();
+      expect(poolAddresses[0]).to.equal(this.lpToken1.address);
+      expect(poolAddresses[1]).to.equal(this.lpToken2.address);
+      expect(poolAddresses[2]).to.equal(this.lpToken3.address);
+      expect(poolAddresses[3]).to.equal(this.lpToken4.address);
+    });
 
-  it('should throw an exception when the unfreezeTokens is called', async () => {
-    await expectRevert(staking.unfreezeTokens(), 'Time is not over');
-  });
+    it('should throw an exception when liquidity has added outside staking period', async () => {
+      await this.lpToken1.approve(this.sm.address, ether('100.0'));
+      await expectRevert(this.sm.addStake(recipient, this.lpToken1.address, ether('10.0')),
+        'The time has not come yet');
+      await time.increase(time.duration.days('8'));
+      await expectRevert(this.sm.addStake(recipient, this.lpToken1.address, ether('10.0')),
+        'stakings has finished');
+    });
 
-  it('should correct claim BPT tokens and unfreeze tokens', async () => {
-    assert.equal(await staking.isFrozen(), true);
+    describe('when contract has started', async () => {
+      beforeEach(async () => {
+        await time.increase(time.duration.days('1'));
+      });
 
-    await staking.setBalancerPool(BPT.address);
-    await BPT.approve(staking.address, web3.utils.toWei('200', 'ether'));
-    await staking.addStaker(recipient, BPT.address, web3.utils.toWei('100', 'ether'));
-    await increaseTime(DAY * 4);
-    await staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether'));
+      it('should return correct pool values when adding liquidity through a contract', async () => {
+        await this.lpToken1.approve(this.sm.address, ether('100.0'));
+        await this.lpToken2.approve(this.sm.address, ether('100.0'));
+        await this.lpToken3.approve(this.sm.address, ether('100.0'));
+        await this.lpToken4.approve(this.sm.address, ether('100.0'));
+        await this.sm.addStake(recipient, this.lpToken1.address, ether('50.0'));
+        await time.increase(time.duration.days('1'));
+        await this.sm.addStake(recipient, this.lpToken1.address, ether('50.0'));
+        await time.increase(time.duration.days('1'));
+        await this.sm.addStake(recipient, this.lpToken2.address, ether('50.0'));
+        await this.sm.addStake(recipient, this.lpToken3.address, ether('25.0'));
+        await time.increase(time.duration.days('4'));
+        await this.sm.addStake(recipient, this.lpToken4.address, ether('10.0'));
+        const stakes = await this.sm.getStake(recipient);
+        expect(stakes[0]).to.be.bignumber.equal(ether('100.0'));
+        expect(stakes[1]).to.be.bignumber.equal(ether('50.0'));
+        expect(stakes[2]).to.be.bignumber.equal(ether('25.0'));
+        expect(stakes[3]).to.be.bignumber.equal(ether('10.0'));
+        checkStakeInfoPerDay(await this.sm.getStakeInfoPerDay(recipient, this.lpToken1.address),
+          [
+            ether('50'),
+            ether('50'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0')]);
+        checkStakeInfoPerDay(await this.sm.getStakeInfoPerDay(recipient, this.lpToken2.address),
+          [
+            ether('0'),
+            ether('0'),
+            ether('50'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0')]);
+        checkStakeInfoPerDay(await this.sm.getStakeInfoPerDay(recipient, this.lpToken3.address),
+          [
+            ether('0'),
+            ether('0'),
+            ether('25'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0')]);
+        checkStakeInfoPerDay(await this.sm.getStakeInfoPerDay(recipient, this.lpToken4.address),
+          [
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('0'),
+            ether('10')]);
+      });
 
-    let resultRecipient = await staking.getRewardInfo(recipient, BPT.address);
-    let resultStaker = await staking.getRewardInfo(staker, BPT.address);
-    assert.equal(resultRecipient.bptBalance, web3.utils.toWei('100', 'ether'));
-    assert.equal(resultStaker.bptBalance, web3.utils.toWei('100', 'ether'));
-    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('0', 'ether'));
-    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('0', 'ether'));
+      it('should throw an exception when using unacceptable pool token', async () => {
+        const lpToken = await MockToken.new('LPToken', 'LPT', ether('400.0'));
+        await lpToken.approve(this.sm.address, ether('100.0'));
+        await expectRevert(this.sm.addStake(recipient, lpToken.address, ether('100.0')),
+          'Pool not found');
+      });
 
-    await increaseTime(DAY * 2);
-
-    await expectRevert(staking.unfreezeTokens(), 'Insufficient xbg balance');
-
-    await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
-    await staking.unfreezeTokens();
-    assert.equal(await staking.isFrozen(), false);
-
-    resultRecipient = await staking.getRewardInfo(recipient, BPT.address);
-    resultStaker = await staking.getRewardInfo(staker, BPT.address);
-    assert.equal(resultRecipient.xbgBalance, web3.utils.toWei('1200', 'ether'));
-    assert.equal(resultStaker.xbgBalance, web3.utils.toWei('800', 'ether'));
-
-    await staking.claimBPT(BPT.address, { from: recipient });
-    await staking.claimBPT(BPT.address, { from: staker });
-    assert.equal(await BPT.balanceOf(recipient), web3.utils.toWei('100', 'ether'));
-    assert.equal(await BPT.balanceOf(staker), web3.utils.toWei('100', 'ether'));
-    assert.equal(await xbg.balanceOf(recipient), web3.utils.toWei('1200', 'ether'));
-    assert.equal(await xbg.balanceOf(staker), web3.utils.toWei('800', 'ether'));
-  });
-
-  it('should throw an exception when the unfreezeTokens is called', async () => {
-    await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
-    await staking.unfreezeTokens();
-    await expectRevert(staking.unfreezeTokens(), 'Tokens unfrozen');
-  });
-
-  it('should throw an exception when the addStaker is called', async () => {
-    await expectRevert(staking.addStaker(staker, BPT.address, web3.utils.toWei('100', 'ether')), 'Balancer pool not found');
-  });
-
-  it('should throw an exception when the claimBPT is called', async () => {
-    await expectRevert(staking.claimBPT(BPT.address, { from: recipient }), 'Tokens frozen');
-    await xbg.transfer(staking.address, web3.utils.toWei('10000', 'ether'));
-    await staking.unfreezeTokens();
-    await expectRevert(staking.claimBPT(BPT.address, { from: recipient }), "Staker doesn't exist");
+      it('should right calculate reward', async () => {
+        expect(await this.sm.totalRewardForPool(this.lpToken1.address)).to.be.bignumber.equal(ether('2000.0'));
+        expect(await this.sm.totalRewardForPool(this.lpToken2.address)).to.be.bignumber.equal(ether('2000.0'));
+        expect(await this.sm.totalRewardForPool(this.lpToken3.address)).to.be.bignumber.equal(ether('2000.0'));
+        expect(await this.sm.totalRewardForPool(this.lpToken4.address)).to.be.bignumber.equal(ether('2000.0'));
+      });
+    });
   });
 });
