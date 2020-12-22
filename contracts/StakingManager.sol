@@ -106,20 +106,26 @@ contract StakingManager is Ownable, Initializable {
         return _pools;
     }
 
-    function totalRewardForPool(address pool) external view returns (uint256) {
+    function totalRewardForPool(address pool) external view returns (uint256, uint256[7] memory) {
         uint256 poolReward = 0;
+        uint256[7] memory dailyRewards;
         for (uint256 i = 0; i < 7; ++i) {
-            poolReward = poolReward.add(_dailyAccumulator[pool][i].xbgTotalReward);
+            dailyRewards[i] = _dailyAccumulator[pool][i].xbgTotalReward;
+            poolReward = poolReward.add(dailyRewards[i]);
+
         }
-        return poolReward;
+        return (poolReward, dailyRewards);
     }
 
-    function rewardForPoolPerDay(address pool, uint8 day) external view returns (uint256) {
-        return _dailyAccumulator[pool][day].xbgTotalReward;
-    }
+    function totalLPForPool(address pool) external view returns (uint256, uint256[7] memory) {
+        uint256 lpAmount = 0;
+        uint256[7] memory dailyLP;
+        for (uint256 i = 0; i < 7; ++i) {
+            dailyLP[i] = _dailyAccumulator[pool][i].lpTotalAmount;
+            lpAmount = lpAmount.add(dailyLP[i]);
 
-    function lpTokensPerDay(address pool, uint8 day) external view returns (uint256) {
-        return _dailyAccumulator[pool][day].lpTotalAmount;
+        }
+        return (lpAmount, dailyLP);
     }
 
     function getStake(address user) external view returns (uint256[4] memory) {
@@ -141,15 +147,19 @@ contract StakingManager is Ownable, Initializable {
         return lpTokens;
     }
 
-    function calculateReward(address user) external view returns(uint256[4] memory, uint256) {
+    function calculateReward(address user, uint256 timestamp) external view returns(uint256[4] memory, uint256) {
         uint256[4] memory usersLP;
         uint256 xbgReward;
+
+        if (timestamp == 0) {
+            timestamp = block.timestamp;
+        }
 
         for (uint256 i = 0; i < 4; ++i) {
             address pool = _pools[i];
             uint256 accumulateTotalLP = 0;
             uint256 accumulateUserLP = 0;
-            for (uint256 j = 0; j < 7 && block.timestamp > _startTime + (j + 1) * 86400; ++j) {
+            for (uint256 j = 0; j < 7 && timestamp > _startTime + (j + 1) * 86400; ++j) {
                 Accumulator storage dailyAccumulator = _dailyAccumulator[pool][j];
                 accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
                 uint256 stake = _stakes[user][pool][j];
@@ -166,8 +176,6 @@ contract StakingManager is Ownable, Initializable {
 
         return (usersLP, xbgReward);
     }
-
-//    mapping(address => mapping(address => uint256[7])) private _stakes;   /// user address => pool address => daily lp balance
 
     /**
      * @dev Add stake
@@ -211,22 +219,22 @@ contract StakingManager is Ownable, Initializable {
                 accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
                 uint256 stake = _stakes[user][pool][j];
                 if (stake > 0) {
+                    _stakes[user][pool][j] = 0;
                     accumulateUserLP = accumulateUserLP.add(stake);
                     usersLP[i] = usersLP[i].add(stake);
                 }
                 if (accumulateUserLP > 0) {
                     uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
-                    dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.sub(dailyReward);
+                    dailyAccumulator.xbgTotalReward = dailyAccumulator.xbgTotalReward.sub(dailyReward);
                     xbgReward = xbgReward.add(dailyReward);
                 }
                 if (stake > 0) {
-                    dailyAccumulator.xbgTotalReward = dailyAccumulator.xbgTotalReward.sub(stake);
+                    dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.sub(stake);
                 }
             }
             if (usersLP[i] > 0) {
                 IERC20(_pools[i]).transfer(user, usersLP[i]);
             }
-            delete _stakes[user][pool];
         }
         if (xbgReward > 0) {
             _tokenXbg.transfer(user, xbgReward);
