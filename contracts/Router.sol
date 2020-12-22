@@ -174,7 +174,6 @@ contract Router is Ownable, Initializable {
 
         address pairAddress = _uniswapPairs[token];
         require(pairAddress != address(0), "Unsupported token");
-        IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
         uint256 exchangeAmount = amount.div(2);
         (uint256 tokenRatio, uint256 eurRatio) = getUinswapReservesRatio(token);
@@ -210,7 +209,7 @@ contract Router is Ownable, Initializable {
         TransferHelper.safeApprove(address(_tEURxb), address(_uniswapRouter), amountEUR);
 
         //         finally transfer tokens and produce liquidity
-        (uint256 amountA, uint256 amountB, uint256 liquidityAmount) = _uniswapRouter
+        ( , , uint256 liquidityAmount) = _uniswapRouter
         .addLiquidity(
             address(_tEURxb),
             token,
