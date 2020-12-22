@@ -42,7 +42,7 @@ contract('Router', (accounts) => {
       xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('500', 'ether'));
 
       timestamp = await currentTimestamp();
-      staking = await StakingManager.new(xbg.address, timestamp, 150);
+      staking = await StakingManager.new(xbg.address, timestamp);
 
       await increaseTime(DAY);
     });
