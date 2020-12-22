@@ -1,6 +1,11 @@
-const { assert } = require('chai');
-const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+const { expectRevert, BN, ether, time } = require('@openzeppelin/test-helpers');
 const { increaseTime, currentTimestamp, DAY } = require('./utils/common');
+
+const chai = require('chai');
+chai.use(require('chai-as-promised'));
+// chai.use(require('chai-bignumber')(BN));
+
+const { expect, assert } = chai;
 
 const TetherToken = artifacts.require('TetherToken'); // USDT
 const BUSDImplementation = artifacts.require('BUSDImplementation'); // BUSD
@@ -45,11 +50,11 @@ contract('Router', (accounts) => {
 
   describe('Router tests', async () => {
     beforeEach(async () => {
-      EURxb = await MockToken.new('EURxb', 'EURxb', web3.utils.toWei('50000', 'ether'));
-      xbg = await MockToken.new('xbg', 'xbg', web3.utils.toWei('500', 'ether'));
-
+      EURxb = await MockToken.new('EURxb', 'EURxb', ether('50000'));
+      xbg = await MockToken.new('xbg', 'xbg', ether('8000'));
       timestamp = await currentTimestamp();
       staking = await StakingManager.new(xbg.address, timestamp + DAY);
+      await xbg.approve(staking.address, ether('8000'));
 
       await increaseTime(DAY);
     });
@@ -63,13 +68,13 @@ contract('Router', (accounts) => {
         beforeEach(async () => {
           // eurxb = await EURxb.new(owner);
           // await eurxb.configure(owner);
-          // await eurxb.mint(owner, web3.utils.toWei('1000000', 'ether'));
+          // await eurxb.mint(owner, ether('1000000'));
 
           if (balancerTokens[i] === 'USDC') {
             token = await FiatTokenV2.new();
             await token.updateMasterMinter(owner);
-            await token.configureMinter(owner, web3.utils.toWei('1000', 'ether'));
-            await token.mint(owner, web3.utils.toWei('1000', 'ether'));
+            await token.configureMinter(owner, ether('1000'));
+            await token.mint(owner, ether('1000'));
 
             router = await Router.new(
               team, staking.address, timestamp,
@@ -79,7 +84,7 @@ contract('Router', (accounts) => {
 
           if (balancerTokens[i] === 'DAI') {
             token = await Dai.new(1);
-            await token.mint(owner, web3.utils.toWei('1000', 'ether'));
+            await token.mint(owner, ether('1000'));
 
             router = await Router.new(
               team, staking.address, timestamp,
@@ -87,30 +92,34 @@ contract('Router', (accounts) => {
             );
           }
 
-          await token.transfer(recipient, web3.utils.toWei('200', 'ether'));
-          await token.transfer(staker, web3.utils.toWei('200', 'ether'));
+          await token.transfer(recipient, ether('200'));
+          await token.transfer(staker, ether('200'));
 
           bFactory = await BFactory.deployed();
           await bFactory.newBPool();
           const balancerAddress = await bFactory.getLastBPool();
           balancer = await BPool.at(balancerAddress);
 
-          await EURxb.approve(balancer.address, web3.utils.toWei('46', 'ether'));
-          await token.approve(balancer.address, web3.utils.toWei('54', 'ether'));
-          await balancer.bind(EURxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
-          await balancer.bind(token.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+          await EURxb.approve(balancer.address, ether('46'));
+          await token.approve(balancer.address, ether('54'));
+          await balancer.bind(EURxb.address, ether('46'), ether('23'));
+          await balancer.bind(token.address, ether('54'), ether('27'));
           await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
           await balancer.finalize();
 
+          const lpToken1 = await MockToken.new('LPToken', 'LPT1', ether('400.0'));
+          const lpToken2 = await MockToken.new('LPToken', 'LPT2', ether('400.0'));
+          const lpToken3 = await MockToken.new('LPToken', 'LPT3', ether('400.0'));
+
           await router.setBalancerPool(token.address, balancer.address);
-          await staking.setBalancerPool(balancer.address);
+          await staking.configure([balancer.address, lpToken1.address, lpToken2.address, lpToken3.address]);
         });
 
         it('should return correct balancer values', async () => {
           assert.equal(await balancer.getNumTokens(), 2);
-          assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
-          assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('54', 'ether'));
-          assert.equal(await balancer.getSwapFee(), web3.utils.toWei('1', 'finney'));
+          expect(await balancer.getBalance(EURxb.address)).to.be.bignumber.equal(ether('46'));
+          expect(await balancer.getBalance(token.address)).to.be.bignumber.equal(ether('54'));
+          expect(await balancer.getSwapFee()).to.be.bignumber.equal(web3.utils.toWei('1', 'finney'));
         });
 
         it('should return correct router values', async () => {
@@ -122,41 +131,38 @@ contract('Router', (accounts) => {
         });
 
         it('should return correct change router values', async () => {
-          await router.setBalancerPool(token.address, newBalancer);
           await router.setTeamAddress(newTeam);
-
-          assert.equal(await router.balancerPools(token.address), newBalancer);
           assert.equal(await router.teamAddress(), newTeam);
         });
 
         it('should return correct balance EURxb values', async () => {
-          await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-          await token.approve(router.address, web3.utils.toWei('54', 'ether'), { from: recipient });
-          await router.exchangeForEuroXB(token.address, web3.utils.toWei('54', 'ether'), { from: recipient });
+          await EURxb.transfer(router.address, ether('400'));
+          await token.approve(router.address, ether('54'), { from: recipient });
+          await router.exchangeForEuroXB(token.address, ether('54'), { from: recipient });
           const balance = await EURxb.balanceOf(recipient);
-          assert.equal(web3.utils.fromWei(balance, 'ether'), 46);
+          assert.equal(web3.utils.fromWei(balance), 46);
         });
 
         it('should return correct pool values when adding liquidity through a contract', async () => {
-          await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-          await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-          await router.addLiquidity(token.address, web3.utils.toWei('108', 'ether'), { from: recipient });
+          await EURxb.transfer(router.address, ether('400'));
+          await token.approve(router.address, ether('200'), { from: recipient });
+          await router.addLiquidity(token.address, ether('108'), { from: recipient });
 
           assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('91540', 'finney'));
           assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('107460', 'finney'));
 
-          await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: staker });
-          await router.addLiquidity(token.address, web3.utils.toWei('108', 'ether'), { from: staker });
+          await token.approve(router.address, ether('200'), { from: staker });
+          await router.addLiquidity(token.address, ether('108'), { from: staker });
           assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('137079999999999999886', 'wei'));
           assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('160919999999999999867', 'wei'));
         });
 
         it('should return correct pool values when adding liquidity through a contract', async () => {
-          await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-          await router.addLiquidity(token.address, web3.utils.toWei('27', 'ether'), { from: recipient });
+          await token.approve(router.address, ether('200'), { from: recipient });
+          await router.addLiquidity(token.address, ether('27'), { from: recipient });
 
-          assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('46', 'ether'));
-          assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('81', 'ether'));
+          expect(await balancer.getBalance(EURxb.address)).to.be.bignumber.equal(ether('46'));
+          expect(await balancer.getBalance(token.address)).to.be.bignumber.equal(ether('81'));
         });
       });
     }
@@ -178,7 +184,7 @@ contract('Router', (accounts) => {
     //     beforeEach(async () => {
     //       eurxb = await EURxb.new(owner);
     //       await eurxb.configure(owner);
-    //       await eurxb.mint(owner, web3.utils.toWei('1000000', 'ether'));
+    //       await eurxb.mint(owner, ether('1000000'));
     //
     //       if (uniswapTokens[i] === 'USDT') {
     //         token = await TetherToken.deployed();
@@ -213,11 +219,11 @@ contract('Router', (accounts) => {
     //       await router.configure(uniswap_router.address);
     //       await router.setUniswapPair(token.address, pair.address);
     //
-    //       // await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
-    //       await token.approve(router.address, web3.utils.toWei('12042213561', 'ether'));
-    //       await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-    //       await eurxb.transfer(router.address, web3.utils.toWei('1000000', 'ether'));
-    //       // await token.approve(uniswap_router.address, web3.utils.toWei('12042213561', 'ether'));
+    //       // await eurxb.approve(uniswap_router.address, ether('1000000'));
+    //       await token.approve(router.address, ether('12042213561'));
+    //       await eurxb.approve(router.address, ether('1000000'));
+    //       await eurxb.transfer(router.address, ether('1000000'));
+    //       // await token.approve(uniswap_router.address, ether('12042213561'));
     //       console.log('token owner balance = ', await token.balanceOf(owner));
     //       console.log('eur owner balance = ', await eurxb.balanceOf(owner));
     //
@@ -253,13 +259,13 @@ contract('Router', (accounts) => {
     //       await printRatios();
 
     //
-    // await token.transfer(recipient, web3.utils.toWei('200', 'ether'));
-    // await token.transfer(staker, web3.utils.toWei('200', 'ether'));
+    // await token.transfer(recipient, ether('200'));
+    // await token.transfer(staker, ether('200'));
     // });
     //
     // it('should return correct uniswap values', async () => {
     //   console.log('liquidity balance = ', await pair.balanceOf(owner));
-    //   // assert.equal(await pair.balanceOf(owner), web3.utils.toWei('100', 'ether'));
+    //   // assert.equal(await pair.balanceOf(owner), ether('100'));
     // });
     //
     // it('should return correct router values', async () => {
@@ -280,39 +286,39 @@ contract('Router', (accounts) => {
     // });
     //
     // it('should return correct balance EURxb values', async () => {
-    //   await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-    //   await token.approve(router.address, web3.utils.toWei('54', 'ether'), { from: recipient });
-    //   await router.exchangeForEuroXB(token.address, web3.utils.toWei('54', 'ether'), { from: recipient });
+    //   await EURxb.transfer(router.address, ether('400'));
+    //   await token.approve(router.address, ether('54'), { from: recipient });
+    //   await router.exchangeForEuroXB(token.address, ether('54'), { from: recipient });
     //   const balance = await EURxb.balanceOf(recipient);
-    //   assert.equal(web3.utils.fromWei(balance, 'ether'), 46);
+    //   assert.equal(web3.utils.fromWei(balance), 46);
     // });
     //
     // it('should return correct pool values when adding liquidity through a contract', async () => {
-    //   await EURxb.transfer(router.address, web3.utils.toWei('400', 'ether'));
-    //   await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-    //   await router.addLiquidity(token.address, web3.utils.toWei('108', 'ether'), { from: recipient });
+    //   await EURxb.transfer(router.address, ether('400'));
+    //   await token.approve(router.address, ether('200'), { from: recipient });
+    //   await router.addLiquidity(token.address, ether('108'), { from: recipient });
     //
-    //   assert.equal(await pair.balanceOf(EURxb.address), web3.utils.toWei('91540', 'finney'));
-    //   assert.equal(await pair.balanceOf(token.address), web3.utils.toWei('107460', 'finney'));
+    //   assert.equal(await pair.balanceOf(EURxb.address), ether('91540', 'finney'));
+    //   assert.equal(await pair.balanceOf(token.address), ether('107460', 'finney'));
     //
-    //   await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: staker });
-    //   await router.addLiquidity(token.address, web3.utils.toWei('108', 'ether'), { from: staker });
-    //   assert.equal(await pair.balanceOf(EURxb.address), web3.utils.toWei('137079999999999999886', 'wei'));
-    //   assert.equal(await pair.balanceOf(token.address), web3.utils.toWei('160919999999999999867', 'wei'));
+    //   await token.approve(router.address, ether('200'), { from: staker });
+    //   await router.addLiquidity(token.address, ether('108'), { from: staker });
+    //   assert.equal(await pair.balanceOf(EURxb.address), ether('137079999999999999886', 'wei'));
+    //   assert.equal(await pair.balanceOf(token.address), ether('160919999999999999867', 'wei'));
     // });
     //
     // it('should return correct pool values when adding liquidity through a contract', async () => {
-    //   await token.approve(router.address, web3.utils.toWei('200', 'ether'), { from: recipient });
-    //   await router.addLiquidity(token.address, web3.utils.toWei('27', 'ether'), { from: recipient });
+    //   await token.approve(router.address, ether('200'), { from: recipient });
+    //   await router.addLiquidity(token.address, ether('27'), { from: recipient });
     //
-    //   assert.equal(await pair.balanceOf(EURxb.address), web3.utils.toWei('46', 'ether'));
-    //   assert.equal(await pair.balanceOf(token.address), web3.utils.toWei('81', 'ether'));
+    //   assert.equal(await pair.balanceOf(EURxb.address), ether('46'));
+    //   assert.equal(await pair.balanceOf(token.address), ether('81'));
     // });
     // });
     // }
 
     it('should return correct close contract', async () => {
-      assert.equal(await EURxb.balanceOf(owner), web3.utils.toWei('50000', 'ether'));
+      expect(await EURxb.balanceOf(owner)).to.be.bignumber.equal(ether('50000'));
 
       router = await Router.new(
         team, staking.address, timestamp,
@@ -323,17 +329,17 @@ contract('Router', (accounts) => {
 
       // we leave 8 days ahead
       await increaseTime(DAY * 8);
-      await EURxb.transfer(router.address, web3.utils.toWei('100', 'ether'));
+      await EURxb.transfer(router.address, ether('100'));
       assert.equal(await router.isClosedContract(), false);
 
       // you can close the contract only after 7 days from the start time
       await router.closeContract();
 
       assert.equal(await router.isClosedContract(), true);
-      assert.equal(await EURxb.balanceOf(owner), web3.utils.toWei('50000', 'ether'));
+      expect(await EURxb.balanceOf(owner)).to.be.bignumber.equal(ether('50000'));
 
-      await expectRevert(router.exchangeForEuroXB(mockStableToken, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Contract closed');
-      await expectRevert(router.addLiquidity(mockStableToken, web3.utils.toWei('27', 'ether'), { from: recipient }), 'Contract closed');
+      await expectRevert(router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }), 'Contract closed');
+      await expectRevert(router.addLiquidity(mockStableToken, ether('27'), { from: recipient }), 'Contract closed');
     });
 
     it('should throw an exception when the exchange is called', async () => {
@@ -342,41 +348,46 @@ contract('Router', (accounts) => {
         mockStableToken, mockStableToken, mockStableToken, mockStableToken, EURxb.address,
       );
 
-      await expectRevert(router.exchangeForEuroXB(EURxb.address, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Token not found');
-      await expectRevert(router.exchangeForEuroXB(mockStableToken, web3.utils.toWei('54', 'ether'), { from: recipient }), 'Invalid pool address');
+      await expectRevert(router.exchangeForEuroXB(EURxb.address, ether('54'), { from: recipient }), 'Token not found');
+      await expectRevert(router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }), 'Invalid pool address');
     });
 
     it('should throw an exception when the exchangeForEuroXB is called and not enough tokens', async () => {
       let token = await FiatTokenV2.new();
       await token.updateMasterMinter(owner);
-      await token.configureMinter(owner, web3.utils.toWei('1000', 'ether'));
-      await token.mint(owner, web3.utils.toWei('1000', 'ether'));
+      await token.configureMinter(owner, ether('1000'));
+      await token.mint(owner, ether('1000'));
 
       let router = await Router.new(
         team, staking.address, timestamp,
         mockStableToken, token.address, mockStableToken, mockStableToken, EURxb.address,
       );
 
-      await token.transfer(recipient, web3.utils.toWei('200', 'ether'));
-      await token.transfer(staker, web3.utils.toWei('200', 'ether'));
+      await token.transfer(recipient, ether('200'));
+      await token.transfer(staker, ether('200'));
 
       bFactory = await BFactory.deployed();
       await bFactory.newBPool();
       const balancerAddress = await bFactory.getLastBPool();
       balancer = await BPool.at(balancerAddress);
 
-      await EURxb.approve(balancer.address, web3.utils.toWei('46', 'ether'));
-      await token.approve(balancer.address, web3.utils.toWei('54', 'ether'));
-      await balancer.bind(EURxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
-      await balancer.bind(token.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+      await EURxb.approve(balancer.address, ether('46'));
+      await token.approve(balancer.address, ether('54'));
+      await balancer.bind(EURxb.address, ether('46'), ether('23'));
+      await balancer.bind(token.address, ether('54'), ether('27'));
       await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
       await balancer.finalize();
 
+
+      const lpToken1 = await MockToken.new('LPToken', 'LPT1', ether('400.0'));
+      const lpToken2 = await MockToken.new('LPToken', 'LPT2', ether('400.0'));
+      const lpToken3 = await MockToken.new('LPToken', 'LPT3', ether('400.0'));
+
       await router.setBalancerPool(token.address, balancer.address);
-      await staking.setBalancerPool(balancer.address);
+      await staking.configure([balancer.address, lpToken1.address, lpToken2.address, lpToken3.address]);
 
       await expectRevert(
-        router.exchangeForEuroXB(token.address, web3.utils.toWei('54', 'ether'), { from: recipient }),
+        router.exchangeForEuroXB(token.address, ether('54'), { from: recipient }),
         'Not enough tokens',
       );
     });
