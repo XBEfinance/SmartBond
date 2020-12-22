@@ -5,8 +5,8 @@ pragma solidity ^0.6.0;
  * @dev Staking manager interface
  */
 interface IStakingManager {
-    function addStaker(
-        address staker,
+    function addStake(
+        address user,
         address pool,
         uint256 amount
     ) external;

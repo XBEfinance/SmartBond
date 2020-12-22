@@ -3,58 +3,74 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./templates/Initializable.sol";
 
 
 /**
  * @title StakingManager
  * @dev Staking manager contract
  */
-contract StakingManager is Ownable {
+contract StakingManager is Ownable, Initializable {
     using SafeMath for uint256;
 
-    struct Stake {
-        address user;
-        address pool;
-        uint256 weightedBPT;
+    uint256 constant private XBG_AMOUNT = 8000 ether;
+    uint256 constant private PERCENTS_100 = 100;
+    uint256 constant private USERS_PAGINATION = 50;
+    uint256[7] private DAILY_XBG_REWARD = [
+        666600 finney, // first day - 33.33%
+        390000 finney, // second day - 19.50%
+        276600 finney, // third day - 13.83%
+        214400 finney, // 4th day - 10.72%
+        175400 finney, // 5th day - 8,77%
+        148400 finney, // 6th day - 7,42%
+        128600 finney]; // 7th day - 6,43%
+
+    struct Accumulator {
+        uint256 lpTotalAmount;
+        uint256 xbgTotalReward;
     }
 
-    struct Reward {
-        uint256 bptBalance;
-        uint256 rewardsXbg;
-    }
+    event StakerAdded(address user, address pool, uint256 day, uint256 amount);
+    event StakerHasClaimedReward(address user, uint256[4] lpTokens, uint256 xbgTokens);
 
-    Stake[] private _weightStakers;
+    /// all available pools
+    address[4] private _pools;
 
-    mapping(address => mapping(address => Reward)) private _stakers; // user address => pool address => reward
-    mapping(address => uint256) private _poolBPTWeight; // pool address => weighted amount of BPT
-    mapping(address => bool) private _balancerPools; // balancer pool address => status
+    /// pool address => status
+    mapping(address => bool) private _allowListOfPools;
 
-    bool private _isFrozen;
-    address private _tokenXbg;
+    /// user address => pool address => daily lp balance
+    mapping(address => mapping(address => uint256[7])) private _stakes;
+
+    /// pool address => total LP tokens value which was added per day and daily reward
+    mapping(address => Accumulator[7]) private _dailyAccumulator;
+
+    IERC20 private _tokenXbg;
+
     uint256 private _startTime;
-    uint256 private _bonusWeight;
-
-    uint256 private _totalXbg = 8000 ether;
-
-    uint256 private _unfreezeShift = 0;
 
     constructor(
         address xbg,
-        uint256 startTime,
-        uint256 bonusWeight
+        uint256 startTime
     ) public {
-        require(bonusWeight >= 100, "Weight must be over 100");
-        _isFrozen = true;
-        _tokenXbg = xbg;
+        _tokenXbg = IERC20(xbg);
         _startTime = startTime;
-        _bonusWeight = bonusWeight;
     }
 
     /**
-     * @return are the tokens frozen
+     * @dev add all pools address for staking
      */
-    function isFrozen() external view returns (bool) {
-        return _isFrozen;
+    function configure(address[4] calldata pools) external initializer {
+        _tokenXbg.transferFrom(_msgSender(), address(this), XBG_AMOUNT);
+
+        for (uint i = 0; i < 4; ++i) {
+            address pool = pools[i];
+            _allowListOfPools[pool] = true;
+            _pools[i] = pools[i];
+            for (uint j = 0; j < 7; ++j) {
+                _dailyAccumulator[pool][j].xbgTotalReward = DAILY_XBG_REWARD[j];
+            }
+        }
     }
 
     /**
@@ -65,113 +81,165 @@ contract StakingManager is Ownable {
     }
 
     /**
-     * @return bonus weight
+     * @return end time
      */
-    function bonusWeight() external view returns (uint256) {
-        return _bonusWeight;
+    function endTime() external view returns (uint256) {
+        return _startTime + 7 days;
     }
 
     /**
-     * @dev return the number of tokens from the staker
-     * @param staker user address
-     * @param pool address
+     * @return day number from startTime
      */
-    function getRewardInfo(address staker, address pool)
-        external
-        view
-        returns (uint256 bptBalance, uint256 xbgBalance)
-    {
-        bptBalance = _stakers[staker][pool].bptBalance;
-        xbgBalance = _stakers[staker][pool].rewardsXbg;
+    function currentDay() external view returns (uint256) {
+        if (block.timestamp < _startTime) {
+            return 0;
+        }
+        uint256 day = (block.timestamp - _startTime) / 1 days;
+        return (day < 7)? (day + 1) : 0;
     }
 
-    /**
-     * @dev Set balancer pool
-     * @param pool address
-     */
-    function setBalancerPool(address pool) external onlyOwner {
-        _balancerPools[pool] = true;
+    function tokenXbg() external view returns (address) {
+        return address(_tokenXbg);
     }
 
-    /**
-     * @dev Unfreeze BPT tokens
-     */
-    function unfreezeTokens() external onlyOwner {
-        require(_startTime + 7 days < now, "Time is not over");
-        require(
-            IERC20(_tokenXbg).balanceOf(address(this)) >= _totalXbg,
-            "Insufficient xbg balance"
-        );
-        require(_isFrozen, "Tokens unfrozen");
+    function getPools() external view returns (address[4] memory) {
+        return _pools;
+    }
 
-        for (
-            uint256 i = _unfreezeShift;
-            i < _weightStakers.length && i < _unfreezeShift + 100;
-            i++
-        ) {
-            address user = _weightStakers[i].user;
-            address pool = _weightStakers[i].pool;
+    function totalRewardForPool(address pool) external view returns (uint256, uint256[7] memory) {
+        uint256 poolReward = 0;
+        uint256[7] memory dailyRewards;
+        for (uint256 i = 0; i < 7; ++i) {
+            dailyRewards[i] = _dailyAccumulator[pool][i].xbgTotalReward;
+            poolReward = poolReward.add(dailyRewards[i]);
 
-            uint256 weightedBPT = _weightStakers[i].weightedBPT;
+        }
+        return (poolReward, dailyRewards);
+    }
 
-            uint256 poolBPTWeight = _poolBPTWeight[pool];
-            uint256 percent = weightedBPT.mul(10**18).div(poolBPTWeight);
+    function totalLPForPool(address pool) external view returns (uint256, uint256[7] memory) {
+        uint256 lpAmount = 0;
+        uint256[7] memory dailyLP;
+        for (uint256 i = 0; i < 7; ++i) {
+            dailyLP[i] = _dailyAccumulator[pool][i].lpTotalAmount;
+            lpAmount = lpAmount.add(dailyLP[i]);
 
-            uint256 poolXbg = _totalXbg.div(4);
-            uint256 amountXbg = percent.mul(poolXbg).div(10**18);
+        }
+        return (lpAmount, dailyLP);
+    }
 
-            _stakers[user][pool].rewardsXbg = _stakers[user][pool]
-                .rewardsXbg
-                .add(amountXbg);
+    function getStake(address user) external view returns (uint256[4] memory) {
+        uint256[4] memory lpTokens;
+        for (uint256 i = 0; i < 4; ++i) {
+            lpTokens[i] = 0;
+            for (uint256 j = 0; j < 7; ++j) {
+                lpTokens[i] = lpTokens[i].add(_stakes[user][_pools[i]][j]);
+            }
+        }
+        return lpTokens;
+    }
+
+    function getStakeInfoPerDay(address user, address pool) external view returns (uint256[7] memory) {
+        uint256[7] memory lpTokens;
+        for (uint256 i = 0; i < 7; ++i) {
+            lpTokens[i] = _stakes[user][pool][i];
+        }
+        return lpTokens;
+    }
+
+    function calculateReward(address user, uint256 timestamp) external view returns(uint256[4] memory, uint256) {
+        uint256[4] memory usersLP;
+        uint256 xbgReward;
+
+        if (timestamp == 0) {
+            timestamp = block.timestamp;
         }
 
-        _unfreezeShift = _unfreezeShift + 100;
-
-        if (_unfreezeShift >= _weightStakers.length) {
-            _isFrozen = false;
+        for (uint256 i = 0; i < 4; ++i) {
+            address pool = _pools[i];
+            uint256 accumulateTotalLP = 0;
+            uint256 accumulateUserLP = 0;
+            for (uint256 j = 0; j < 7 && timestamp > _startTime + (j + 1) * 86400; ++j) {
+                Accumulator storage dailyAccumulator = _dailyAccumulator[pool][j];
+                accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
+                uint256 stake = _stakes[user][pool][j];
+                if (stake > 0) {
+                    accumulateUserLP = accumulateUserLP.add(stake);
+                    usersLP[i] = usersLP[i].add(stake);
+                }
+                if (accumulateUserLP > 0) {
+                    uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
+                    xbgReward = xbgReward.add(dailyReward);
+                }
+            }
         }
+
+        return (usersLP, xbgReward);
     }
 
     /**
-     * @dev Add staker
-     * @param staker user address
-     * @param amount number of BPT tokens
+     * @dev Add stake
+     * @param user user address
+     * @param pool pool address
+     * @param amount number of LP tokens
      */
-    function addStaker(address staker, address pool, uint256 amount)
-        external
-    {
-        require(now >= _startTime, "The time has not come yet");
-        require(_balancerPools[pool], "Balancer pool not found");
+    function addStake(address user, address pool, uint256 amount) external {
+        require(block.timestamp >= _startTime, "The time has not come yet");
+        require(block.timestamp <= _startTime + 7 days, "stakings has finished");
+        require(_allowListOfPools[pool], "Pool not found");
+
+        // transfer LP tokens from sender to contract
         IERC20(pool).transferFrom(_msgSender(), address(this), amount);
-        _stakers[staker][pool].bptBalance = _stakers[staker][pool]
-            .bptBalance
-            .add(amount);
 
-        if (now <= _startTime + 3 days) {
-            uint256 weightedBPT = amount.mul(_bonusWeight).div(100);
-            _weightStakers.push(Stake(staker, pool, weightedBPT));
-            _poolBPTWeight[pool] = _poolBPTWeight[pool].add(weightedBPT);
-        } else {
-            _weightStakers.push(Stake(staker, pool, amount));
-            _poolBPTWeight[pool] = _poolBPTWeight[pool].add(amount);
-        }
+        uint256 day = (block.timestamp - _startTime) / 1 days;
+
+        // add amount to daily LP total value
+        Accumulator storage dailyAccumulator = _dailyAccumulator[pool][day];
+        dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.add(amount);
+
+        // add stake info
+        _stakes[user][pool][day] = _stakes[user][pool][day].add(amount);
+
+        emit StakerAdded(user, pool, day, amount);
     }
 
     /**
-     * @dev Pick up BPT
+     * @dev Pick up reward and LP tokens
      */
-    function claimBPT(address pool) external {
-        // TODO: maybe remove the parameter
-        require(!_isFrozen, "Tokens frozen");
-        uint256 amountBPT = _stakers[_msgSender()][pool].bptBalance;
-        require(amountBPT > 0, "Staker doesn't exist");
-        _stakers[_msgSender()][pool].bptBalance = 0;
-        IERC20(pool).transfer(_msgSender(), amountBPT);
+    function claimReward(address user) external {
+        uint256 xbgReward = 0;
+        uint256[4] memory usersLP;
 
-        uint256 amountXbg = _stakers[_msgSender()][pool].rewardsXbg;
-        _stakers[_msgSender()][pool].rewardsXbg = 0;
-        if (amountXbg > 0) {
-            IERC20(_tokenXbg).transfer(_msgSender(), amountXbg);
+        for (uint256 i = 0; i < 4; ++i) {
+            address pool = _pools[i];
+            uint256 accumulateTotalLP = 0;
+            uint256 accumulateUserLP = 0;
+            for (uint256 j = 0; j < 7 && block.timestamp > _startTime + (j + 1) * 86400; ++j) {
+                Accumulator storage dailyAccumulator = _dailyAccumulator[pool][j];
+                accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
+                uint256 stake = _stakes[user][pool][j];
+                if (stake > 0) {
+                    _stakes[user][pool][j] = 0;
+                    accumulateUserLP = accumulateUserLP.add(stake);
+                    usersLP[i] = usersLP[i].add(stake);
+                }
+                if (accumulateUserLP > 0) {
+                    uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
+                    dailyAccumulator.xbgTotalReward = dailyAccumulator.xbgTotalReward.sub(dailyReward);
+                    xbgReward = xbgReward.add(dailyReward);
+                }
+                if (stake > 0) {
+                    dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.sub(stake);
+                }
+            }
+            if (usersLP[i] > 0) {
+                IERC20(_pools[i]).transfer(user, usersLP[i]);
+            }
         }
+        if (xbgReward > 0) {
+            _tokenXbg.transfer(user, xbgReward);
+        }
+
+        emit StakerHasClaimedReward(user, usersLP, xbgReward);
     }
 }

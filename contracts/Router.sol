@@ -242,7 +242,7 @@ contract Router is Ownable, Initializable {
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
             TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
-            manager.addStaker(sender, pairAddress, liquidityAmount);
+            manager.addStake(sender, pairAddress, liquidityAmount);
         }
     }
 
@@ -304,7 +304,7 @@ contract Router is Ownable, Initializable {
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
             TransferHelper.safeApprove(poolAddress, _stakingManager, amountBPT);
-            manager.addStaker(sender, poolAddress, amountBPT);
+            manager.addStake(sender, poolAddress, amountBPT);
         }
     }
 
