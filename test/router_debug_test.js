@@ -170,27 +170,7 @@ contract('Router tests for USDT', (accounts) => {
 
     await printBalances('router liquidity added');
 
-    await increaseTime(DAY);
-    timestamp = await currentTimestamp();
-    timestamp += 10 * DAY;
-
-    // await eurxb.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
-    // await token.approve(uniswap_router.address, web3.utils.toWei('1000000', 'ether'));
-
-    // await uniswap_router.addLiquidity(
-    //   token.address,
-    //   eurxb.address,
-    //   web3.utils.toWei('50', 'ether'),
-    //   eurResult,
-    //   0,
-    //   0,
-    //   router.address,
-    //   timestamp,
-    // );
-
     await printRatios();
-
-    await printBalances('uniswap router liquidity added');
 
     // assert.equal(await pair.balanceOf(owner), web3.utils.toWei('100', 'ether'));
   });
