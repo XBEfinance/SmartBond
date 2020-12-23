@@ -37,8 +37,8 @@ contract('Router', (accounts) => {
   const mockStableToken = accounts[6];
 
   const balancerTokens = [ 'USDC', 'DAI' ];
-  // const uniswapTokens = ['USDT', 'BUSD'];
-  const uniswapTokens = [ 'USDT' ];
+  const uniswapTokens = ['USDT', 'BUSD'];
+  const mixedTokens = [ 'USDT', 'USDC' ];
 
   let EURxb;
   let xbg;
@@ -257,7 +257,6 @@ contract('Router', (accounts) => {
     //       );
     //
     //       await printRatios();
-
     //
     // await token.transfer(recipient, ether('200'));
     // await token.transfer(staker, ether('200'));
@@ -338,8 +337,14 @@ contract('Router', (accounts) => {
       assert.equal(await router.isClosedContract(), true);
       expect(await EURxb.balanceOf(owner)).to.be.bignumber.equal(ether('50000'));
 
-      await expectRevert(router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }), 'Contract closed');
-      await expectRevert(router.addLiquidity(mockStableToken, ether('27'), { from: recipient }), 'Contract closed');
+      await expectRevert(
+        router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }),
+        'Contract closed',
+      );
+      await expectRevert(
+        router.addLiquidity(mockStableToken, ether('27'), { from: recipient }),
+        'Contract closed'
+      );
     });
 
     it('should throw an exception when the exchange is called', async () => {
@@ -348,8 +353,14 @@ contract('Router', (accounts) => {
         mockStableToken, mockStableToken, mockStableToken, mockStableToken, EURxb.address,
       );
 
-      await expectRevert(router.exchangeForEuroXB(EURxb.address, ether('54'), { from: recipient }), 'Token not found');
-      await expectRevert(router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }), 'Invalid pool address');
+      await expectRevert(
+        router.exchangeForEuroXB(EURxb.address, ether('54'), { from: recipient }),
+        'Token not found',
+      );
+      await expectRevert(
+        router.exchangeForEuroXB(mockStableToken, ether('54'), { from: recipient }),
+        'Invalid pool address',
+      );
     });
 
     it('should throw an exception when the exchangeForEuroXB is called and not enough tokens', async () => {
@@ -377,7 +388,6 @@ contract('Router', (accounts) => {
       await balancer.bind(token.address, ether('54'), ether('27'));
       await balancer.setSwapFee(web3.utils.toWei('1', 'finney'));
       await balancer.finalize();
-
 
       const lpToken1 = await MockToken.new('LPToken', 'LPT1', ether('400.0'));
       const lpToken2 = await MockToken.new('LPToken', 'LPT2', ether('400.0'));

@@ -43,4 +43,5 @@ module.exports = {
   Ether,
   newBN,
   DAY: 86400,
+  HOUR: 3600,
 };
