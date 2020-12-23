@@ -103,7 +103,7 @@ contract('Router tests for USDT', (accounts) => {
     await router.setUniswapPair(token.address, pairAddress);
     await staking.configure([pairAddress, lpToken1.address, lpToken2.address, lpToken3.address]);
 
-    await router.configure(uniswap_router.address, factory.address);
+    await router.configure(uniswap_router.address);
     await router.setUniswapPair(token.address, pairAddress);
   });
 
