@@ -22,7 +22,6 @@ contract Router is Ownable, Initializable {
      * @dev informs that EURxb router balance is empty
      */
     event EmptyEURxbBalance();
-    event LiquidityMinted(uint256 liquidity);
 
     address private _teamAddress;
     address private _stakingManager;
@@ -249,8 +248,6 @@ contract Router is Ownable, Initializable {
             TransferHelper.safeApprove(pairAddress, _stakingManager, liquidityAmount);
             manager.addStake(sender, pairAddress, liquidityAmount);
         }
-
-        emit LiquidityMinted(liquidityAmount);
     }
 
     function _addLiquidityBalancer(address sender, address token, uint256 amount) internal {
