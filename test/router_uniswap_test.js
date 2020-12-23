@@ -70,8 +70,6 @@ contract('Router tests for USDT', (accounts) => {
     xbg = await MockToken.new('xbg', 'xbg', ether('8000'));
 
     token = await TetherToken.new(web3.utils.toWei('1000000', 'ether'), 'Tether USD', 'USDT', 6);
-    timestamp = await currentTimestamp();
-    timestamp += DAY;
 
     expect(await eurxb.balanceOf(owner)).to.be.bignumber.equal(ether('1000000'));
     expect(await token.balanceOf(owner)).to.be.bignumber.equal(ether('1000000'));
@@ -85,10 +83,8 @@ contract('Router tests for USDT', (accounts) => {
     pairAddress = await factory.allPairs.call(new BN('0'));
     pair = await UniswapV2Pair.at(pairAddress);
 
-    await increaseTime(DAY);
-
-    timestamp = (await currentTimestamp()) + DAY;
-    staking = await StakingManager.new(xbg.address, timestamp + DAY);
+    timestamp = await currentTimestamp();
+    staking = await StakingManager.new(xbg.address, timestamp);
     await xbg.approve(staking.address, ether('8000'));
 
     router = await Router.new(
@@ -119,10 +115,38 @@ contract('Router tests for USDT', (accounts) => {
   });
 
   it('initial uniswap addLiquidity for pair USDT/EURxb in detail', async () => {
-    await increaseTime(DAY);
-
     await eurxb.transfer(router.address, ether('100'));
-    // owner allows router to spend their money
+    await token.approve(router.address, ether('100'));
+
+    expect(await eurxb.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('0'));
+    expect(await token.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('0'));
+    expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('0'));
+    expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('0'));
+
+    await router.addLiquidity(token.address, ether('100'));
+
+    {
+      const { tokenRes, eurRes } = await router.getUniswapReservesRatio(token.address);
+      expect(tokenRes).to.be.bignumber.equal(new BN('50000000000000000000'));
+      expect(eurRes).to.be.bignumber.equal(new BN('42592592592592592592'));
+    }
+
+    expect(await token.balanceOf(owner)).to.be.bignumber.equal(new BN('999900000000000000000000'));
+    expect(await eurxb.balanceOf(router.address)).to.be.bignumber.equal(new BN('57407407407407407408'));
+    expect(await eurxb.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('42592592592592592592'));
+    expect(await token.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('50000000000000000000'));
+    expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('0'));
+    expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('50000000000000000000'));
+
+    await increaseTime(8*DAY);
+    // timestamp = await currentTimestamp();
+    await staking.claimReward(owner);
+    expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('2000000000000000000000'));
+    console.log('xbg', await xbg.balanceOf(owner));
+  });
+
+  it('initial uniswap addLiquidity for pair USDT/EURxb in detail 1', async () => {
+    await eurxb.transfer(router.address, ether('100'));
     await token.approve(router.address, ether('100'));
 
     expect(await eurxb.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('0'));
@@ -147,28 +171,20 @@ contract('Router tests for USDT', (accounts) => {
 
     await increaseTime(8*DAY);
     await staking.claimReward(owner);
-    // not sure about this value
-    expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('1333400000000000000000'));
+    expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('2000000000000000000000'));
+    console.log('xbg', await xbg.balanceOf(owner));
   });
 
   it('consecutive uniswap addLiquidity for pair USDT/EURxb success', async () => {
-    await increaseTime(DAY);
-
     await eurxb.transfer(router.address, ether('200'));
     await token.approve(router.address, ether('200'));
 
     await router.addLiquidity(token.address, ether('100'));
-
     await increaseTime(8*DAY);
+    await staking.claimReward(owner);
+    console.log('xbg', await xbg.balanceOf(owner));
 
     await router.addLiquidity(token.address, ether('100'));
-
-    printRatios();
-
-    // expect(await eurxb.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('0'));
-    // expect(await token.balanceOf(pairAddress)).to.be.bignumber.equal(new BN('0'));
-    // expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('0'));
-    // expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('0'));
 
     expect(await token.balanceOf(owner)).to.be.bignumber.equal(new BN('999800000000000000000000'));
     expect(await eurxb.balanceOf(router.address)).to.be.bignumber.equal(new BN('114814814814814814816'));
@@ -177,21 +193,17 @@ contract('Router tests for USDT', (accounts) => {
     expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('0'));
     expect(await token.balanceOf(team)).to.be.bignumber.equal(new BN('100000000000000000000'));
 
-    console.log('owner balance', (await token.balanceOf(owner)).toString());
-    console.log('eurxb router balance', (await eurxb.balanceOf(router.address)).toString());
-    console.log('eurxb pair blaance', (await eurxb.balanceOf(pairAddress)).toString());
-    console.log('token pair balance', (await token.balanceOf(pairAddress)).toString());
-    console.log('token team balance', (await token.balanceOf(team)).toString());
 
     await increaseTime(8*DAY);
+
     await staking.claimReward(owner);
     console.log('xbg new', await xbg.balanceOf(owner));
+    // expect(await xbg.balanceOf(owner)).to.be.bignumber.equal(new BN('4000000000000000000000'));
 
     {
       const { tokenRes, eurRes } = await router.getUniswapReservesRatio(token.address);
-      console.log('reserves:', tokenRes, eurRes);
-      // expect(tokenRes).to.be.bignumber.equal(new BN('50000000000000000000'));
-      // expect(eurRes).to.be.bignumber.equal(new BN('42592592592592592592'));
+      expect(tokenRes).to.be.bignumber.equal(new BN('100000000000000000000'));
+      expect(eurRes).to.be.bignumber.equal(new BN('85185185185185185184'));
     }
   });
 });
