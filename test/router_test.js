@@ -148,13 +148,13 @@ contract('Router', (accounts) => {
           await token.approve(router.address, ether('200'), { from: recipient });
           await router.addLiquidity(token.address, ether('108'), { from: recipient });
 
-          assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('91540', 'finney'));
-          assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('107460', 'finney'));
+          expect(await balancer.getBalance(EURxb.address)).to.be.bignumber.equal(web3.utils.toWei('91540', 'finney'));
+          expect(await balancer.getBalance(token.address)).to.be.bignumber.equal(web3.utils.toWei('107460', 'finney'));
 
           await token.approve(router.address, ether('200'), { from: staker });
           await router.addLiquidity(token.address, ether('108'), { from: staker });
-          assert.equal(await balancer.getBalance(EURxb.address), web3.utils.toWei('137079999999999999886', 'wei'));
-          assert.equal(await balancer.getBalance(token.address), web3.utils.toWei('160919999999999999867', 'wei'));
+          expect(await balancer.getBalance(EURxb.address)).to.be.bignumber.equal(web3.utils.toWei('137079999999999999886', 'wei'));
+          expect(await balancer.getBalance(token.address)).to.be.bignumber.equal(web3.utils.toWei('160919999999999999867', 'wei'));
         });
 
         it('should return correct pool values when adding liquidity through a contract', async () => {
