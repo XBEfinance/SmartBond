@@ -13,7 +13,7 @@ rm -rf ./build
 generate_truffle_config "0.6.3" ".\/contracts"
 
 #run coverage
-truffle run coverage
+node --max-old-space-size=4096 ./node_modules/.bin/truffle run coverage
 
 # remove build
 rm -rf ./build
