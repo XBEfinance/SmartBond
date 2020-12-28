@@ -114,16 +114,22 @@ contract('Router', (accounts) => {
 
         it('should return correct pool values when adding liquidity through a contract', async () => {
           await this.eurxb.transfer(this.router.address, ether('400'));
+          expect(await this.token.balanceOf(this.router.address)).to.be.bignumber.equal(ether('0'));
+
           await this.token.approve(this.router.address, ether('200'), { from: recipient });
           await this.router.addLiquidity(this.token.address, ether('108'), { from: recipient });
 
           expect(await this.balancer.getBalance(this.eurxb.address)).to.be.bignumber.equal(ether('91.540'));
           expect(await this.balancer.getBalance(this.token.address)).to.be.bignumber.equal(ether('107.460'));
+          expect(await this.token.balanceOf(this.router.address)).to.be.bignumber.equal(ether('0'));
 
           await this.token.approve(this.router.address, ether('200'), { from: staker });
           await this.router.addLiquidity(this.token.address, ether('108'), { from: staker });
           expect(await this.balancer.getBalance(this.eurxb.address)).to.be.bignumber.equal(web3.utils.toWei('137079999999999999978', 'wei'));
           expect(await this.balancer.getBalance(this.token.address)).to.be.bignumber.equal(web3.utils.toWei('160919999999999999974', 'wei'));
+
+          expect(await this.eurxb.balanceOf(this.router.address)).to.be.bignumber.equal(ether('308.920000000000000022'));
+          expect(await this.token.balanceOf(team)).to.be.bignumber.equal(ether('109.080000000000000026'));
         });
 
         it('should return correct pool values when adding liquidity through a contract', async () => {

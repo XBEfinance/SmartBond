@@ -3,9 +3,8 @@ chai.use(require('chai-as-promised'));
 
 const { expect, assert } = chai;
 
-const { expectRevert, BN } = require('@openzeppelin/test-helpers');
+const { expectRevert, time, BN } = require('@openzeppelin/test-helpers');
 const {
-  increaseTime,
   currentTimestamp,
   compactView,
   Ether,
@@ -61,7 +60,7 @@ contract('EURxb', (accounts) => {
     assert(balanceRecipient >= Ether('100'));
     assert(balanceRecipient < Ether('100.0000000000009'));
 
-    await increaseTime(DAY * daysAYear);
+    await time.increase(time.duration.years('1'));
 
     const { balance: balanceAfterYear } = balanceByTime(
       Ether('100'), // userBalance,
@@ -89,7 +88,7 @@ contract('EURxb', (accounts) => {
     assert(balanceSender < balanceAfterYear.add(maxError));
 
     // after end of all maturity periods users balances does not increasing
-    await increaseTime(DAY * daysAYear);
+    await time.increase(time.duration.years('1'));
 
     balanceRecipient = await this.token.balanceOf(recipient);
     assert(balanceRecipient > balanceAfterYear.sub(maxError));
@@ -128,7 +127,7 @@ contract('EURxb', (accounts) => {
       ));
       userTimestamp += DAY;
       /* eslint-disable */
-      await increaseTime(DAY);
+      await time.increase(time.duration.days('1'));
       await this.token.accrueInterest();
       days--;
       /* eslint-enable */
@@ -294,7 +293,7 @@ contract('EURxb', (accounts) => {
     expIndex = await this.token.expIndex();
     expect(expIndex).to.be.bignumber.equal(newBN());
 
-    await increaseTime(DAY);
+    await time.increase(time.duration.days('1'));
     await this.token.accrueInterest();
 
     const { expIndex: expectedExpIndex } = balanceByTime(
