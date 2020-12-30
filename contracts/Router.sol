@@ -180,7 +180,7 @@ contract Router is Ownable, Initializable {
 
         uint256 exchangeAmount = amount.div(2);
 
-        (uint256 tokenRatio, uint256 eurRatio) = getUniswapReservesRatio(token);
+        (uint256 tokenRatio, uint256 eurRatio) = _getUniswapReservesRatio(token);
 
         uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
         uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
@@ -262,7 +262,7 @@ contract Router is Ownable, Initializable {
         uint256 userEurAmount;
         {
             // to save stack space
-            (uint256 tokenRes, uint256 eurRes) = getBalancerReservesRatio(token);
+            (uint256 tokenRes, uint256 eurRes) = _getBalancerReservesRatio(token);
             userEurAmount = exchangeAmount.mul(eurRes).div(tokenRes);
         }
         uint256 amountBPT;
@@ -316,15 +316,15 @@ contract Router is Ownable, Initializable {
      * @dev returns uniswap pair reserves numbers or default numbers
      * used to get token/eurxb ratio
      */
-    function getUniswapReservesRatio(address token)
-    public view
+    function _getUniswapReservesRatio(address token)
+    internal view
     returns (uint256 tokenRes, uint256 eurRes)
     {
         (uint112 res0, uint112 res1,) = IUniswapV2Pair(_uniswapPairs[token]).getReserves();
         if (res0 == 0 || res1 == 0) {
             (tokenRes, eurRes) = (27, 23);
         } else {
-            (address token0,) = sortTokens(token, address(_tEURxb));
+            (address token0,) = _sortTokens(token, address(_tEURxb));
             (tokenRes, eurRes) = (token == token0) ? (res0, res1) : (res1, res0);
         }
     }
@@ -334,7 +334,7 @@ contract Router is Ownable, Initializable {
      * used to get token/eurxb ratio
      * guarantees, that returned numbers greater than zero
      */
-    function getBalancerReservesRatio(address token)
+    function _getBalancerReservesRatio(address token)
     internal view
     returns (uint256, uint256)
     {
@@ -352,45 +352,9 @@ contract Router is Ownable, Initializable {
     }
 
     /**
-     * @dev Exchange of tokens for EURxb
-     * @param token token address
-     * @param amount number of tokens
-     */
-//    function exchangeForEuroXB(address token, uint256 amount) public returns (uint256) {
-//        require(!_isClosedContract, "Contract closed");
-//        require(
-//            token == _tUSDT || token == _tUSDC || token == _tBUSD || token == _tDAI,
-//            "Token not found"
-//        );
-//
-//        uint256 reserve0;
-//        uint256 reserve1;
-//
-//        if (token == _tUSDC || token == _tDAI) {
-//            (reserve0, reserve1) = getBalancerReservesRatio(token);
-//        } else {
-//            (reserve0, reserve1) = getUniswapReservesRatio(token);
-//        }
-//
-//        uint256 amountEUR = amount.mul(reserve1).div(reserve0);
-//
-//        uint256 routerEurBalance = IERC20(_tEURxb).balanceOf(address(this));
-//        require(routerEurBalance >= amountEUR, "Not enough tokens");
-//
-//        TransferHelper.safeApprove(token, address(this), amount);
-//        TransferHelper.safeTransferFrom(token, _msgSender(), _teamAddress, amount);
-//        // give him euro in exchange
-//        if (_msgSender() != address(this)) {
-//            IERC20(_tEURxb).transfer(_msgSender(), amountEUR);
-//        }
-//
-//        return amountEUR;
-//    }
-
-    /**
      * @dev sorts token addresses just like uniswap router does
      */
-    function sortTokens(address tokenA, address tokenB)
+    function _sortTokens(address tokenA, address tokenB)
     internal pure
     returns (address token0, address token1)
     {
