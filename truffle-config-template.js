@@ -61,7 +61,8 @@ module.exports = {
     rinkeby: {
       provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`),
       network_id: 4, // Rinkeby's id
-      from: '0x423b44FeE143fC5626948275B4061fec79C20aC7', // contracts owner address
+      from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
+      websockets: true,
     },
     // Useful for private networks
     // private: {
