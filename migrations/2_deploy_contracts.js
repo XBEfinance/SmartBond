@@ -1,7 +1,8 @@
-const { ether, time, BN } = require('@openzeppelin/test-helpers');
+const { ether, time, BN, constants } = require('@openzeppelin/test-helpers');
 
 // const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
 const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
+const UniswapV2Pair = artifacts.require('UniswapV2Pair'); // Uniswap Pair
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02'); // Uniswap Router
 
 const BFactory = artifacts.require('BFactory'); // Balancer
@@ -127,8 +128,26 @@ module.exports = function (deployer, network) {
       const uniswapRouter = await UniswapV2Router02.at('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D');
       const uniswapFactory = await UniswapV2Factory.at('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f');
 
-      const usdtPool = await uniswapFactory.createPair(eurxb.address, usdt.address);
-      const busdPool = await uniswapFactory.createPair(eurxb.address, busd.address);
+      let usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
+      let busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
+
+      if (usdtPoolAddress === constants.ZERO_ADDRESS) {
+        await uniswapFactory.createPair(eurxb.address, usdt.address);
+        usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
+        console.log('usdtPoolAddress after deploy', usdtPoolAddress);
+      } else {
+        console.log('usdtPoolAddress address:', usdtPoolAddress);
+      }
+      const usdtPool = await UniswapV2Pair.at(usdtPoolAddress);
+
+      if (busdPoolAddress === constants.ZERO_ADDRESS) {
+        await uniswapFactory.createPair(eurxb.address, busd.address);
+        busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
+        console.log('busdPoolAddress after deploy', busdPoolAddress);
+      } else {
+        console.log('busdPoolAddress address:', busdPoolAddress);
+      }
+      const busdPool = await UniswapV2Pair.at(busdPoolAddress);
 
       // configure balancer pools
       const bFactory = await BFactory.at('0x4Cab4b9E97458dc121D7a76F94eE067e85c0E833');
@@ -142,6 +161,7 @@ module.exports = function (deployer, network) {
       await usdcPool.bind(usdc.address, ether('54'), ether('27'));
       await usdcPool.setSwapFee(ether('0.001'));
       await usdcPool.finalize();
+      console.log('finalize usdcPool at address:', usdcPool.address);
 
       await bFactory.newBPool();
       const daiPoolAddress = await bFactory.getLastBPool();
@@ -152,17 +172,19 @@ module.exports = function (deployer, network) {
       await daiPool.bind(dai.address, ether('54'), ether('27'));
       await daiPool.setSwapFee(ether('0.001'));
       await daiPool.finalize();
+      console.log('finalize daiPool at address:', daiPool.address);
 
       // configure our contracts
-      await router.setBalancerPool(usdc, usdcPool.address);
-      await router.setBalancerPool(dai, daiPool.address);
+      await router.setBalancerPool(usdc.address, usdcPool.address);
+      await router.setBalancerPool(dai.address, daiPool.address);
       await router.setUniswapPair(usdt.address, usdtPool.address);
       await router.setUniswapPair(busd.address, busdPool.address);
+      console.log('set all pairs');
 
       await xbg.approve(sm.address, ether('8000'));
       await sm.configure([
         usdtPool.address, usdcPool.address, busdPool.address, daiPool.address]);
-      await this.router.configure(uniswapRouter.address);
+      await router.configure(uniswapRouter.address);
     } else {
       console.log('unsupported network', network);
     }
