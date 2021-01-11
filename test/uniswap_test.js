@@ -13,7 +13,7 @@ const UniswapV2Pair = artifacts.require('UniswapV2Pair');
 const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const EURxb = artifacts.require('EURxb');
 
-contract('Router', ([owner, alice, bob]) => {
+contract('Uniswap', ([owner, alice, bob]) => {
   it('test using uniswap', async () => {
     const factory = await UniswapV2Factory.new(owner);
     const weth = await WETH9.new();
@@ -27,10 +27,10 @@ contract('Router', ([owner, alice, bob]) => {
     const usdt = await TetherToken.deployed();
 
     assert.equal(await eurxb.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
-    assert.equal(await usdt.balanceOf(owner), web3.utils.toWei('12042213561', 'ether'));
+    assert.equal(await usdt.balanceOf(owner), web3.utils.toWei('1000000', 'ether'));
 
     await eurxb.approve(router.address, web3.utils.toWei('1000000', 'ether'));
-    await usdt.approve(router.address, web3.utils.toWei('12042213561', 'ether'));
+    await usdt.approve(router.address, web3.utils.toWei('1000000', 'ether'));
 
     let timestamp = await currentTimestamp();
     timestamp += DAY;

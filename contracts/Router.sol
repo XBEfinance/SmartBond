@@ -1,4 +1,3 @@
-
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -22,7 +21,7 @@ contract Router is Ownable, Initializable {
     /**
      * @dev informs that EURxb router balance is empty
      */
-    event EmptyEurXBBalance();
+    event EmptyEURxbBalance();
 
     address private _teamAddress;
     address private _stakingManager;
@@ -31,7 +30,7 @@ contract Router is Ownable, Initializable {
     address private _tUSDC;
     address private _tBUSD;
     address private _tDAI;
-    IERC20 private _tEURxb;
+    address private _tEURxb;
 
     IUniswapV2Router02 private _uniswapRouter;
 
@@ -59,7 +58,7 @@ contract Router is Ownable, Initializable {
         _tUSDC = tUSDC;
         _tBUSD = tBUSD;
         _tDAI = tDAI;
-        _tEURxb = IERC20(tEURxb);
+        _tEURxb = tEURxb;
     }
 
     /**
@@ -68,6 +67,7 @@ contract Router is Ownable, Initializable {
     function configure(address uniswapRouter) external initializer {
         require(uniswapRouter != address(0), "invalid router address");
         _uniswapRouter = IUniswapV2Router02(uniswapRouter);
+
     }
 
     /**
@@ -134,11 +134,11 @@ contract Router is Ownable, Initializable {
      * @dev Close contract
      */
     function closeContract() external onlyOwner {
-        require(_startTime + 7 days < now, "Time is not over");
-        require(now >= _startTime, "The time has not come yet");
-        uint256 balance = _tEURxb.balanceOf(address(this));
+        require(_startTime + 7 days < block.timestamp, "Time is not over");
+        require(block.timestamp >= _startTime, "The time has not come yet");
+        uint256 balance = IERC20(_tEURxb).balanceOf(address(this));
         if (balance > 0) {
-            _tEURxb.transfer(_msgSender(), balance);
+            IERC20(_tEURxb).transfer(_msgSender(), balance);
         }
         _isClosedContract = true;
     }
@@ -164,90 +164,90 @@ contract Router is Ownable, Initializable {
      * @param amount number of tokens
      */
     function _addLiquidityUniswap(address sender, address token, uint256 amount) internal {
-        require(now >= _startTime, "The time has not come yet");
+        require(block.timestamp >= _startTime, "The time has not come yet");
         require(!_isClosedContract, "Contract closed");
 
         address pairAddress = _uniswapPairs[token];
         require(pairAddress != address(0), "Unsupported token");
-        IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
-
-        uint256 exchangeTokens = amount.div(2);
-        (uint256 tokenRatio, uint256 eurRatio) = getUinswapReservesRatio(token);
-
-        uint256 amountEUR = exchangeTokens.mul(eurRatio).div(tokenRatio);
-        uint256 balanceEUR = _tEURxb.balanceOf(address(this));
-
-        // check if we don't have enough eurxb tokens
-        if (balanceEUR < amountEUR) {
-            // we can take only that much
-            amountEUR = balanceEUR;
-            exchangeTokens = amountEUR.mul(tokenRatio).div(eurRatio);
-
-            emit EmptyEurXBBalance();
-        }
 
         // take user tokens
         TransferHelper.safeTransferFrom(
             token,
-            sender,
-            address(this),
-            exchangeTokens.mul(2)
+            sender, // client
+            address(this), // router
+            amount
         );
 
-        // exchange half of user tokens for eurxb
-        exchangeForEuroXB(token, exchangeTokens);
+        uint256 exchangeAmount = amount.div(2);
 
-        // approve transfering tokens and eurxb to uniswap pair
-        TransferHelper.safeApprove(token, address(pair), exchangeTokens);
-        _tEURxb.approve(address(pair), amountEUR);
+        (uint256 tokenRatio, uint256 eurRatio) = _getUniswapReservesRatio(token);
 
-        // finally transfer tokens and produce liquidity
-        (uint amountA, uint amountB, uint liquidityAmount) = _uniswapRouter.addLiquidity(
+        uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
+        uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
+
+        // check if we don't have enough eurxb tokens
+        if (balanceEUR <= amountEUR) {
+            amountEUR = balanceEUR;
+            // we can take only that much
+            exchangeAmount = amountEUR.mul(tokenRatio).div(eurRatio);
+            emit EmptyEURxbBalance();
+        }
+
+        // approve transfer tokens and eurxbs to uniswap pair
+        TransferHelper.safeApprove(token, address(_uniswapRouter), exchangeAmount);
+        TransferHelper.safeApprove(_tEURxb, address(_uniswapRouter), amountEUR);
+
+        //         finally transfer tokens and produce liquidity
+        (, , uint256 liquidityAmount) = _uniswapRouter
+        .addLiquidity(
+            _tEURxb,
             token,
-            address(_tEURxb),
-            exchangeTokens, // token A
-            amountEUR,      // token B
+            amountEUR, // token B
+            exchangeAmount, // token A
             0, // min A amount
             0, // min B amount
             address(this), // mint liquidity to router, not user
-            now + 2 minutes // deadline 2 minutes
+            block.timestamp + 10 minutes // deadline 10 minutes
         );
 
         // amountA and amountB should be very close to exchangeTokens and amountEUR
         // sending back rest of tokens doesn't seem to be necessarily
         // when amounts calculated properly, there is no change
 
-//        // send back the difference
-//        if (amountA < exchangeTokens) {
-//            TransferHelper.safeTransferFrom(
-//                token,
-//                address(this),
-//                sender,
-//                exchangeTokens.sub(amountA)
-//            );
-//        }
-//
-//        if (amountB < amountEUR) {
-//            TransferHelper.safeTransferFrom(
-//                address(_tEURxb),
-//                address(this),
-//                sender,
-//                amountEUR.sub(amountB)
-//            );
-//        }
+        //        // send back the difference
+        //        if (amountA < exchangeTokens) {
+        //            TransferHelper.safeTransferFrom(
+        //                token,
+        //                address(this),
+        //                sender,
+        //                exchangeTokens.sub(amountA)
+        //            );
+        //        }
+        //
+        //        if (amountB < amountEUR) {
+        //            TransferHelper.safeTransferFrom(
+        //                _tEURxb,
+        //                address(this),
+        //                sender,
+        //                amountEUR.sub(amountB)
+        //            );
+        //        }
 
-        // reward user with BPT
-        if (_startTime + 7 days < now) {
-            TransferHelper.safeTransfer(address(this), sender, liquidityAmount);
+        uint256 routerTokenBalance = IERC20(token).balanceOf(address(this));
+        TransferHelper.safeTransfer(token, _teamAddress, routerTokenBalance);
+
+        // reward user with liquidity
+        if (_startTime + 7 days < block.timestamp) {
+            TransferHelper.safeTransfer(pairAddress, sender, liquidityAmount);
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
-            TransferHelper.safeApprove(address(this), _stakingManager, liquidityAmount);
+            TransferHelper.safeApprove(pairAddress, _stakingManager, liquidityAmount);
             manager.addStake(sender, pairAddress, liquidityAmount);
         }
     }
 
     function _addLiquidityBalancer(address sender, address token, uint256 amount) internal {
-        require(now >= _startTime, "The time has not come yet");
+        require(block.timestamp >= _startTime, "The time has not come yet");
         require(!_isClosedContract, "Contract closed");
 
         // transfer user tokens to router
@@ -257,27 +257,27 @@ contract Router is Ownable, Initializable {
         IBalancerPool pool = IBalancerPool(poolAddress);
         uint256 totalSupply = pool.totalSupply();
 
-        uint256 userExchangeTokens = amount.div(2);
-        uint256 userEurAmount = userExchangeTokens.mul(23).div(27);
-        uint256 routerEurBalance = _tEURxb.balanceOf(address(this));
+        uint256 exchangeAmount = amount.div(2);
 
+        uint256 userEurAmount;
+        {
+            // to save stack space
+            (uint256 tokenRes, uint256 eurRes) = _getBalancerReservesRatio(token);
+            userEurAmount = exchangeAmount.mul(eurRes).div(tokenRes);
+        }
         uint256 amountBPT;
 
-        if (routerEurBalance >= userEurAmount) {
-            exchangeForEuroXB(token, userExchangeTokens);
-
-            TransferHelper.safeApprove(token, poolAddress, userExchangeTokens);
-            _tEURxb.approve(poolAddress, userEurAmount);
+        if (IERC20(_tEURxb).balanceOf(address(this)) >= userEurAmount) {
+            TransferHelper.safeApprove(token, poolAddress, exchangeAmount);
+            TransferHelper.safeApprove(_tEURxb, poolAddress, userEurAmount);
 
             uint256 balance = pool.getBalance(address(_tEURxb));
-            uint256 SAFETY_MULTIPLIER = 10 ** 18;
-            uint256 ratio = userEurAmount.mul(SAFETY_MULTIPLIER).div(balance);
-            amountBPT = totalSupply.mul(ratio).div(SAFETY_MULTIPLIER);
+            amountBPT = totalSupply.mul(userEurAmount).div(balance);
             amountBPT = amountBPT.mul(99).div(100);
 
             uint256[] memory data = new uint256[](2);
             data[0] = userEurAmount;
-            data[1] = userExchangeTokens;
+            data[1] = exchangeAmount;
             pool.joinPool(amountBPT, data);
         } else {
             TransferHelper.safeApprove(token, poolAddress, amount);
@@ -297,9 +297,13 @@ contract Router is Ownable, Initializable {
                 swapFee
             );
             pool.joinswapExternAmountIn(token, amount, amountBPT);
+            emit EmptyEURxbBalance();
         }
 
-        if (_startTime + 7 days < now) {
+        uint256 routerTokenBalance = IERC20(token).balanceOf(address(this));
+        TransferHelper.safeTransfer(token, _teamAddress, routerTokenBalance);
+
+        if (_startTime + 7 days < block.timestamp) {
             TransferHelper.safeTransfer(poolAddress, sender, amountBPT);
         } else {
             IStakingManager manager = IStakingManager(_stakingManager);
@@ -312,16 +316,15 @@ contract Router is Ownable, Initializable {
      * @dev returns uniswap pair reserves numbers or default numbers
      * used to get token/eurxb ratio
      */
-    function getUinswapReservesRatio(address token)
-    internal
-    view
+    function _getUniswapReservesRatio(address token)
+    internal view
     returns (uint256 tokenRes, uint256 eurRes)
     {
         (uint112 res0, uint112 res1,) = IUniswapV2Pair(_uniswapPairs[token]).getReserves();
         if (res0 == 0 || res1 == 0) {
             (tokenRes, eurRes) = (27, 23);
         } else {
-            (address token0,) = sortTokens(token, address(_tEURxb));
+            (address token0,) = _sortTokens(token, address(_tEURxb));
             (tokenRes, eurRes) = (token == token0) ? (res0, res1) : (res1, res0);
         }
     }
@@ -331,9 +334,8 @@ contract Router is Ownable, Initializable {
      * used to get token/eurxb ratio
      * guarantees, that returned numbers greater than zero
      */
-    function getBalancerReservesRatio(address token)
-    internal
-    view
+    function _getBalancerReservesRatio(address token)
+    internal view
     returns (uint256, uint256)
     {
         address poolAddress = _balancerPools[token];
@@ -350,46 +352,11 @@ contract Router is Ownable, Initializable {
     }
 
     /**
-     * @dev Exchange of tokens for EURxb
-     * @param token token address
-     * @param amount number of tokens
-     */
-    function exchangeForEuroXB(address token, uint256 amount) public {
-        require(!_isClosedContract, "Contract closed");
-        require(
-            token == _tUSDT || token == _tUSDC || token == _tBUSD || token == _tDAI,
-            "Token not found"
-        );
-
-        uint256 reserve0;
-        uint256 reserve1;
-
-        if (token == _tUSDC || token == _tDAI) {
-            (reserve0, reserve1) = getBalancerReservesRatio(token);
-        } else {
-            (reserve0, reserve1) = getUinswapReservesRatio(token);
-        }
-
-        uint256 amountEUR = amount.mul(reserve1).div(reserve0);
-
-        uint256 routerEurBalance = _tEURxb.balanceOf(address(this));
-        require(routerEurBalance >= amountEUR, "Not enough tokens");
-
-        // transfer tokens from user to team
-        TransferHelper.safeTransferFrom(token, _msgSender(), _teamAddress, amount);
-        // give him euro in exchangeForEuroXB
-        if (_msgSender() != address(this)) {
-            _tEURxb.transfer(_msgSender(), amountEUR);
-        }
-    }
-
-    /**
      * @dev sorts token addresses just like uniswap router does
      */
-    function sortTokens(address tokenA, address tokenB)
-        internal
-        pure
-        returns (address token0, address token1)
+    function _sortTokens(address tokenA, address tokenB)
+    internal pure
+    returns (address token0, address token1)
     {
         require(tokenA != tokenB, "identical tokens");
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
