@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./templates/Initializable.sol";
 
@@ -10,20 +9,18 @@ import "./templates/Initializable.sol";
  * @title StakingManager
  * @dev Staking manager contract
  */
-contract StakingManager is Ownable, Initializable {
+contract StakingManager is Initializable {
     using SafeMath for uint256;
 
-    uint256 constant private XBG_AMOUNT = 8000 ether;
-    uint256 constant private PERCENTS_100 = 100;
-    uint256 constant private USERS_PAGINATION = 50;
+    uint256 constant private XBG_AMOUNT = 12000 ether;
     uint256[7] private DAILY_XBG_REWARD = [
-        666600 finney, // first day - 33.33%
-        390000 finney, // second day - 19.50%
-        276600 finney, // third day - 13.83%
-        214400 finney, // 4th day - 10.72%
-        175400 finney, // 5th day - 8,77%
-        148400 finney, // 6th day - 7,42%
-        128600 finney]; // 7th day - 6,43%
+        999900 finney, // first day - 33.33%
+        585000 finney, // second day - 19.50%
+        414900 finney, // third day - 13.83%
+        321600 finney, // 4th day - 10.72%
+        263100 finney, // 5th day - 8,77%
+        222600 finney, // 6th day - 7,42%
+        192900 finney]; // 7th day - 6,43%
 
     struct Accumulator {
         uint256 lpTotalAmount;
@@ -160,7 +157,7 @@ contract StakingManager is Ownable, Initializable {
             uint256 accumulateTotalLP = 0;
             uint256 accumulateUserLP = 0;
             for (uint256 j = 0; j < 7 && timestamp > _startTime + (j + 1) * 86400; ++j) {
-                Accumulator storage dailyAccumulator = _dailyAccumulator[pool][j];
+                Accumulator memory dailyAccumulator = _dailyAccumulator[pool][j];
                 accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
                 uint256 stake = _stakes[user][pool][j];
                 if (stake > 0) {
@@ -200,7 +197,7 @@ contract StakingManager is Ownable, Initializable {
         // add stake info
         _stakes[user][pool][day] = _stakes[user][pool][day].add(amount);
 
-        emit StakerAdded(user, pool, day, amount);
+        emit StakerAdded(user, pool, day + 1, amount);
     }
 
     /**
@@ -220,6 +217,7 @@ contract StakingManager is Ownable, Initializable {
                 uint256 stake = _stakes[user][pool][j];
                 if (stake > 0) {
                     _stakes[user][pool][j] = 0;
+                    dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.sub(stake);
                     accumulateUserLP = accumulateUserLP.add(stake);
                     usersLP[i] = usersLP[i].add(stake);
                 }
@@ -228,17 +226,15 @@ contract StakingManager is Ownable, Initializable {
                     dailyAccumulator.xbgTotalReward = dailyAccumulator.xbgTotalReward.sub(dailyReward);
                     xbgReward = xbgReward.add(dailyReward);
                 }
-                if (stake > 0) {
-                    dailyAccumulator.lpTotalAmount = dailyAccumulator.lpTotalAmount.sub(stake);
-                }
             }
             if (usersLP[i] > 0) {
                 IERC20(_pools[i]).transfer(user, usersLP[i]);
             }
         }
-        if (xbgReward > 0) {
-            _tokenXbg.transfer(user, xbgReward);
-        }
+
+        require(xbgReward > 0, "Reward is empty");
+
+        _tokenXbg.transfer(user, xbgReward);
 
         emit StakerHasClaimedReward(user, usersLP, xbgReward);
     }
