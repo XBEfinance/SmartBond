@@ -1,5 +1,3 @@
-const { ether, time, BN, constants } = require('@openzeppelin/test-helpers');
-
 // const WETH9 = artifacts.require('WETH9'); // Wrapper Eth
 const UniswapV2Factory = artifacts.require('UniswapV2Factory'); // Uniswap Factory
 const UniswapV2Pair = artifacts.require('UniswapV2Pair'); // Uniswap Pair
@@ -103,10 +101,10 @@ module.exports = function (deployer, network) {
       await multisig.allowAccount(process.env.DEPLOYER_ACCOUNT);
 
       // create 2 tokens
-      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, ether('200000'),
-        (new BN(process.env.START_TIME)).add(time.duration.years('1')));
-      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, ether('200000'),
-        (new BN(process.env.START_TIME)).add(time.duration.years('1')));
+      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, web3.utils.fromWei('200000', 'ether'),
+        365 * 86400 + process.env.START_TIME);
+      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, web3.utils.fromWei('200000', 'ether'),
+        365 * 86400 + process.env.START_TIME);
 
       // get stable coins contracts
       const usdt = await TetherToken.at('0x48F2306f7d75DE8d9f2a93AC2b71661A000d4545');
@@ -115,7 +113,7 @@ module.exports = function (deployer, network) {
       const dai = await Dai.at('0x569AafF8F90A5E48B27C154249eE5A08eD0C44E2');
 
       // deploy Router and StakingManager contracts
-      const xbg = await deployer.deploy(XBG, ether('15000'));
+      const xbg = await deployer.deploy(XBG, web3.utils.fromWei('15000', 'ether'));
       const sm = await deployer.deploy(
         StakingManager, xbg.address, process.env.START_TIME,
       );
@@ -131,7 +129,7 @@ module.exports = function (deployer, network) {
       let usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
       let busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
 
-      if (usdtPoolAddress === constants.ZERO_ADDRESS) {
+      if (usdtPoolAddress === '0x0000000000000000000000000000000000000000') {
         await uniswapFactory.createPair(eurxb.address, usdt.address);
         usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
         console.log('usdtPoolAddress after deploy', usdtPoolAddress);
@@ -140,7 +138,7 @@ module.exports = function (deployer, network) {
       }
       const usdtPool = await UniswapV2Pair.at(usdtPoolAddress);
 
-      if (busdPoolAddress === constants.ZERO_ADDRESS) {
+      if (busdPoolAddress === '0x0000000000000000000000000000000000000000') {
         await uniswapFactory.createPair(eurxb.address, busd.address);
         busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
         console.log('busdPoolAddress after deploy', busdPoolAddress);
@@ -155,22 +153,22 @@ module.exports = function (deployer, network) {
       await bFactory.newBPool();
       const usdcPoolAddress = await bFactory.getLastBPool();
       const usdcPool = await BPool.at(usdcPoolAddress);
-      await eurxb.approve(usdcPool.address, ether('46'));
-      await usdc.approve(usdcPool.address, ether('54'));
-      await usdcPool.bind(eurxb.address, ether('46'), ether('23'));
-      await usdcPool.bind(usdc.address, ether('54'), ether('27'));
-      await usdcPool.setSwapFee(ether('0.001'));
+      await eurxb.approve(usdcPool.address, web3.utils.fromWei('46', 'ether'));
+      await usdc.approve(usdcPool.address, web3.utils.fromWei('54', 'ether'));
+      await usdcPool.bind(eurxb.address, web3.utils.fromWei('46', 'ether'), web3.utils.fromWei('23', 'ether'));
+      await usdcPool.bind(usdc.address, web3.utils.fromWei('54', 'ether'), web3.utils.fromWei('27', 'ether'));
+      await usdcPool.setSwapFee(web3.utils.fromWei('0.001', 'ether'));
       await usdcPool.finalize();
       console.log('finalize usdcPool at address:', usdcPool.address);
 
       await bFactory.newBPool();
       const daiPoolAddress = await bFactory.getLastBPool();
       const daiPool = await BPool.at(daiPoolAddress);
-      await eurxb.approve(daiPool.address, ether('46'));
-      await dai.approve(daiPool.address, ether('54'));
-      await daiPool.bind(eurxb.address, ether('46'), ether('23'));
-      await daiPool.bind(dai.address, ether('54'), ether('27'));
-      await daiPool.setSwapFee(ether('0.001'));
+      await eurxb.approve(daiPool.address, web3.utils.fromWei('46', 'ether'));
+      await usdc.approve(daiPool.address, web3.utils.fromWei('54', 'ether'));
+      await daiPool.bind(eurxb.address, web3.utils.fromWei('46', 'ether'), web3.utils.fromWei('23', 'ether'));
+      await daiPool.bind(usdc.address, web3.utils.fromWei('54', 'ether'), web3.utils.fromWei('27', 'ether'));
+      await daiPool.setSwapFee(web3.utils.fromWei('0.001', 'ether'));
       await daiPool.finalize();
       console.log('finalize daiPool at address:', daiPool.address);
 
@@ -181,7 +179,7 @@ module.exports = function (deployer, network) {
       await router.setUniswapPair(busd.address, busdPool.address);
       console.log('set all pairs');
 
-      await xbg.approve(sm.address, ether('12000'));
+      await xbg.approve(sm.address, web3.utils.fromWei('12000', 'ether'));
       await sm.configure([
         usdtPool.address, usdcPool.address, busdPool.address, daiPool.address]);
       await router.configure(uniswapRouter.address);
