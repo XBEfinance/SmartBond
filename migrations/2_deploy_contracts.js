@@ -181,7 +181,7 @@ module.exports = function (deployer, network) {
       await router.setUniswapPair(busd.address, busdPool.address);
       console.log('set all pairs');
 
-      await xbg.approve(sm.address, ether('8000'));
+      await xbg.approve(sm.address, ether('12000'));
       await sm.configure([
         usdtPool.address, usdcPool.address, busdPool.address, daiPool.address]);
       await router.configure(uniswapRouter.address);
