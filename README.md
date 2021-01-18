@@ -8,15 +8,45 @@ Miris Contract
 - Truffle v5.1.48 (core: 5.1.48) or later
 
 **Installation**
+- `npm i` - install all dependencies
 
-- npm i
+**Build contracts**
+- `npm run build` - build all contracts
 
 **Run tests**
+- `npm run test` - start all tests
+- `npm run test +fast` - start tests without rebuild contracts
+- `npm run test test/<filename>.js` - run tests for only one file
+- `npm run test +fast test/<filename>.js` - run tests for only one file without rebuild contracts
 
-- npm run lint
-- npm run test
+**Run coverage**
+- `npm run coverage` 
 
 **Make Flattened contract file**
+- `npm run flatten` - make Flattened.sol file with all contracts
+- `npm run flatten contracts/<filename>.sol` - make Flattened.sol file for same contract
 
-- npm run flatten
+**Deploy contracts**
+
+- create `.secret` file from project directory and push to that 12 word from your Ethereum account
+- create `.env` file with next variables:
+  *INFURA_ID=<your_infura_project_id>*
+  
+  *ETHERSCAN_API_KEY=<your_etherscan_api_key>*
+  
+  *DEPLOYER_ACCOUNT=<your_ethereum_account>*
+  
+  *TEAM_ACCOUNT=<team_ethereum_account>*
+  
+  *START_TIME=<unix_timestamp>*
+  
+- `npm run deploy` - deploy and configure all contracts in rinkeby testnet
+- `npm run deploy <network>` - deploy and configure all contracts for some network [NOT IMPLEMENTED]
+
+**Verify deployed contracts**
+
+- `npm run verify` - verify all contracts in rinkeby testnet
+- `npm run verify <contract>` - verify only one contract in rinkeby testnet
+- `npm run verify all <network>` - verify all contracts in network
+- `npm run verify <contract> <network>` - verify only one contract in network
 
