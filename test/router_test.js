@@ -30,9 +30,9 @@ contract('Router', (accounts) => {
   describe('Router tests', async () => {
     beforeEach(async () => {
       this.eurxb = await MockToken.new('EURxb', 'EURxb', ether('50000'));
-      const xbg = await MockToken.new('xbg', 'xbg', ether('8000'));
+      const xbg = await MockToken.new('xbg', 'xbg', ether('12000'));
       this.staking = await StakingManager.new(xbg.address, await time.latest());
-      await xbg.approve(this.staking.address, ether('8000'));
+      await xbg.approve(this.staking.address, ether('12000'));
 
       this.bFactory = await BFactory.deployed();
     });
