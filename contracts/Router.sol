@@ -30,7 +30,7 @@ contract Router is Ownable, Initializable {
     address private _tUSDC;
     address private _tBUSD;
     address private _tDAI;
-    address private _tEURxb;
+    IERC20 private _tEURxb;
 
     IUniswapV2Router02 private _uniswapRouter;
 
@@ -58,7 +58,7 @@ contract Router is Ownable, Initializable {
         _tUSDC = tUSDC;
         _tBUSD = tBUSD;
         _tDAI = tDAI;
-        _tEURxb = tEURxb;
+        _tEURxb = IERC20(tEURxb);
     }
 
     /**
@@ -136,9 +136,9 @@ contract Router is Ownable, Initializable {
     function closeContract() external onlyOwner {
         require(_startTime + 7 days < block.timestamp, "Time is not over");
         require(block.timestamp >= _startTime, "The time has not come yet");
-        uint256 balance = IERC20(_tEURxb).balanceOf(address(this));
+        uint256 balance = _tEURxb.balanceOf(address(this));
         if (balance > 0) {
-            IERC20(_tEURxb).transfer(_msgSender(), balance);
+            _tEURxb.transfer(_msgSender(), balance);
         }
         _isClosedContract = true;
     }
@@ -183,7 +183,7 @@ contract Router is Ownable, Initializable {
         (uint256 tokenRatio, uint256 eurRatio) = _getUniswapReservesRatio(token);
 
         uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
-        uint256 balanceEUR = IERC20(_tEURxb).balanceOf(address(this));
+        uint256 balanceEUR = _tEURxb.balanceOf(address(this));
 
         // check if we don't have enough eurxb tokens
         if (balanceEUR <= amountEUR) {
@@ -195,12 +195,12 @@ contract Router is Ownable, Initializable {
 
         // approve transfer tokens and eurxbs to uniswap pair
         TransferHelper.safeApprove(token, address(_uniswapRouter), exchangeAmount);
-        TransferHelper.safeApprove(_tEURxb, address(_uniswapRouter), amountEUR);
+        TransferHelper.safeApprove(address(_tEURxb), address(_uniswapRouter), amountEUR);
 
         //         finally transfer tokens and produce liquidity
         (, , uint256 liquidityAmount) = _uniswapRouter
         .addLiquidity(
-            _tEURxb,
+            address(_tEURxb),
             token,
             amountEUR, // token B
             exchangeAmount, // token A
@@ -226,7 +226,7 @@ contract Router is Ownable, Initializable {
         //
         //        if (amountB < amountEUR) {
         //            TransferHelper.safeTransferFrom(
-        //                _tEURxb,
+        //                address(_tEURxb),
         //                address(this),
         //                sender,
         //                amountEUR.sub(amountB)
@@ -267,9 +267,9 @@ contract Router is Ownable, Initializable {
         }
         uint256 amountBPT;
 
-        if (IERC20(_tEURxb).balanceOf(address(this)) >= userEurAmount) {
+        if (_tEURxb.balanceOf(address(this)) >= userEurAmount) {
             TransferHelper.safeApprove(token, poolAddress, exchangeAmount);
-            TransferHelper.safeApprove(_tEURxb, poolAddress, userEurAmount);
+            TransferHelper.safeApprove(address(_tEURxb), poolAddress, userEurAmount);
 
             uint256 balance = pool.getBalance(address(_tEURxb));
             amountBPT = totalSupply.mul(userEurAmount).div(balance);
@@ -317,12 +317,15 @@ contract Router is Ownable, Initializable {
      * used to get token/eurxb ratio
      */
     function _getUniswapReservesRatio(address token)
-    internal view
+    internal
     returns (uint256 tokenRes, uint256 eurRes)
     {
         (uint112 res0, uint112 res1,) = IUniswapV2Pair(_uniswapPairs[token]).getReserves();
         if (res0 == 0 || res1 == 0) {
-            (tokenRes, eurRes) = (27, 23);
+            (tokenRes, eurRes) = (
+                (10 ** uint256(_getTokenDecimals(token))).mul(27),
+                (10 ** uint256(_getTokenDecimals(address(_tEURxb)))).mul(23)
+            );
         } else {
             (address token0,) = _sortTokens(token, address(_tEURxb));
             (tokenRes, eurRes) = (token == token0) ? (res0, res1) : (res1, res0);
@@ -335,7 +338,7 @@ contract Router is Ownable, Initializable {
      * guarantees, that returned numbers greater than zero
      */
     function _getBalancerReservesRatio(address token)
-    internal view
+    internal
     returns (uint256, uint256)
     {
         address poolAddress = _balancerPools[token];
@@ -345,7 +348,10 @@ contract Router is Ownable, Initializable {
         uint256 balanceToken = pool.getBalance(token);
 
         if (balanceEurXB == 0 || balanceToken == 0) {
-            return (27, 23);
+            return (
+                (10 ** uint256(_getTokenDecimals(token))).mul(27),
+                (10 ** uint256(_getTokenDecimals(address(_tEURxb)))).mul(23)
+            );
         }
 
         return (balanceToken, balanceEurXB);
@@ -361,5 +367,15 @@ contract Router is Ownable, Initializable {
         require(tokenA != tokenB, "identical tokens");
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), 'zero address');
+    }
+
+    function _getTokenDecimals(address token) internal returns (uint8) {
+        // bytes4(keccak256(bytes('decimals()')));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x313ce567));
+        require(success &&
+            (data.length == 0 ||
+            abi.decode(data, (uint8)) > 0 ||
+            abi.decode(data, (uint8)) < 100), "DECIMALS_NOT_FOUND");
+        return abi.decode(data, (uint8));
     }
 }

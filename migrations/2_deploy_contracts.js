@@ -36,17 +36,7 @@ const baseURI = 'https://google.com/';
 
 module.exports = function (deployer, network) {
   deployer.then(async () => {
-    if (network === 'test') {
-      // const uniswapFactory = await deployer.deploy(UniswapV2Factory, owner);
-      // const weth = await deployer.deploy(WETH9);
-      // await deployer.deploy(UniswapV2Router02, uniswapFactory.address, weth.address);
-
-      await deployer.deploy(BFactory);
-      await deployer.deploy(TetherToken, web3.utils.toWei('1000000', 'ether'), 'Tether USD', 'USDT', 6);
-      await deployer.deploy(BUSDImplementation);
-      await deployer.deploy(FiatTokenV2);
-      await deployer.deploy(Dai, 1);
-
+    if (network === 'test' || network === 'soliditycoverage') {
       await deployer.deploy(LinkedList);
       await deployer.link(LinkedList, MockLinkedList);
       await deployer.link(LinkedList, EURxb);
