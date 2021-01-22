@@ -143,11 +143,11 @@ module.exports = function (deployer, network) {
       await bFactory.newBPool();
       const usdcPoolAddress = await bFactory.getLastBPool();
       const usdcPool = await BPool.at(usdcPoolAddress);
-      await eurxb.approve(usdcPool.address, web3.utils.fromWei('46', 'ether'));
-      await usdc.approve(usdcPool.address, web3.utils.fromWei('54', 'ether'));
-      await usdcPool.bind(eurxb.address, web3.utils.fromWei('46', 'ether'), web3.utils.fromWei('23', 'ether'));
-      await usdcPool.bind(usdc.address, web3.utils.fromWei('54', 'ether'), web3.utils.fromWei('27', 'ether'));
-      await usdcPool.setSwapFee(web3.utils.fromWei('0.001', 'ether'));
+      await eurxb.approve(usdcPool.address, web3.utils.toWei('46', 'ether'));
+      await usdc.approve(usdcPool.address, web3.utils.toWei('54', 'ether'));
+      await usdcPool.bind(eurxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
+      await usdcPool.bind(usdc.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
+      await usdcPool.setSwapFee(web3.utils.toWei('0.001', 'ether'));
       await usdcPool.finalize();
       console.log('finalize usdcPool at address:', usdcPool.address);
 
