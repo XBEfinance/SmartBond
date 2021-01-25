@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract XBG is ERC20 {
     constructor(
         uint256 initialSupply
-    ) public ERC20("xbg", "xbg") {
+    ) public ERC20("XBE", "XBE") {
         _mint(msg.sender, initialSupply);
     }
 }
