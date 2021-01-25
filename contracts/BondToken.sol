@@ -33,7 +33,7 @@ contract BondToken is IBondToken, AccessControl, ERC721, Initializable {
     /// ddp address
     address private _ddp;
 
-    constructor(string memory baseURI) public ERC721("BondToken", "BND") {
+    constructor(string memory baseURI) public ERC721("EurxbBondToken", "EBND") {
         _setBaseURI(baseURI);
     }
 

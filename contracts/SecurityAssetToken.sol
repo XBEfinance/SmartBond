@@ -43,7 +43,7 @@ contract SecurityAssetToken is ERC721, AccessControl, ISecurityAssetToken {
         address miris,
         address bond,
         address allowList
-    ) public ERC721("SecurityAssetToken", "SAT") {
+    ) public ERC721("EurxbSecurityAssetToken", "ESAT") {
         _setBaseURI(baseURI);
         _bond = bond;
         _allowList = allowList;
