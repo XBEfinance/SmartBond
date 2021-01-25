@@ -3,7 +3,7 @@ const { expectRevert, ether, BN, time } = require('@openzeppelin/test-helpers');
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 
-const { expect } = chai;
+const { expect, assert } = chai;
 
 const FiatTokenV2 = artifacts.require('FiatTokenV2'); // USDC
 const Dai = artifacts.require('Dai'); // DAI
@@ -23,9 +23,32 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const Router = artifacts.require('Router');
 const StakingManager = artifacts.require('StakingManager');
 
-function usd (n) {
-  return new BN(web3.utils.toWei(n, 'Mwei'));
+usd = (n) => new BN(web3.utils.toWei(n, 'Mwei'));
+
+coinAmount = async (n, token) => {
+  const decimals = await token.decimals();
+  if (decimals.toString() === '6')
+    return usd(n);
+  else if (decimals.toString() === '18')
+    return ether(n);
+  else
+    assert(false, 'unsupported decimals');
 }
+
+calcExchangeEurxb = async (n, token) => {
+  const coinsMultiplier = await coinAmount('27', token);
+  return n.mul(ether('23')).div(coinsMultiplier);
+}
+
+calcExchangeCoins = async (n, token) => {
+  const coinsMultiplier = await coinAmount('27', token);
+  return n.mul(coinsMultiplier).div(ether('23'));
+}
+
+const names = ['USDT', 'USDC', 'BUSD', 'DAI'];
+let coins = [];
+let pools = [];
+let types = [];
 
 contract('Router', ([owner, alice, bob, team, newTeam]) => {
   before(async () => {
@@ -41,7 +64,7 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
     const bFactory = await BFactory.new();
 
     // deploy and configure USDT
-    this.usdt = await TetherToken.new(web3.utils.toWei('1000000', 'Mwei'), 'Tether USD', 'USDT', 6);
+    this.usdt = await TetherToken.new(usd('1000000'), 'Tether USD', 'USDT', 6);
 
     // deploy and configure BUSD
     this.busd = await BUSDImplementation.new();
@@ -51,8 +74,8 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
     // deploy and configure USDC
     this.usdc = await FiatTokenV2.new();
     await this.usdc.initialize('USD Coin', 'USDC', 'USD', 6, owner, owner, owner, owner);
-    await this.usdc.configureMinter(owner, web3.utils.toWei('1000000', 'Mwei'));
-    await this.usdc.mint(owner, web3.utils.toWei('1000000', 'Mwei'));
+    await this.usdc.configureMinter(owner, usd('1000000'));
+    await this.usdc.mint(owner, usd('1000000'));
 
     // deploy and configure DAI
     this.dai = await Dai.new(1);
@@ -91,80 +114,153 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
     await this.daiPool.bind(this.dai.address, ether('54'), ether('25'));
     await this.daiPool.setSwapFee(ether('0.001'));
     await this.daiPool.finalize();
+
+    coins = [this.usdt, this.usdc, this.busd, this.dai];
+    pools = [this.usdtPool, this.usdcPool, this.busdPool, this.daiPool];
+    types = ['uniswap', 'balancer', 'uniswap', 'balancer'];
   });
 
   beforeEach(async () => {
+    // deploy
     const xbg = await MockToken.new('xbg', 'xbg', ether('12000'));
     this.sm = await StakingManager.new(xbg.address, await time.latest());
+    this.router = await Router.new(team);
+
+    // configure StakingManager contract
     await xbg.approve(this.sm.address, ether('12000'));
-
-    this.router = await Router.new(
-      team, this.sm.address, await time.latest(),
-      this.usdt.address, this.usdc.address, this.busd.address,
-      this.dai.address, this.eurxb.address,
-    );
-
-    await this.router.setBalancerPool(this.usdc.address, this.usdcPool.address);
-    await this.router.setBalancerPool(this.dai.address, this.daiPool.address);
-    await this.router.setUniswapPair(this.usdt.address, this.usdtPool.address);
-    await this.router.setUniswapPair(this.busd.address, this.busdPool.address);
-
     await this.sm.configure([
       this.usdtPool.address, this.usdcPool.address, this.busdPool.address, this.daiPool.address]);
-    await this.router.configure(this.uniswapRouter.address);
-
-    await this.eurxb.transfer(this.router.address, ether('10000'));
+    // configure Router contract
+    await this.router.configure(this.sm.address, this.uniswapRouter.address,
+      this.usdt.address, this.usdc.address, this.busd.address, this.dai.address, this.eurxb.address);
+    // send some EURxb tokens to Router contract
+    this.eurxbRouterBalance = ether('1000');
+    await this.eurxb.transfer(this.router.address, this.eurxbRouterBalance);
   });
 
-  describe('add Liquidity to USDT pool', () => {
-    beforeEach(async () => {
-      await this.usdt.transfer(alice, usd('1000'), { from: owner });
-      await this.usdt.approve(this.router.address, usd('1000'), { from: alice });
+  for (let i = 0; i < 4; ++i) {
+    describe('add liquidity to', () => {
+      beforeEach(async () => {
+        this.depositedAmount = await coinAmount('1000', coins[i]);
+        await coins[i].transfer(alice, this.depositedAmount, { from: owner });
+        await coins[i].approve(this.router.address, this.depositedAmount, { from: alice });
+      });
+
+      it('when user send coins to Router', async () => {
+        console.log('\t', names[i], 'pool');
+        // get balance pool before add liquidity
+        const coinPoolBalanceBefore = await coins[i].balanceOf(pools[i].address);
+
+        // add liquidity to Router contract
+        await this.router.addLiquidity(coins[i].address, this.depositedAmount, { from: alice });
+
+        // check coins pool balance
+        const coinPoolBalance = await coins[i].balanceOf(pools[i].address);
+        let expectedCoinPoolBalance = this.depositedAmount.div(new BN('2'));
+        if (types[i] === 'uniswap') {
+          expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+          expect(coinPoolBalance).to.be.bignumber.equal(expectedCoinPoolBalance);
+        }
+        else {
+          expectedCoinPoolBalance =
+            expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+          expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(new BN('1000')));
+          expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(new BN('1000')));
+        }
+
+        // check eurxb pool balance
+        const eurxbPoolBalance = await this.eurxb.balanceOf(pools[i].address);
+        const expectedEurxbPoolBalance = await calcExchangeEurxb(coinPoolBalance, coins[i]);
+
+        if (types[i] === 'uniswap')
+          expect(eurxbPoolBalance).to.be.bignumber.equal(expectedEurxbPoolBalance);
+        else {
+          expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(new BN('1000')));
+          expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(new BN('1000')));
+        }
+
+        // check creating LP tokens
+        const lpTotalSupply = await pools[i].totalSupply();
+        expect(lpTotalSupply).to.be.bignumber.gt(ether('0'));
+        // all LP tokens has sent to StakingManager contract
+        const lpTokenBalance = await pools[i].balanceOf(this.sm.address);
+        if (types[i] === 'uniswap')
+          expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(new BN('1000')));
+        else
+          expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(ether('100')));
+
+        // check team coin balance
+        const teamCoinBalance = await coins[i].balanceOf(team);
+        const expectedTeamCoinBalance = this.depositedAmount.div(new BN('2'));
+        if (types[i] === 'uniswap')
+          expect(teamCoinBalance).to.be.bignumber.equal(expectedTeamCoinBalance);
+        else {
+          expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(new BN('1000')));
+          expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(new BN('1000')));
+        }
+      });
     });
 
-    it('when user send USDT to Router', async () => {
-      await this.router.addLiquidity(this.usdt.address, usd('1000'), { from: alice });
-
-      const balance = await this.usdtPool.balanceOf(this.sm.address);
-    });
-  });
-
-  describe('add Liquidity to BUSD pool', () => {
-    beforeEach(async () => {
-      await this.busd.transfer(alice, ether('1000'), { from: owner });
-      await this.busd.approve(this.router.address, ether('1000'), { from: alice });
-    });
-
-    it('when user send BUSD to Router', async () => {
-      await this.router.addLiquidity(this.busd.address, ether('1000'), { from: alice });
-
-      const balance = await this.busdPool.balanceOf(this.sm.address);
-    });
-  });
-
-  describe('add Liquidity to USDC pool', () => {
-    beforeEach(async () => {
-      await this.usdc.transfer(alice, usd('1000'), { from: owner });
-      await this.usdc.approve(this.router.address, usd('1000'), { from: alice });
-    });
-
-    it('when user send USDC to Router', async () => {
-      await this.router.addLiquidity(this.usdc.address, usd('1000'), { from: alice });
-
-      const balance = await this.usdcPool.balanceOf(this.sm.address);
-    });
-  });
-
-  describe('add Liquidity to DAI pool', () => {
-    beforeEach(async () => {
-      await this.dai.transfer(alice, ether('1000'), { from: owner });
-      await this.dai.approve(this.router.address, ether('1000'), { from: alice });
-    });
-
-    it('when user send DAI to Router', async () => {
-      await this.router.addLiquidity(this.dai.address, ether('1000'), { from: alice });
-
-      const balance = await this.daiPool.balanceOf(this.sm.address);
-    });
-  });
+    // describe('add liquidity to', () => {
+    //   beforeEach(async () => {
+    //     this.depositedAmount = await coinAmount('10000', coins[i]);
+    //     await coins[i].transfer(alice, this.depositedAmount, { from: owner });
+    //     await coins[i].approve(this.router.address, this.depositedAmount, { from: alice });
+    //   });
+    //
+    //   it('when user send coins more than ERUxb Router balance', async () => {
+    //     console.log('\t', names[i], 'pool');
+    //     // get balance pool before add liquidity
+    //     const coinPoolBalanceBefore = await coins[i].balanceOf(pools[i].address);
+    //
+    //     // add liquidity to Router contract
+    //     await this.router.addLiquidity(coins[i].address, this.depositedAmount, { from: alice });
+    //
+    //     // check coins pool balance
+    //     const coinPoolBalance = await coins[i].balanceOf(pools[i].address);
+    //     let expectedCoinPoolBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
+    //     if (types[i] === 'uniswap') {
+    //       expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+    //       expect(coinPoolBalance).to.be.bignumber.equal(expectedCoinPoolBalance);
+    //     }
+    //     else {
+    //       expectedCoinPoolBalance =
+    //         expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+    //       expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(new BN('1000')));
+    //       expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(new BN('1000')));
+    //     }
+    //
+    //     // check eurxb pool balance
+    //     const eurxbPoolBalance = await this.eurxb.balanceOf(pools[i].address);
+    //     const expectedEurxbPoolBalance = this.eurxbRouterBalance;
+    //
+    //     if (types[i] === 'uniswap')
+    //       expect(eurxbPoolBalance).to.be.bignumber.equal(expectedEurxbPoolBalance);
+    //     else {
+    //       expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(new BN('1000')));
+    //       expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(new BN('1000')));
+    //     }
+    //
+    //     // check creating LP tokens
+    //     const lpTotalSupply = await pools[i].totalSupply();
+    //     expect(lpTotalSupply).to.be.bignumber.gt(ether('0'));
+    //     // all LP tokens has sent to StakingManager contract
+    //     const lpTokenBalance = await pools[i].balanceOf(this.sm.address);
+    //     if (types[i] === 'uniswap')
+    //       expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(new BN('1000')));
+    //     else
+    //       expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(ether('100')));
+    //
+    //     // check team coin balance
+    //     const teamCoinBalance = await coins[i].balanceOf(team);
+    //     const expectedTeamCoinBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
+    //     if (types[i] === 'uniswap')
+    //       expect(teamCoinBalance).to.be.bignumber.equal(expectedTeamCoinBalance);
+    //     else {
+    //       expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(new BN('1000')));
+    //       expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(new BN('1000')));
+    //     }
+    //   });
+    // });
+  }
 });

@@ -234,13 +234,12 @@ contract Router is Ownable, Initializable {
 
         uint256 amountBPT;
 
-        if (balanceEUR > 0) {
+        if (balanceEUR >= 10 ** 18) { // balance great then 1 EURxb token
             TransferHelper.safeApprove(token, poolAddress, exchangeAmount);
             TransferHelper.safeApprove(address(_tEURxb), poolAddress, amountEUR);
 
             uint256 balance = pool.getBalance(address(_tEURxb));
             amountBPT = totalSupply.mul(amountEUR).div(balance);
-            amountBPT = amountBPT.mul(99).div(100);
 
             uint256[] memory data = new uint256[](2);
             data[0] = amountEUR;
