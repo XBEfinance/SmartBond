@@ -10,4 +10,10 @@ interface IStakingManager {
         address pool,
         uint256 amount
     ) external;
+
+    function startTime() external view returns (uint256);
+
+    function endTime() external view returns (uint256);
+
+    function getPools() external view returns (address[4] memory);
 }

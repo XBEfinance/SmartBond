@@ -2,14 +2,16 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+
 import "./templates/Initializable.sol";
+import "./interfaces/IStakingManager.sol";
 
 
 /**
  * @title StakingManager
  * @dev Staking manager contract
  */
-contract StakingManager is Initializable {
+contract StakingManager is Initializable, IStakingManager {
     using SafeMath for uint256;
 
     uint256 constant private XBG_AMOUNT = 12000 ether;
@@ -73,14 +75,14 @@ contract StakingManager is Initializable {
     /**
      * @return start time
      */
-    function startTime() external view returns (uint256) {
+    function startTime() external view override returns (uint256) {
         return _startTime;
     }
 
     /**
      * @return end time
      */
-    function endTime() external view returns (uint256) {
+    function endTime() external view override returns (uint256) {
         return _startTime + 7 days;
     }
 
@@ -99,7 +101,7 @@ contract StakingManager is Initializable {
         return address(_tokenXbg);
     }
 
-    function getPools() external view returns (address[4] memory) {
+    function getPools() external view override returns (address[4] memory) {
         return _pools;
     }
 
@@ -180,7 +182,7 @@ contract StakingManager is Initializable {
      * @param pool pool address
      * @param amount number of LP tokens
      */
-    function addStake(address user, address pool, uint256 amount) external {
+    function addStake(address user, address pool, uint256 amount) external override {
         require(block.timestamp >= _startTime, "The time has not come yet");
         require(block.timestamp <= _startTime + 7 days, "stakings has finished");
         require(_allowListOfPools[pool], "Pool not found");
