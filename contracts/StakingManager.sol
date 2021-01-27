@@ -146,9 +146,9 @@ contract StakingManager is Initializable, IStakingManager {
         return lpTokens;
     }
 
-    function calculateReward(address user, uint256 timestamp) external view returns(uint256[4] memory, uint256) {
+    function calculateReward(address user, uint256 timestamp) external view returns(uint256[4] memory, uint256[4] memory) {
         uint256[4] memory usersLP;
-        uint256 xbgReward;
+        uint256[4] memory xbgReward;
 
         if (timestamp == 0) {
             timestamp = block.timestamp;
@@ -168,7 +168,7 @@ contract StakingManager is Initializable, IStakingManager {
                 }
                 if (accumulateUserLP > 0) {
                     uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
-                    xbgReward = xbgReward.add(dailyReward);
+                    xbgReward[i] = xbgReward[i].add(dailyReward);
                 }
             }
         }
