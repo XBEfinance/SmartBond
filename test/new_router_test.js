@@ -23,27 +23,38 @@ const UniswapV2Router02 = artifacts.require('UniswapV2Router02');
 const Router = artifacts.require('Router');
 const StakingManager = artifacts.require('StakingManager');
 
-usd = (n) => new BN(web3.utils.toWei(n, 'Mwei'));
+const usd = (n) => new BN(web3.utils.toWei(n, 'Mwei'));
 
-coinAmount = async (n, token) => {
+const coinAmount = async (n, token) => {
   const decimals = await token.decimals();
-  if (decimals.toString() === '6')
+  if (decimals.toString() === '6') {
     return usd(n);
-  else if (decimals.toString() === '18')
+  }
+  if (decimals.toString() === '18') {
     return ether(n);
-  else
-    assert(false, 'unsupported decimals');
-}
+  }
 
-calcExchangeEurxb = async (n, token) => {
+  assert(false, 'unsupported decimals');
+  return 0;
+};
+
+const calcExchangeEurxb = async (n, token) => {
   const coinsMultiplier = await coinAmount('27', token);
   return n.mul(ether('23')).div(coinsMultiplier);
-}
+};
 
-calcExchangeCoins = async (n, token) => {
+const calcExchangeCoins = async (n, token) => {
   const coinsMultiplier = await coinAmount('27', token);
   return n.mul(coinsMultiplier).div(ether('23'));
-}
+};
+
+const setupEpsilon = async (token) => {
+  let minErrorEpsilon = ether('1').div(await coinAmount('1', token));
+  if (minErrorEpsilon.lt(new BN('1000'))) {
+    minErrorEpsilon = new BN('1000');
+  }
+  return minErrorEpsilon;
+};
 
 const names = ['USDT', 'USDC', 'BUSD', 'DAI'];
 let coins = [];
@@ -51,7 +62,7 @@ let pools = [];
 let types = [];
 
 contract('Router', ([owner, alice, bob, team, newTeam]) => {
-  before(async () => {
+  beforeEach(async () => {
     // deploy eurxbMock
     this.eurxb = await MockToken.new('EURxb', 'EURxb', ether('50000'));
 
@@ -132,7 +143,8 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
       this.usdtPool.address, this.usdcPool.address, this.busdPool.address, this.daiPool.address]);
     // configure Router contract
     await this.router.configure(this.sm.address, this.uniswapRouter.address,
-      this.usdt.address, this.usdc.address, this.busd.address, this.dai.address, this.eurxb.address);
+      this.usdt.address, this.usdc.address, this.busd.address, this.dai.address,
+      this.eurxb.address);
     // send some EURxb tokens to Router contract
     this.eurxbRouterBalance = ether('1000');
     await this.eurxb.transfer(this.router.address, this.eurxbRouterBalance);
@@ -148,6 +160,7 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
 
       it('when user send coins to Router', async () => {
         console.log('\t', names[i], 'pool');
+        const minErrorEpsilon = await setupEpsilon(coins[i]);
         // get balance pool before add liquidity
         const coinPoolBalanceBefore = await coins[i].balanceOf(pools[i].address);
 
@@ -157,27 +170,21 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
         // check coins pool balance
         const coinPoolBalance = await coins[i].balanceOf(pools[i].address);
         let expectedCoinPoolBalance = this.depositedAmount.div(new BN('2'));
+        expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+
         if (types[i] === 'uniswap') {
-          expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
           expect(coinPoolBalance).to.be.bignumber.equal(expectedCoinPoolBalance);
-        }
-        else {
-          expectedCoinPoolBalance =
-            expectedCoinPoolBalance.add(coinPoolBalanceBefore);
-          expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(new BN('1000')));
-          expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(new BN('1000')));
+        } else {
+          expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(minErrorEpsilon));
+          expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(minErrorEpsilon));
         }
 
         // check eurxb pool balance
         const eurxbPoolBalance = await this.eurxb.balanceOf(pools[i].address);
         const expectedEurxbPoolBalance = await calcExchangeEurxb(coinPoolBalance, coins[i]);
 
-        if (types[i] === 'uniswap')
-          expect(eurxbPoolBalance).to.be.bignumber.equal(expectedEurxbPoolBalance);
-        else {
-          expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(new BN('1000')));
-          expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(new BN('1000')));
-        }
+        expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(minErrorEpsilon));
+        expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(minErrorEpsilon));
 
         // check creating LP tokens
         const lpTotalSupply = await pools[i].totalSupply();
@@ -195,72 +202,67 @@ contract('Router', ([owner, alice, bob, team, newTeam]) => {
         if (types[i] === 'uniswap')
           expect(teamCoinBalance).to.be.bignumber.equal(expectedTeamCoinBalance);
         else {
-          expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(new BN('1000')));
-          expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(new BN('1000')));
+          expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(minErrorEpsilon));
+          expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(minErrorEpsilon));
         }
       });
     });
 
-    // describe('add liquidity to', () => {
-    //   beforeEach(async () => {
-    //     this.depositedAmount = await coinAmount('10000', coins[i]);
-    //     await coins[i].transfer(alice, this.depositedAmount, { from: owner });
-    //     await coins[i].approve(this.router.address, this.depositedAmount, { from: alice });
-    //   });
-    //
-    //   it('when user send coins more than ERUxb Router balance', async () => {
-    //     console.log('\t', names[i], 'pool');
-    //     // get balance pool before add liquidity
-    //     const coinPoolBalanceBefore = await coins[i].balanceOf(pools[i].address);
-    //
-    //     // add liquidity to Router contract
-    //     await this.router.addLiquidity(coins[i].address, this.depositedAmount, { from: alice });
-    //
-    //     // check coins pool balance
-    //     const coinPoolBalance = await coins[i].balanceOf(pools[i].address);
-    //     let expectedCoinPoolBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
-    //     if (types[i] === 'uniswap') {
-    //       expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
-    //       expect(coinPoolBalance).to.be.bignumber.equal(expectedCoinPoolBalance);
-    //     }
-    //     else {
-    //       expectedCoinPoolBalance =
-    //         expectedCoinPoolBalance.add(coinPoolBalanceBefore);
-    //       expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(new BN('1000')));
-    //       expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(new BN('1000')));
-    //     }
-    //
-    //     // check eurxb pool balance
-    //     const eurxbPoolBalance = await this.eurxb.balanceOf(pools[i].address);
-    //     const expectedEurxbPoolBalance = this.eurxbRouterBalance;
-    //
-    //     if (types[i] === 'uniswap')
-    //       expect(eurxbPoolBalance).to.be.bignumber.equal(expectedEurxbPoolBalance);
-    //     else {
-    //       expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(new BN('1000')));
-    //       expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(new BN('1000')));
-    //     }
-    //
-    //     // check creating LP tokens
-    //     const lpTotalSupply = await pools[i].totalSupply();
-    //     expect(lpTotalSupply).to.be.bignumber.gt(ether('0'));
-    //     // all LP tokens has sent to StakingManager contract
-    //     const lpTokenBalance = await pools[i].balanceOf(this.sm.address);
-    //     if (types[i] === 'uniswap')
-    //       expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(new BN('1000')));
-    //     else
-    //       expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(ether('100')));
-    //
-    //     // check team coin balance
-    //     const teamCoinBalance = await coins[i].balanceOf(team);
-    //     const expectedTeamCoinBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
-    //     if (types[i] === 'uniswap')
-    //       expect(teamCoinBalance).to.be.bignumber.equal(expectedTeamCoinBalance);
-    //     else {
-    //       expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(new BN('1000')));
-    //       expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(new BN('1000')));
-    //     }
-    //   });
-    // });
+    describe('add liquidity to', () => {
+      beforeEach(async () => {
+        this.depositedAmount = await coinAmount('10000', coins[i]);
+        await coins[i].transfer(alice, this.depositedAmount, { from: owner });
+        await coins[i].approve(this.router.address, this.depositedAmount, { from: alice });
+      });
+
+      it('when user send coins more than ERUxb Router balance', async () => {
+        console.log('\t', names[i], 'pool');
+        const minErrorEpsilon = await setupEpsilon(coins[i]);
+        // get balance pool before add liquidity
+        const coinPoolBalanceBefore = await coins[i].balanceOf(pools[i].address);
+
+        // add liquidity to Router contract
+        await this.router.addLiquidity(coins[i].address, this.depositedAmount, { from: alice });
+
+        // check coins pool balance
+        const coinPoolBalance = await coins[i].balanceOf(pools[i].address);
+        let expectedCoinPoolBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
+        expectedCoinPoolBalance = expectedCoinPoolBalance.add(coinPoolBalanceBefore);
+        if (types[i] === 'uniswap') {
+          expect(coinPoolBalance).to.be.bignumber.equal(expectedCoinPoolBalance);
+        } else {
+          expect(coinPoolBalance).to.be.bignumber.gte(expectedCoinPoolBalance.sub(minErrorEpsilon));
+          expect(coinPoolBalance).to.be.bignumber.lte(expectedCoinPoolBalance.add(minErrorEpsilon));
+        }
+
+        // check eurxb pool balance
+        const eurxbPoolBalance = await this.eurxb.balanceOf(pools[i].address);
+        const expectedEurxbPoolBalance = await calcExchangeEurxb(coinPoolBalance, coins[i]);
+
+        expect(eurxbPoolBalance).to.be.bignumber.gte(expectedEurxbPoolBalance.sub(minErrorEpsilon));
+        expect(eurxbPoolBalance).to.be.bignumber.lte(expectedEurxbPoolBalance.add(minErrorEpsilon));
+
+        // check creating LP tokens
+        const lpTotalSupply = await pools[i].totalSupply();
+        expect(lpTotalSupply).to.be.bignumber.gt(ether('0'));
+        // all LP tokens has sent to StakingManager contract
+        const lpTokenBalance = await pools[i].balanceOf(this.sm.address);
+        if (types[i] === 'uniswap') {
+          expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(new BN('1000')));
+        } else {
+          expect(lpTokenBalance).to.be.bignumber.equal(lpTotalSupply.sub(ether('100')));
+        }
+
+        // check team coin balance
+        const teamCoinBalance = await coins[i].balanceOf(team);
+        const expectedTeamCoinBalance = await calcExchangeCoins(this.eurxbRouterBalance, coins[i]);
+        if (types[i] === 'uniswap') {
+          expect(teamCoinBalance).to.be.bignumber.equal(expectedTeamCoinBalance);
+        } else {
+          expect(teamCoinBalance).to.be.bignumber.gte(expectedTeamCoinBalance.sub(minErrorEpsilon));
+          expect(teamCoinBalance).to.be.bignumber.lte(expectedTeamCoinBalance.add(minErrorEpsilon));
+        }
+      });
+    });
   }
 });

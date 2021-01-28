@@ -240,6 +240,7 @@ contract Router is Ownable, Initializable {
 
             uint256 balance = pool.getBalance(address(_tEURxb));
             amountBPT = totalSupply.mul(amountEUR).div(balance);
+            amountBPT = amountBPT.sub(1000);
 
             uint256[] memory data = new uint256[](2);
             data[0] = amountEUR;
