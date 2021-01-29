@@ -92,6 +92,20 @@ contract Router is Ownable, Initializable {
     }
 
     /**
+     * @return uniswap router address
+     */
+    function uniswapRouter() external view returns (address) {
+        return address(_uniswapRouter);
+    }
+
+    /**
+     * @return EURxb address
+     */
+    function eurxb() external view returns (address) {
+        return address(_tEURxb);
+    }
+
+    /**
      * @return start time
      */
     function startTime() external view returns (uint256) {
@@ -134,7 +148,7 @@ contract Router is Ownable, Initializable {
         require(_endTime < block.timestamp, "Time is not over");
         uint256 balance = _tEURxb.balanceOf(address(this));
         if (balance > 0) {
-            _tEURxb.transfer(_msgSender(), balance);
+            _tEURxb.transfer(_teamAddress, balance);
         }
         _isClosedContract = true;
     }
@@ -171,7 +185,7 @@ contract Router is Ownable, Initializable {
         uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
         uint256 balanceEUR = _tEURxb.balanceOf(address(this));
 
-        require(balanceEUR > 0, 'EmptyEURxbBalance');
+        require(balanceEUR >= 10 ** 18, 'EmptyEURxbBalance'); // balance great then 1 EURxb token
 
         // check if we don't have enough eurxb tokens
         if (balanceEUR <= amountEUR) {
@@ -222,6 +236,8 @@ contract Router is Ownable, Initializable {
         uint256 amountEUR = exchangeAmount.mul(eurRatio).div(tokenRatio);
         uint256 balanceEUR = _tEURxb.balanceOf(address(this));
 
+        require(balanceEUR >= 10 ** 18, 'EmptyEURxbBalance'); // balance great then 1 EURxb token
+
         // check if we don't have enough eurxb tokens
         if (balanceEUR <= amountEUR) {
             amountEUR = balanceEUR;
@@ -234,7 +250,7 @@ contract Router is Ownable, Initializable {
 
         uint256 amountBPT;
 
-        if (balanceEUR >= 10 ** 18) { // balance great then 1 EURxb token
+        { // to save stack space
             TransferHelper.safeApprove(token, poolAddress, exchangeAmount);
             TransferHelper.safeApprove(address(_tEURxb), poolAddress, amountEUR);
 
@@ -246,28 +262,6 @@ contract Router is Ownable, Initializable {
             data[0] = amountEUR;
             data[1] = exchangeAmount;
             pool.joinPool(amountBPT, data);
-        } else {
-            TransferHelper.safeApprove(token, poolAddress, amount);
-
-            { // to save stack space
-                uint256 tokenBalanceIn = pool.getBalance(token);
-                uint256 tokenWeightIn = pool.getDenormalizedWeight(token);
-                uint256 totalWeight = pool.getTotalDenormalizedWeight();
-                uint256 tokenAmountIn = amount;
-                uint256 swapFee = pool.getSwapFee();
-
-                amountBPT = pool.calcPoolOutGivenSingleIn(
-                    tokenBalanceIn,
-                    tokenWeightIn,
-                    totalSupply,
-                    totalWeight,
-                    tokenAmountIn,
-                    swapFee
-                );
-            }
-
-            pool.joinswapExternAmountIn(token, amount, amountBPT);
-            emit EmptyEURxbBalance();
         }
 
         uint256 routerTokenBalance = IERC20(token).balanceOf(address(this));
