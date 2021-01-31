@@ -34,6 +34,9 @@ const DDP = artifacts.require('DDP');
 
 const baseURI = 'https://google.com/';
 
+const usd = (n) => web3.utils.toWei(n, 'Mwei');
+const ether = (n) => web3.utils.toWei(n, 'ether');
+
 module.exports = function (deployer, network) {
   deployer.then(async () => {
     if (network === 'test' || network === 'soliditycoverage') {
@@ -48,6 +51,8 @@ module.exports = function (deployer, network) {
       await deployer.link(TokenAccessRoles, DDP);
       await deployer.link(TokenAccessRoles, EURxb);
     } else if (network === 'rinkeby' || network === 'rinkeby-fork') {
+      // FIRST PART OF DEPLOYING
+      const owner = process.env.DEPLOYER_ACCOUNT;
       await deployer.deploy(LinkedList, { overwrite: false });
       await deployer.link(LinkedList, EURxb);
 
@@ -91,88 +96,106 @@ module.exports = function (deployer, network) {
       await multisig.allowAccount(process.env.DEPLOYER_ACCOUNT);
 
       // create 2 tokens
-      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, web3.utils.fromWei('200000', 'ether'),
+      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, ether('200000'),
         365 * 86400 + process.env.START_TIME);
-      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, web3.utils.fromWei('200000', 'ether'),
+      await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, ether('200000'),
         365 * 86400 + process.env.START_TIME);
 
-      // get stable coins contracts
-      const usdt = await TetherToken.at('0x48F2306f7d75DE8d9f2a93AC2b71661A000d4545');
-      const usdc = await FiatTokenV2.at('0x58b8e032e52B164fe34D88dF5117F3e5752FE295');
-      const busd = await BUSDImplementation.at('0x608b06E6B1b8E2aa6970BD3b1f8c084E44130eB3');
-      const dai = await Dai.at('0x569AafF8F90A5E48B27C154249eE5A08eD0C44E2');
+      // deploy and configure USDT
+      const usdt = await deployer.deploy(TetherToken, usd('1000000'), 'Tether USD', 'USDT', 6);
 
-      // deploy Router and StakingManager contracts
-      const xbg = await deployer.deploy(XBG, web3.utils.fromWei('15000', 'ether'));
-      const sm = await deployer.deploy(
-        StakingManager, xbg.address, process.env.START_TIME,
-      );
-      const router = await deployer.deploy(
-        Router, process.env.TEAM_ACCOUNT, sm.address, process.env.TEAM_ACCOUNT,
-        usdt.address, usdc.address, busd.address, dai.address, eurxb.address,
-      );
+      // deploy and configure BUSD
+      const busd = await deployer.deploy(BUSDImplementation);
+      await busd.unpause();
+      await busd.increaseSupply(ether('1000000'));
 
-      // configure uniswap pools
-      const uniswapRouter = await UniswapV2Router02.at('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D');
-      const uniswapFactory = await UniswapV2Factory.at('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f');
+      // deploy and configure USDC
+      const usdc = await deployer.deploy(FiatTokenV2);
+      await usdc.initialize('USD Coin', 'USDC', 'USD', 6, owner, owner, owner, owner);
+      await usdc.configureMinter(owner, usd('1000000'));
+      await usdc.mint(owner, usd('1000000'));
 
-      let usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
-      let busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
+      // deploy and configure DAI
+      const dai = await deployer.deploy(Dai, 1);
+      await dai.mint(owner, ether('1000000'));
 
-      if (usdtPoolAddress === '0x0000000000000000000000000000000000000000') {
-        await uniswapFactory.createPair(eurxb.address, usdt.address);
-        usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
-        console.log('usdtPoolAddress after deploy', usdtPoolAddress);
-      } else {
-        console.log('usdtPoolAddress address:', usdtPoolAddress);
-      }
-      const usdtPool = await UniswapV2Pair.at(usdtPoolAddress);
+      // // SECOND PART OF DEPLOYING
+      // // CHANGE ADDRESSES AFTER FIRST PART OF DEPLOYING
+      // const eurxb = await EURxb.at('0xa790c822a9CAD60479c84A840904B767feBfAfE6');
+      // // get stable coins contracts
+      // const usdt = await TetherToken.at('0x909f156198674167a8D42B6453179A26871Fbc96');
+      // const usdc = await FiatTokenV2.at('0x4AE8c5d002e261e7e01c2A15527ce08D7528549f');
+      // const busd = await BUSDImplementation.at('0x6a0ad5F311D1B626876d622fd8bde468C470Ee13');
+      // const dai = await Dai.at('0xAd443D36e493e79C4eEe6600506446a43115E614');
 
-      if (busdPoolAddress === '0x0000000000000000000000000000000000000000') {
-        await uniswapFactory.createPair(eurxb.address, busd.address);
-        busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
-        console.log('busdPoolAddress after deploy', busdPoolAddress);
-      } else {
-        console.log('busdPoolAddress address:', busdPoolAddress);
-      }
-      const busdPool = await UniswapV2Pair.at(busdPoolAddress);
-
-      // configure balancer pools
-      const bFactory = await BFactory.at('0x4Cab4b9E97458dc121D7a76F94eE067e85c0E833');
-
-      await bFactory.newBPool();
-      const usdcPoolAddress = await bFactory.getLastBPool();
-      const usdcPool = await BPool.at(usdcPoolAddress);
-      await eurxb.approve(usdcPool.address, web3.utils.toWei('46', 'ether'));
-      await usdc.approve(usdcPool.address, web3.utils.toWei('54', 'ether'));
-      await usdcPool.bind(eurxb.address, web3.utils.toWei('46', 'ether'), web3.utils.toWei('23', 'ether'));
-      await usdcPool.bind(usdc.address, web3.utils.toWei('54', 'ether'), web3.utils.toWei('27', 'ether'));
-      await usdcPool.setSwapFee(web3.utils.toWei('0.001', 'ether'));
-      await usdcPool.finalize();
-      console.log('finalize usdcPool at address:', usdcPool.address);
-
-      await bFactory.newBPool();
-      const daiPoolAddress = await bFactory.getLastBPool();
-      const daiPool = await BPool.at(daiPoolAddress);
-      await eurxb.approve(daiPool.address, web3.utils.fromWei('46', 'ether'));
-      await usdc.approve(daiPool.address, web3.utils.fromWei('54', 'ether'));
-      await daiPool.bind(eurxb.address, web3.utils.fromWei('46', 'ether'), web3.utils.fromWei('23', 'ether'));
-      await daiPool.bind(usdc.address, web3.utils.fromWei('54', 'ether'), web3.utils.fromWei('27', 'ether'));
-      await daiPool.setSwapFee(web3.utils.fromWei('0.001', 'ether'));
-      await daiPool.finalize();
-      console.log('finalize daiPool at address:', daiPool.address);
-
-      // configure our contracts
-      await router.setBalancerPool(usdc.address, usdcPool.address);
-      await router.setBalancerPool(dai.address, daiPool.address);
-      await router.setUniswapPair(usdt.address, usdtPool.address);
-      await router.setUniswapPair(busd.address, busdPool.address);
-      console.log('set all pairs');
-
-      await xbg.approve(sm.address, web3.utils.fromWei('12000', 'ether'));
-      await sm.configure([
-        usdtPool.address, usdcPool.address, busdPool.address, daiPool.address]);
-      await router.configure(uniswapRouter.address);
+      // // COMMENT FIRST PART AND UNCOMMENT ME
+      // // deploy Router and StakingManager contracts
+      // const xbg = await deployer.deploy(XBG, ether('15000'));
+      // const sm = await deployer.deploy(
+      //   StakingManager, xbg.address, process.env.START_TIME,
+      // );
+      //
+      // const router = await deployer.deploy(Router, process.env.TEAM_ACCOUNT);
+      //
+      // // configure uniswap pools
+      // const uniswapRouter = await UniswapV2Router02.at('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D');
+      // const uniswapFactory = await UniswapV2Factory.at('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f');
+      //
+      // let usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
+      // let busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
+      //
+      // if (usdtPoolAddress === '0x0000000000000000000000000000000000000000') {
+      //   await uniswapFactory.createPair(eurxb.address, usdt.address);
+      //   usdtPoolAddress = await uniswapFactory.getPair.call(eurxb.address, usdt.address);
+      //   console.log('usdtPoolAddress after deploy', usdtPoolAddress);
+      // } else {
+      //   console.log('usdtPoolAddress address:', usdtPoolAddress);
+      // }
+      // const usdtPool = await UniswapV2Pair.at(usdtPoolAddress);
+      //
+      // if (busdPoolAddress === '0x0000000000000000000000000000000000000000') {
+      //   await uniswapFactory.createPair(eurxb.address, busd.address);
+      //   busdPoolAddress = await uniswapFactory.getPair.call(eurxb.address, busd.address);
+      //   console.log('busdPoolAddress after deploy', busdPoolAddress);
+      // } else {
+      //   console.log('busdPoolAddress address:', busdPoolAddress);
+      // }
+      // const busdPool = await UniswapV2Pair.at(busdPoolAddress);
+      //
+      // // configure balancer pools
+      // const bFactory = await BFactory.at('0x4Cab4b9E97458dc121D7a76F94eE067e85c0E833');
+      //
+      // await bFactory.newBPool();
+      // const usdcPoolAddress = await bFactory.getLastBPool();
+      // const usdcPool = await BPool.at(usdcPoolAddress);
+      // await eurxb.approve(usdcPool.address, ether('46'));
+      // await usdc.approve(usdcPool.address, usd('54'));
+      // await usdcPool.bind(eurxb.address, ether('46'), ether('25'));
+      // await usdcPool.bind(usdc.address, usd('54'), ether('25'));
+      // await usdcPool.setSwapFee(ether('0.001'));
+      // await usdcPool.finalize();
+      // console.log('finalize usdcPool at address:', usdcPool.address);
+      //
+      // await bFactory.newBPool();
+      // const daiPoolAddress = await bFactory.getLastBPool();
+      // const daiPool = await BPool.at(daiPoolAddress);
+      // await eurxb.approve(daiPool.address, ether('46'));
+      // await dai.approve(daiPool.address, ether('54'));
+      // await daiPool.bind(eurxb.address, ether('46'), ether('25'));
+      // await daiPool.bind(dai.address, ether('54'), ether('25'));
+      // await daiPool.setSwapFee(ether('0.001'));
+      // await daiPool.finalize();
+      // console.log('finalize daiPool at address:', daiPool.address);
+      //
+      // // configure our contracts
+      // await xbg.approve(sm.address, ether('12000'));
+      // await sm.configure([
+      //   usdtPool.address, usdcPool.address, busdPool.address, daiPool.address]);
+      // await router.configure(sm.address, uniswapRouter.address,
+      //   usdt.address, usdc.address, busd.address, dai.address,
+      //   eurxb.address);
+      //
+      // await eurxb.transfer(router.address, ether('100000'));
     } else {
       console.log('unsupported network', network);
     }
