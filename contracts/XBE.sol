@@ -12,14 +12,22 @@ contract XBE is ERC20 {
     using Address for address;
     using SafeMath for uint256;
 
-    address public governance;
-    mapping (address => bool) public minters;
+    address private governance;
+    mapping (address => bool) private minters;
 
     constructor(
         uint256 initialSupply
     ) public ERC20("XBE", "XBE") {
         governance = _msgSender();
         _mint(msg.sender, initialSupply);
+    }
+
+    function getGovernance() external view returns (address) {
+        return governance;
+    }
+
+    function getMinters(address minter) external view returns (bool) {
+        return minters[minter];
     }
 
     function mint(address account, uint256 amount) external {
