@@ -14,6 +14,7 @@ const MockToken = artifacts.require('MockToken');
 
 const BFactory = artifacts.require('BFactory'); // Balancer Protocol
 const BPool = artifacts.require('BPool');
+const BalancerRouter = artifacts.require('BalancerRouter');
 
 const WETH9 = artifacts.require('WETH9'); // Uniswap Protocol
 const UniswapV2Factory = artifacts.require('UniswapV2Factory');
@@ -73,6 +74,7 @@ contract('Router', ([owner, alice, team, newTeam]) => {
 
     // deploy balancer protocol
     const bFactory = await BFactory.new();
+    const bRouter = await BalancerRouter.new(bFactory.address);
 
     // deploy and configure USDT
     this.usdt = await TetherToken.new(usd('1000000'), 'Tether USD', 'USDT', 6);
@@ -104,27 +106,28 @@ contract('Router', ([owner, alice, team, newTeam]) => {
       this.busd.address);
     this.busdPool = await UniswapV2Pair.at(busdPoolAddress);
 
+    await this.eurxb.transfer(bRouter.address, ether('92'));
+    await this.usdc.transfer(bRouter.address, usd('54'));
+    await this.dai.transfer(bRouter.address, ether('54'));
     // create USDC balancer pool
-    await bFactory.newBPool();
-    const usdcPoolAddress = await bFactory.getLastBPool();
-    this.usdcPool = await BPool.at(usdcPoolAddress);
-    await this.eurxb.approve(this.usdcPool.address, ether('46'));
-    await this.usdc.approve(this.usdcPool.address, usd('54'));
-    await this.usdcPool.bind(this.eurxb.address, ether('46'),ether('25'));
-    await this.usdcPool.bind(this.usdc.address, usd('54'), ether('25'));
-    await this.usdcPool.setSwapFee(ether('0.001'));
-    await this.usdcPool.finalize();
+    let poolLength = await bRouter.getPoolLength();
+    await bRouter.createNewPool(
+      this.eurxb.address, ether('46'), ether('25'),
+      this.usdc.address, usd('54'), ether('25'),
+      ether('0.001'),
+    );
+    this.addressUsdcPool = await bRouter.getPool(poolLength);
+    this.usdcPool = await BPool.at(this.addressUsdcPool);
 
     // create DAI balancer pool
-    await bFactory.newBPool();
-    const daiPoolAddress = await bFactory.getLastBPool();
-    this.daiPool = await BPool.at(daiPoolAddress);
-    await this.eurxb.approve(this.daiPool.address, ether('46'));
-    await this.dai.approve(this.daiPool.address, ether('54'));
-    await this.daiPool.bind(this.eurxb.address, ether('46'), ether('25'));
-    await this.daiPool.bind(this.dai.address, ether('54'), ether('25'));
-    await this.daiPool.setSwapFee(ether('0.001'));
-    await this.daiPool.finalize();
+    poolLength = await bRouter.getPoolLength();
+    await bRouter.createNewPool(
+      this.eurxb.address, ether('46'), ether('25'),
+      this.dai.address, ether('54'), ether('25'),
+      ether('0.001'),
+    );
+    this.addressDaiPool = await bRouter.getPool(poolLength);
+    this.daiPool = await BPool.at(this.addressDaiPool);
 
     coins = [this.usdt, this.usdc, this.busd, this.dai];
     pools = [this.usdtPool, this.usdcPool, this.busdPool, this.daiPool];
@@ -141,7 +144,7 @@ contract('Router', ([owner, alice, team, newTeam]) => {
     // configure StakingManager contract
     await xbe.approve(this.sm.address, ether('12000'));
     await this.sm.configure([
-      this.usdtPool.address, this.usdcPool.address, this.busdPool.address, this.daiPool.address]);
+      this.usdtPool.address, this.addressUsdcPool, this.busdPool.address, this.addressDaiPool]);
     // configure Router contract
     await this.router.configure(this.sm.address, this.uniswapRouter.address,
       this.usdt.address, this.usdc.address, this.busd.address, this.dai.address,
@@ -160,9 +163,9 @@ contract('Router', ([owner, alice, team, newTeam]) => {
     expect(await this.router.endTime()).to.be.bignumber.equal(this.startTime.add(time.duration.days('7')));
     expect(await this.router.teamAddress()).to.be.equal(team);
     expect(await this.router.getPoolAddress(this.usdt.address)).to.be.equal(this.usdtPool.address);
-    expect(await this.router.getPoolAddress(this.usdc.address)).to.be.equal(this.usdcPool.address);
+    expect(await this.router.getPoolAddress(this.usdc.address)).to.be.equal(this.addressUsdcPool);
     expect(await this.router.getPoolAddress(this.busd.address)).to.be.equal(this.busdPool.address);
-    expect(await this.router.getPoolAddress(this.dai.address)).to.be.equal(this.daiPool.address);
+    expect(await this.router.getPoolAddress(this.dai.address)).to.be.equal(this.addressDaiPool);
   });
 
   describe('change team address', () => {
@@ -185,11 +188,11 @@ contract('Router', ([owner, alice, team, newTeam]) => {
     });
   });
 
-
   describe('all eurxb from router send to team address', () => {
     it('when owner has closed contract', async () => {
       time.increase(time.duration.hours('1'));
       time.increase(time.duration.days('7'));
+      time.increase(time.duration.minutes('1'));
 
       const balanceTeamBefore = await this.eurxb.balanceOf(team);
       const balanceRouterBefore = await this.eurxb.balanceOf(this.router.address);

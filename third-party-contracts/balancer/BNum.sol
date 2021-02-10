@@ -18,22 +18,22 @@ import "./BConst.sol";
 contract BNum is BConst {
 
     function btoi(uint a)
-        internal pure 
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         return a / BONE;
     }
 
     function bfloor(uint a)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         return btoi(a) * BONE;
     }
 
     function badd(uint a, uint b)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         uint c = a + b;
         require(c >= a, "ERR_ADD_OVERFLOW");
@@ -41,8 +41,8 @@ contract BNum is BConst {
     }
 
     function bsub(uint a, uint b)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         (uint c, bool flag) = bsubSign(a, b);
         require(!flag, "ERR_SUB_UNDERFLOW");
@@ -50,8 +50,8 @@ contract BNum is BConst {
     }
 
     function bsubSign(uint a, uint b)
-        internal pure
-        returns (uint, bool)
+    internal pure
+    returns (uint, bool)
     {
         if (a >= b) {
             return (a - b, false);
@@ -61,8 +61,8 @@ contract BNum is BConst {
     }
 
     function bmul(uint a, uint b)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         uint c0 = a * b;
         require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
@@ -73,8 +73,8 @@ contract BNum is BConst {
     }
 
     function bdiv(uint a, uint b)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         require(b != 0, "ERR_DIV_ZERO");
         uint c0 = a * BONE;
@@ -87,8 +87,8 @@ contract BNum is BConst {
 
     // DSMath.wpow
     function bpowi(uint a, uint n)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         uint z = n % 2 != 0 ? a : BONE;
 
@@ -106,13 +106,13 @@ contract BNum is BConst {
     // Use `bpowi` for `b^e` and `bpowK` for k iterations
     // of approximation of b^0.w
     function bpow(uint base, uint exp)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         require(base >= MIN_BPOW_BASE, "ERR_BPOW_BASE_TOO_LOW");
         require(base <= MAX_BPOW_BASE, "ERR_BPOW_BASE_TOO_HIGH");
 
-        uint whole  = bfloor(exp);   
+        uint whole  = bfloor(exp);
         uint remain = bsub(exp, whole);
 
         uint wholePow = bpowi(base, btoi(whole));
@@ -126,8 +126,8 @@ contract BNum is BConst {
     }
 
     function bpowApprox(uint base, uint exp, uint precision)
-        internal pure
-        returns (uint)
+    internal pure
+    returns (uint)
     {
         // term 0:
         uint a     = exp;
@@ -137,7 +137,7 @@ contract BNum is BConst {
         bool negative = false;
 
 
-        // term(k) = numer / denom 
+        // term(k) = numer / denom
         //         = (product(a - i - 1, i=1-->k) * x^k) / (k!)
         // each iteration, multiply previous term by (a-(k-1)) * x / k
         // continue until term is less than precision

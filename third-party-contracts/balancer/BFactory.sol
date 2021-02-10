@@ -31,46 +31,37 @@ contract BFactory is BBronze {
     mapping(address=>bool) private _isBPool;
 
     function isBPool(address b)
-        external view returns (bool)
+    external view returns (bool)
     {
         return _isBPool[b];
     }
 
     function newBPool()
-        external
-        returns (BPool)
+    external
+    returns (BPool)
     {
         BPool bpool = new BPool();
         _isBPool[address(bpool)] = true;
         emit LOG_NEW_POOL(msg.sender, address(bpool));
         bpool.setController(msg.sender);
-        _lastBPool = address(bpool);
         return bpool;
     }
 
     address private _blabs;
-    address private _lastBPool;
 
     constructor() public {
         _blabs = msg.sender;
     }
 
-    function getLastBPool()
-        external view
-        returns (address)
-    {
-        return _lastBPool;
-    }
-
     function getBLabs()
-        external view
-        returns (address)
+    external view
+    returns (address)
     {
         return _blabs;
     }
 
     function setBLabs(address b)
-        external
+    external
     {
         require(msg.sender == _blabs, "ERR_NOT_BLABS");
         emit LOG_BLABS(msg.sender, b);
@@ -78,7 +69,7 @@ contract BFactory is BBronze {
     }
 
     function collect(BPool pool)
-        external 
+    external
     {
         require(msg.sender == _blabs, "ERR_NOT_BLABS");
         uint collected = IERC20(pool).balanceOf(address(this));
