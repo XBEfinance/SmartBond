@@ -133,13 +133,13 @@ contract('Router', ([owner, alice, team, newTeam]) => {
 
   beforeEach(async () => {
     // deploy
-    const xbg = await MockToken.new('xbg', 'xbg', ether('12000'));
+    const xbe = await MockToken.new('xbe', 'xbe', ether('12000'));
     this.startTime = (await time.latest()).add(time.duration.hours('1'));
-    this.sm = await StakingManager.new(xbg.address, this.startTime);
+    this.sm = await StakingManager.new(xbe.address, this.startTime);
     this.router = await Router.new(team);
 
     // configure StakingManager contract
-    await xbg.approve(this.sm.address, ether('12000'));
+    await xbe.approve(this.sm.address, ether('12000'));
     await this.sm.configure([
       this.usdtPool.address, this.usdcPool.address, this.busdPool.address, this.daiPool.address]);
     // configure Router contract

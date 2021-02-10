@@ -4,10 +4,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
 /**
- * @title XBG
- * @dev xbg token
+ * @title XBE
+ * @dev xbe token
  */
-contract XBG is ERC20 {
+contract XBE is ERC20 {
     constructor(
         uint256 initialSupply
     ) public ERC20("XBE", "XBE") {

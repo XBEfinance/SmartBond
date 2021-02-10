@@ -8,4 +8,4 @@ import "./MultiSignature.sol";
 import "./Router.sol";
 import "./SecurityAssetToken.sol";
 import "./StakingManager.sol";
-import "./XBG.sol";
+import "./XBE.sol";

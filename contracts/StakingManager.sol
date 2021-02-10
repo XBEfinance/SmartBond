@@ -14,8 +14,8 @@ import "./interfaces/IStakingManager.sol";
 contract StakingManager is Initializable, IStakingManager {
     using SafeMath for uint256;
 
-    uint256 constant private XBG_AMOUNT = 12000 ether;
-    uint256[7] private DAILY_XBG_REWARD = [
+    uint256 constant private XBE_AMOUNT = 12000 ether;
+    uint256[7] private DAILY_XBE_REWARD = [
         999900 finney, // first day - 33.33%
         585000 finney, // second day - 19.50%
         414900 finney, // third day - 13.83%
@@ -26,11 +26,11 @@ contract StakingManager is Initializable, IStakingManager {
 
     struct Accumulator {
         uint256 lpTotalAmount;
-        uint256 xbgTotalReward;
+        uint256 xbeTotalReward;
     }
 
     event StakerAdded(address user, address pool, uint256 day, uint256 amount);
-    event StakerHasClaimedReward(address user, uint256[4] lpTokens, uint256 xbgTokens);
+    event StakerHasClaimedReward(address user, uint256[4] lpTokens, uint256 xbeTokens);
 
     /// all available pools
     address[4] private _pools;
@@ -44,15 +44,15 @@ contract StakingManager is Initializable, IStakingManager {
     /// pool address => total LP tokens value which was added per day and daily reward
     mapping(address => Accumulator[7]) private _dailyAccumulator;
 
-    IERC20 private _tokenXbg;
+    IERC20 private _tokenXbe;
 
     uint256 private _startTime;
 
     constructor(
-        address xbg,
+        address xbe,
         uint256 startTime
     ) public {
-        _tokenXbg = IERC20(xbg);
+        _tokenXbe = IERC20(xbe);
         _startTime = startTime;
     }
 
@@ -60,14 +60,14 @@ contract StakingManager is Initializable, IStakingManager {
      * @dev add all pools address for staking
      */
     function configure(address[4] calldata pools) external initializer {
-        _tokenXbg.transferFrom(_msgSender(), address(this), XBG_AMOUNT);
+        _tokenXbe.transferFrom(_msgSender(), address(this), XBE_AMOUNT);
 
         for (uint i = 0; i < 4; ++i) {
             address pool = pools[i];
             _allowListOfPools[pool] = true;
             _pools[i] = pools[i];
             for (uint j = 0; j < 7; ++j) {
-                _dailyAccumulator[pool][j].xbgTotalReward = DAILY_XBG_REWARD[j];
+                _dailyAccumulator[pool][j].xbeTotalReward = DAILY_XBE_REWARD[j];
             }
         }
     }
@@ -97,8 +97,8 @@ contract StakingManager is Initializable, IStakingManager {
         return (day < 7)? (day + 1) : 0;
     }
 
-    function tokenXbg() external view returns (address) {
-        return address(_tokenXbg);
+    function tokenXbe() external view returns (address) {
+        return address(_tokenXbe);
     }
 
     function getPools() external view override returns (address[4] memory) {
@@ -109,7 +109,7 @@ contract StakingManager is Initializable, IStakingManager {
         uint256 poolReward = 0;
         uint256[7] memory dailyRewards;
         for (uint256 i = 0; i < 7; ++i) {
-            dailyRewards[i] = _dailyAccumulator[pool][i].xbgTotalReward;
+            dailyRewards[i] = _dailyAccumulator[pool][i].xbeTotalReward;
             poolReward = poolReward.add(dailyRewards[i]);
 
         }
@@ -148,7 +148,7 @@ contract StakingManager is Initializable, IStakingManager {
 
     function calculateReward(address user, uint256 timestamp) external view returns(uint256[4] memory, uint256[4] memory) {
         uint256[4] memory usersLP;
-        uint256[4] memory xbgReward;
+        uint256[4] memory xbeReward;
 
         if (timestamp == 0) {
             timestamp = block.timestamp;
@@ -167,13 +167,13 @@ contract StakingManager is Initializable, IStakingManager {
                     usersLP[i] = usersLP[i].add(stake);
                 }
                 if (accumulateUserLP > 0) {
-                    uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
-                    xbgReward[i] = xbgReward[i].add(dailyReward);
+                    uint256 dailyReward = dailyAccumulator.xbeTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
+                    xbeReward[i] = xbeReward[i].add(dailyReward);
                 }
             }
         }
 
-        return (usersLP, xbgReward);
+        return (usersLP, xbeReward);
     }
 
     /**
@@ -206,7 +206,7 @@ contract StakingManager is Initializable, IStakingManager {
      * @dev Pick up reward and LP tokens
      */
     function claimReward(address user) external {
-        uint256 xbgReward = 0;
+        uint256 xbeReward = 0;
         uint256[4] memory usersLP;
 
         for (uint256 i = 0; i < 4; ++i) {
@@ -224,9 +224,9 @@ contract StakingManager is Initializable, IStakingManager {
                     usersLP[i] = usersLP[i].add(stake);
                 }
                 if (accumulateUserLP > 0) {
-                    uint256 dailyReward = dailyAccumulator.xbgTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
-                    dailyAccumulator.xbgTotalReward = dailyAccumulator.xbgTotalReward.sub(dailyReward);
-                    xbgReward = xbgReward.add(dailyReward);
+                    uint256 dailyReward = dailyAccumulator.xbeTotalReward.mul(accumulateUserLP).div(accumulateTotalLP);
+                    dailyAccumulator.xbeTotalReward = dailyAccumulator.xbeTotalReward.sub(dailyReward);
+                    xbeReward = xbeReward.add(dailyReward);
                 }
             }
             if (usersLP[i] > 0) {
@@ -234,10 +234,10 @@ contract StakingManager is Initializable, IStakingManager {
             }
         }
 
-        require(xbgReward > 0, "Reward is empty");
+        require(xbeReward > 0, "Reward is empty");
 
-        _tokenXbg.transfer(user, xbgReward);
+        _tokenXbe.transfer(user, xbeReward);
 
-        emit StakerHasClaimedReward(user, usersLP, xbgReward);
+        emit StakerHasClaimedReward(user, usersLP, xbeReward);
     }
 }
