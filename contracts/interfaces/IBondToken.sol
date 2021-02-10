@@ -1,7 +1,7 @@
 pragma solidity >=0.6.0 <0.7.0;
 
 /**
- * @dev allows to mint bond token from SecurityAssetToken or miris account
+ * @dev allows to mint bond token from SecurityAssetToken or multiSignature account
  */
 interface IBondToken {
     function safeTransferFrom(

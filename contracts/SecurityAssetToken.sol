@@ -35,12 +35,12 @@ contract SecurityAssetToken is ERC721, AccessControl, ISecurityAssetToken {
 
     /**
      * @param baseURI token base URI
-     * @param miris external miris manager contract or account address
+     * @param multiSignature external manager contract or account address
      * @param bond BondToken contract address
      */
     constructor(
         string memory baseURI,
-        address miris,
+        address multiSignature,
         address bond,
         address allowList
     ) public ERC721("EurxbSecurityAssetToken", "ESAT") {
@@ -50,9 +50,9 @@ contract SecurityAssetToken is ERC721, AccessControl, ISecurityAssetToken {
         _counter.increment();
 
         // setup roles
-        _setupRole(TokenAccessRoles.minter(), miris);
-        _setupRole(TokenAccessRoles.burner(), miris);
-        _setupRole(TokenAccessRoles.transferer(), miris);
+        _setupRole(TokenAccessRoles.minter(), multiSignature);
+        _setupRole(TokenAccessRoles.burner(), multiSignature);
+        _setupRole(TokenAccessRoles.transferer(), multiSignature);
         _setupRole(TokenAccessRoles.transferer(), bond);
     }
 
