@@ -12,16 +12,16 @@ const {
 const AllowList = artifacts.require('AllowList');
 
 contract('AllowListTest', (accounts) => {
-  const miris = accounts[1];
+  const multisig = accounts[1];
   const alice = accounts[2];
   const bob = accounts[3];
 
   beforeEach(async () => {
-    this.list = await AllowList.new(miris);
+    this.list = await AllowList.new(multisig);
   });
 
-  it('check miris is allow list admin', async () => {
-    await this.list.allowAccount(alice, { from: miris });
+  it('check multisig is allow list admin', async () => {
+    await this.list.allowAccount(alice, { from: multisig });
   });
 
   it('check empty list', async () => {
@@ -47,7 +47,7 @@ contract('AllowListTest', (accounts) => {
       !(await this.list.isAllowedAccount(alice)),
       'alice must not be in the list in the beginning',
     );
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     assert(
       await this.list.isAllowedAccount(alice),
       'now the list should have alice',
@@ -59,7 +59,7 @@ contract('AllowListTest', (accounts) => {
       !(await this.list.isAllowedAccount(alice)),
       'alice must not be in the list in the beginning',
     );
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     await expectRevert(
       this.list.allowAccount(alice, { from: bob }),
       'user is not admin',
@@ -71,12 +71,12 @@ contract('AllowListTest', (accounts) => {
       !(await this.list.isAllowedAccount(alice)),
       'alice must not be in the list in the beginning',
     );
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     assert(
       await this.list.isAllowedAccount(alice),
       'now the list should have alice',
     );
-    await this.list.disallowAccount(alice, { from: miris });
+    await this.list.disallowAccount(alice, { from: multisig });
     assert(
       !(await this.list.isAllowedAccount(alice)),
       'alice must have been removed',

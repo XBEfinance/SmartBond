@@ -23,7 +23,7 @@ const baseURI = '127.0.0.1/';
 
 contract('OperatorVoteTest', (accounts) => {
   const zero = accounts[0];
-  const miris = accounts[1];
+  const multisig = accounts[1];
   const alice = accounts[2];
   const bob = accounts[3];
   const charlie = accounts[4];
@@ -41,15 +41,15 @@ contract('OperatorVoteTest', (accounts) => {
   const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
   beforeEach(async () => {
-    this.list = await AllowList.new(miris);
+    this.list = await AllowList.new(multisig);
     this.bond = await BondToken.new(baseURI);
     this.sat = await SecurityAssetToken
       .new(baseURI,
-        miris,
+        multisig,
         this.bond.address,
         this.list.address);
 
-    this.ddp = await DDP.new(miris);
+    this.ddp = await DDP.new(multisig);
 
     await this.bond.configure(this.list.address, this.sat.address, this.ddp.address);
 
@@ -73,7 +73,7 @@ contract('OperatorVoteTest', (accounts) => {
       hannah,
     ];
     this.threshold = new BN('6');
-    this.vote = await Vote.new(this.founders, this.threshold, { from: miris });
+    this.vote = await Vote.new(this.founders, this.threshold, { from: multisig });
     expect(
       await this.vote.getThreshold(),
       'threshold must be 6',
@@ -81,13 +81,13 @@ contract('OperatorVoteTest', (accounts) => {
   });
 
   it('operator in the beginning is contract deployer', async () => {
-    expect(await this.vote.getOperator(), 'operator is not deployer').equal(miris);
+    expect(await this.vote.getOperator(), 'operator is not deployer').equal(multisig);
   });
 
   it('only founders can vote failure', async () => {
-    // miris is currently operator, but not founder
+    // multisig is currently operator, but not founder
     await expectRevert(
-      this.vote.voteOperator(alice, { from: miris }),
+      this.vote.voteOperator(alice, { from: multisig }),
       'user is not a founder',
     );
   });

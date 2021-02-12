@@ -21,7 +21,7 @@ const DDP = artifacts.require('DDPMock');
 const baseURI = '127.0.0.1/';
 
 contract('BondTokenTest', (accounts) => {
-  const miris = accounts[1];
+  const multisig = accounts[1];
   const alice = accounts[2];
   const bob = accounts[3];
 
@@ -32,11 +32,11 @@ contract('BondTokenTest', (accounts) => {
   const TOKEN_2 = new BN('2');
 
   beforeEach(async () => {
-    this.list = await AllowList.new(miris);
+    this.list = await AllowList.new(multisig);
     this.bond = await BondToken.new(baseURI);
     this.sat = await SecurityAssetToken
       .new(baseURI,
-        miris,
+        multisig,
         this.bond.address,
         this.list.address);
 
@@ -46,11 +46,11 @@ contract('BondTokenTest', (accounts) => {
 
   // just mint sat, which mints bond and check token info
   it('mint new SAT and Bond tokens', async () => {
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     // check bond info
     const { value, interest } = await this.bond.getTokenInfo(TOKEN_1);
@@ -66,11 +66,11 @@ contract('BondTokenTest', (accounts) => {
 
   // ensure that mint bond invokes ddp.deposit()
   it('during mint ddp.deposit() is invoked', async () => {
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
-    const { tx } = await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    const { tx } = await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     const { value, interest, maturity } = await this.bond.getTokenInfo(TOKEN_1);
 
     expectEvent
@@ -83,21 +83,21 @@ contract('BondTokenTest', (accounts) => {
   });
 
   it('id of new token increases', async () => {
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
     assert(!await this.bond.hasToken(TOKEN_2),
       'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_2), 'Bond token 1 must be created');
   });
 
   it('Bond burn success', async () => {
-    await this.list.allowAccount(alice, { from: miris });
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     await this.ddp.burnToken(TOKEN_1);
     assert(!await this.bond.hasToken(TOKEN_1));
@@ -107,16 +107,16 @@ contract('BondTokenTest', (accounts) => {
     const value1 = (new BN(ETHER_100)).mul(new BN('75')).div(new BN('100'));
     const value2 = (new BN(ETHER_100)).mul(new BN('150')).div(new BN('100'));
 
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
 
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(ETHER_0);
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(value1);
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     expect((await this.bond.totalValue()), 'wrong total value')
       .to.be.bignumber.equal(value2);
 
@@ -130,13 +130,13 @@ contract('BondTokenTest', (accounts) => {
   });
 
   it('transfer success', async () => {
-    await this.list.allowAccount(alice, { from: miris });
-    await this.list.allowAccount(bob, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
+    await this.list.allowAccount(bob, { from: multisig });
 
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 0 must be created');
 
     const { tx } = await this.ddp.callTransfer(alice, bob, TOKEN_1);
@@ -184,8 +184,8 @@ contract('BondTokenTest', (accounts) => {
 
   // burn
   it('Non-burner cannot burn', async () => {
-    await this.list.allowAccount(alice, { from: miris });
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
     await expectRevert(
       this.bond.burn(TOKEN_1, { from: bob }),
@@ -195,13 +195,13 @@ contract('BondTokenTest', (accounts) => {
 
   // hasToken
   it('does not have token success', async () => {
-    await this.list.allowAccount(alice, { from: miris });
-    await this.list.allowAccount(bob, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
+    await this.list.allowAccount(bob, { from: multisig });
 
     assert(!await this.bond.hasToken(TOKEN_2),
       'bond token `2` does not exist');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1),
       'Bond token `1` must be created');
 
@@ -211,13 +211,13 @@ contract('BondTokenTest', (accounts) => {
 
   // transfer
   it('non-transferer fails to transfer', async () => {
-    await this.list.allowAccount(alice, { from: miris });
-    await this.list.allowAccount(bob, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
+    await this.list.allowAccount(bob, { from: multisig });
 
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
 
     await expectRevert(
@@ -232,12 +232,12 @@ contract('BondTokenTest', (accounts) => {
   });
 
   it('user is not allowed to receive tokens failure', async () => {
-    await this.list.allowAccount(alice, { from: miris });
+    await this.list.allowAccount(alice, { from: multisig });
 
     assert(!await this.bond.hasToken(TOKEN_1),
       'bond token must not exist at this time point');
 
-    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: miris });
+    await this.sat.mint(alice, ETHER_100, DATE_SHIFT, { from: multisig });
     assert(await this.bond.hasToken(TOKEN_1), 'Bond token 1 must be created');
 
     await expectRevert(

@@ -1,4 +1,4 @@
-Miris Contract
+SmartBond Contracts
 =================
 **The system of Smart-Contracts for bonds digitization** 
 
