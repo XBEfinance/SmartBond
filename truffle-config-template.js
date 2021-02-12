@@ -27,6 +27,7 @@ const mnemonic = fs.readFileSync('.secret').toString().trim();
 const rinkebyNetworkConfig = {
   provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`),
   network_id: 4, // Rinkeby's id
+  networkCheckTimeout: 10000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
   websockets: true,
 };
@@ -65,6 +66,7 @@ module.exports = {
     // },
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
+    rinkeby: rinkebyNetworkConfig,
     rinkeby_part_one: rinkebyNetworkConfig,
     rinkeby_part_two: rinkebyNetworkConfig,
     rinkeby_part_three: rinkebyNetworkConfig,
