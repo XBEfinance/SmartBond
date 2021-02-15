@@ -223,6 +223,8 @@ contract Router is Ownable, Initializable {
             TransferHelper.safeApprove(pairAddress, address(_stakingManager), liquidityAmount);
             _stakingManager.addStake(sender, pairAddress, liquidityAmount);
         }
+
+        TransferHelper.safeApprove(token, address(_uniswapRouter), 0);
     }
 
     function _addLiquidityBalancer(address sender, address token, uint256 amount) internal {
@@ -273,6 +275,8 @@ contract Router is Ownable, Initializable {
             TransferHelper.safeApprove(poolAddress, address(_stakingManager), amountBPT);
             _stakingManager.addStake(sender, poolAddress, amountBPT);
         }
+
+        TransferHelper.safeApprove(token, poolAddress, 0);
     }
 
     /**
