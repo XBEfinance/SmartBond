@@ -124,7 +124,7 @@ module.exports = function (deployer, network) {
       } else if (network === 'rinkeby_part_two') {
         const multisig = await Multisig.deployed();
         for (let i = 0; i < 10; ++i) {
-          await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, '133333333333333333333334',
+          await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, '1333333333333333333333334',
             365 * 86400 * 4);
           console.log('minted SAT/Bond token #', i);
         }
