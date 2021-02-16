@@ -1,4 +1,4 @@
-##EURxb.finance
+EURxb.finance
 
 app.eurxb.finance
 
