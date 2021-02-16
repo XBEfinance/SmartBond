@@ -28,8 +28,11 @@ const rinkebyNetworkConfig = {
   provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`),
   network_id: 4, // Rinkeby's id
   networkCheckTimeout: 10000000,
+  gasLimit: 5000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
   websockets: true,
+  timeoutBlocks: 200,
+  gasPrice: 20000000000,
 };
 
 module.exports = {

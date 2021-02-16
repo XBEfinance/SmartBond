@@ -33,7 +33,8 @@ const DDP = artifacts.require('DDP');
 // const BUSD = "0x4Fabb145d64652a948d72533023f6E7A623C7C53";
 // const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
-const baseURI = 'https://google.com/';
+const baseSecurityURI = 'https://nft.eurxb.finance/security/';
+const baseBondURI = 'https://nft.eurxb.finance/bond/';
 
 const usd = (n) => web3.utils.toWei(n, 'Mwei');
 const ether = (n) => web3.utils.toWei(n, 'ether');
@@ -52,8 +53,7 @@ module.exports = function (deployer, network) {
       await deployer.link(TokenAccessRoles, DDP);
       await deployer.link(TokenAccessRoles, EURxb);
     } else if (network.startsWith('rinkeby')) {
-      if (network === 'rinkeby_part_one') {
-        const owner = process.env.DEPLOYER_ACCOUNT;
+      if (network === 'rinkeby_part_one' || network === 'rinkeby_part_one-fork') {
         await deployer.deploy(LinkedList, { overwrite: false });
         await deployer.link(LinkedList, EURxb);
 
@@ -67,9 +67,9 @@ module.exports = function (deployer, network) {
           Multisig, [process.env.DEPLOYER_ACCOUNT], 1,
         );
         const allowList = await deployer.deploy(AllowList, multisig.address);
-        const bond = await deployer.deploy(BondToken, baseURI);
+        const bond = await deployer.deploy(BondToken, baseBondURI);
         const sat = await deployer.deploy(
-          SecurityAssetToken, baseURI, multisig.address, bond.address, allowList.address,
+          SecurityAssetToken, baseSecurityURI, multisig.address, bond.address, allowList.address,
         );
         const ddp = await deployer.deploy(DDP, multisig.address);
         const eurxb = await deployer.deploy(EURxb, multisig.address);
@@ -104,6 +104,7 @@ module.exports = function (deployer, network) {
 
         await deployer.deploy(Router, process.env.TEAM_ACCOUNT);
 
+        // const owner = process.env.DEPLOYER_ACCOUNT;
         // // deploy and configure USDT
         // const usdt = await deployer.deploy(TetherToken, usd('1000000'), 'Tether USD', 'USDT', 6);
         //
@@ -121,14 +122,14 @@ module.exports = function (deployer, network) {
         // // deploy and configure DAI
         // const dai = await deployer.deploy(Dai, 1);
         // await dai.mint(owner, ether('1000000'));
-      } else if (network === 'rinkeby_part_two') {
+      } else if (network === 'rinkeby_part_two' || network === 'rinkeby_part_two-fork') {
         const multisig = await Multisig.deployed();
         for (let i = 0; i < 10; ++i) {
           await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, '1333333333333333333333334',
             365 * 86400 * 4);
           console.log('minted SAT/Bond token #', i);
         }
-      } else if (network === 'rinkeby_part_three') {
+      } else if (network === 'rinkeby_part_three' || network === 'rinkeby_part_three-fork') {
         const eurxb = await EURxb.deployed();
         // get stable coins contracts
         const usdt = await TetherToken.at('0x909f156198674167a8D42B6453179A26871Fbc96');
