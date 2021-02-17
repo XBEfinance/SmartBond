@@ -3,6 +3,7 @@
 app.eurxb.finance
 
 contact@eurxb.finance
+
 [Twitter](https://twitter.com/EURxbfinance)
 
 The EURxb is an ERC20 Euro Stable coin that earns real time interest of 7% per annum for the duration of the protocol’s bond reserves’ term. The EURxb is collateralised by ISIN registered securities (green bonds) as ERC721 NFTs which is further overcollateralized (at a rate of 133%) by tokenized ERC721 NFT security assets.
