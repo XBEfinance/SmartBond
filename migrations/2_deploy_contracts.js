@@ -53,7 +53,7 @@ module.exports = function (deployer, network) {
       await deployer.link(TokenAccessRoles, DDP);
       await deployer.link(TokenAccessRoles, EURxb);
     } else if (network.startsWith('rinkeby')) {
-      if (network === 'rinkeby_part_one' || network === 'rinkeby_part_one-fork') {
+      if (network === 'rinkeby_part_1' || network === 'rinkeby_part_1-fork') {
         await deployer.deploy(LinkedList, { overwrite: false });
         await deployer.link(LinkedList, EURxb);
 
@@ -64,7 +64,13 @@ module.exports = function (deployer, network) {
         await deployer.link(TokenAccessRoles, EURxb);
 
         const multisig = await deployer.deploy(
-          Multisig, [process.env.DEPLOYER_ACCOUNT], 1,
+          Multisig, [
+            process.env.FOUNDER_1,
+            process.env.FOUNDER_2,
+            process.env.FOUNDER_3,
+            process.env.FOUNDER_4,
+            process.env.FOUNDER_5],
+          3,
         );
         const allowList = await deployer.deploy(AllowList, multisig.address);
         const bond = await deployer.deploy(BondToken, baseBondURI);
@@ -73,6 +79,14 @@ module.exports = function (deployer, network) {
         );
         const ddp = await deployer.deploy(DDP, multisig.address);
         const eurxb = await deployer.deploy(EURxb, multisig.address);
+
+        // deploy Router and StakingManager contracts
+        const xbe = await deployer.deploy(XBE, ether('15000'));
+        await deployer.deploy(
+          StakingManager, xbe.address, process.env.START_TIME,
+        );
+
+        await deployer.deploy(Router, process.env.TEAM_ACCOUNT);
 
         await eurxb.configure(ddp.address);
 
@@ -94,15 +108,13 @@ module.exports = function (deployer, network) {
           allowList.address,
         );
 
-        await multisig.allowAccount(process.env.DEPLOYER_ACCOUNT);
-
-        // deploy Router and StakingManager contracts
-        const xbe = await deployer.deploy(XBE, ether('15000'));
-        await deployer.deploy(
-          StakingManager, xbe.address, process.env.START_TIME,
-        );
-
-        await deployer.deploy(Router, process.env.TEAM_ACCOUNT);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_1);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_2);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_3);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_4);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_5);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_6);
+        await multisig.allowAccount(process.env.TOKENS_OWNER_7);
 
         // const owner = process.env.DEPLOYER_ACCOUNT;
         // // deploy and configure USDT
@@ -122,14 +134,59 @@ module.exports = function (deployer, network) {
         // // deploy and configure DAI
         // const dai = await deployer.deploy(Dai, 1);
         // await dai.mint(owner, ether('1000000'));
-      } else if (network === 'rinkeby_part_two' || network === 'rinkeby_part_two-fork') {
+      } else if (network === 'rinkeby_part_2' || network === 'rinkeby_part_2-fork') {
+        const multisig = await Multisig.deployed();
+        for (let i = 0; i < 27; ++i) {
+          await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_1, '1333333333333333333333334',
+            365 * 86400 * 4);
+          console.log('minted SAT/Bond token #', i + 1);
+        }
+      } else if (network === 'rinkeby_part_3' || network === 'rinkeby_part_3-fork') {
+        const multisig = await Multisig.deployed();
+        for (let i = 0; i < 26; ++i) {
+          await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_1, '1333333333333333333333334',
+            365 * 86400 * 4);
+          console.log('minted SAT/Bond token #', i + 28);
+        }
+      } else if (network === 'rinkeby_part_4' || network === 'rinkeby_part_4-fork') {
+        const multisig = await Multisig.deployed();
+        for (let i = 0; i < 21; ++i) {
+          await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_2, '1333333333333333333333334',
+            365 * 86400 * 4);
+          console.log('minted SAT/Bond token #', i + 54);
+        }
+      } else if (network === 'rinkeby_part_5' || network === 'rinkeby_part_5-fork') {
         const multisig = await Multisig.deployed();
         for (let i = 0; i < 10; ++i) {
-          await multisig.mintSecurityAssetToken(process.env.TEAM_ACCOUNT, '1333333333333333333333334',
+          await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_3, '1333333333333333333333334',
             365 * 86400 * 4);
-          console.log('minted SAT/Bond token #', i);
+          console.log('minted SAT/Bond token #', i + 75);
         }
-      } else if (network === 'rinkeby_part_three' || network === 'rinkeby_part_three-fork') {
+        for (let i = 0; i < 10; ++i) {
+          await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_4, '1333333333333333333333334',
+            365 * 86400 * 4);
+          console.log('minted SAT/Bond token #', i + 85);
+        }
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_5, '1333333333333333333333334',
+          365 * 86400 * 4);
+          console.log('minted SAT/Bond token #', 95);
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_5, '1333333333333333333333334',
+          365 * 86400 * 4);
+        console.log('minted SAT/Bond token #', 96);
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_5, '1333333333333333333333334',
+          365 * 86400 * 4);
+        console.log('minted SAT/Bond token #', 97);
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_6, '1333333333333333333333334',
+          365 * 86400 * 4);
+        console.log('minted SAT/Bond token #', 98);
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_6, '1333333333333333333333334',
+          365 * 86400 * 4);
+        console.log('minted SAT/Bond token #', 99);
+        await multisig.mintSecurityAssetToken(process.env.TOKENS_OWNER_7, '1333333333333333333333334',
+          365 * 86400 * 4);
+        console.log('minted SAT/Bond token #', 100);
+
+      } else if (network === 'rinkeby_part_6' || network === 'rinkeby_part_6-fork') {
         const eurxb = await EURxb.deployed();
         // get stable coins contracts
         const usdt = await TetherToken.at('0x909f156198674167a8D42B6453179A26871Fbc96');

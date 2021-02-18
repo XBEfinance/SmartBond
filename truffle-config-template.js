@@ -31,8 +31,8 @@ const rinkebyNetworkConfig = {
   gasLimit: 5000000,
   from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
   websockets: true,
-  timeoutBlocks: 200,
-  gasPrice: 20000000000,
+  confirmations: 2,
+  gasPrice: 25000000000,
 };
 
 module.exports = {
@@ -70,9 +70,12 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     rinkeby: rinkebyNetworkConfig,
-    rinkeby_part_one: rinkebyNetworkConfig,
-    rinkeby_part_two: rinkebyNetworkConfig,
-    rinkeby_part_three: rinkebyNetworkConfig,
+    rinkeby_part_1: rinkebyNetworkConfig,
+    rinkeby_part_2: rinkebyNetworkConfig,
+    rinkeby_part_3: rinkebyNetworkConfig,
+    rinkeby_part_4: rinkebyNetworkConfig,
+    rinkeby_part_5: rinkebyNetworkConfig,
+    rinkeby_part_6: rinkebyNetworkConfig,
     // Useful for private networks
     // private: {
     // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
