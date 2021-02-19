@@ -157,82 +157,84 @@ contract('StakingManager', (accounts) => {
         /// day 1
         await this.sm.addStake(staker1, this.lpToken1.address, ether('10.0'));
 
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[1]).to.be.bignumber.equal(ether('0'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[1][0]).to.be.bignumber.equal(ether('0'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 2
         await this.sm.addStake(staker1, this.lpToken1.address, ether('10.0'));
         await this.sm.addStake(staker2, this.lpToken1.address, ether('10.0'));
 
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[1]).to.be.bignumber.equal(ether('999.9'));
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[0][0]).to.be.bignumber.equal(ether('10.0'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[1][0]).to.be.bignumber.equal(ether('999.9'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[0][0]).to.be.bignumber.equal(ether('10.0'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 3
         await this.sm.addStake(staker1, this.lpToken2.address, ether('10.0'));
         await this.sm.addStake(staker2, this.lpToken2.address, ether('10.0'));
-        await this.sm.claimReward(staker1);
+        await expectRevert(this.sm.claimReward(staker1), 'wait end time');
 
-        expect((await this.sm.calculateReward(staker2, new BN('0')))[1]).to.be.bignumber.equal(ether('195.0'));
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[1]).to.be.bignumber.equal(ether('0'));
-        expect(await this.lpToken1.balanceOf(staker1)).to.be.bignumber.equal(ether('20.0'));
-        expect(await this.lpToken2.balanceOf(staker1)).to.be.bignumber.equal(ether('0.0'));
-        expect(await this.xbe.balanceOf(staker1)).to.be.bignumber.equal(ether('1389.9'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[1][0]).to.be.bignumber.equal(ether('1389.9'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[0][0]).to.be.bignumber.equal(ether('20.0'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[1][0]).to.be.bignumber.equal(ether('195.0'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[0][0]).to.be.bignumber.equal(ether('10.0'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 4
-        await this.sm.claimReward(staker2);
-        await this.lpToken1.approve(this.sm.address, ether('10.0'), { from: staker2 });
-        await this.sm.addStake(staker2, this.lpToken1.address, ether('10.0'), { from: staker2 });
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[1][0]).to.be.bignumber.equal(ether('1666.5'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[0][0]).to.be.bignumber.equal(ether('20.0'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[1][0]).to.be.bignumber.equal(ether('333.3'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[0][0]).to.be.bignumber.equal(ether('10.0'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[1][1]).to.be.bignumber.equal(ether('207.45'));
+        expect((await this.sm.calculateReward(staker1, await time.latest()))[0][1]).to.be.bignumber.equal(ether('10.0'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[1][1]).to.be.bignumber.equal(ether('207.45'));
+        expect((await this.sm.calculateReward(staker2, await time.latest()))[0][1]).to.be.bignumber.equal(ether('10.0'));
 
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[0][1]).to.be.bignumber.equal(ether('10.0'));
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[1]).to.be.bignumber.equal(ether('207.45'));
-        expect((await this.sm.calculateReward(staker2, new BN('0')))[1]).to.be.bignumber.equal(ether('0.0'));
-        expect(await this.lpToken2.balanceOf(staker2)).to.be.bignumber.equal(ether('10.0'));
-        expect(await this.xbe.balanceOf(staker2)).to.be.bignumber.equal(ether('817.35'));
+        await this.sm.addStake(staker2, this.lpToken1.address, ether('10.0'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 5
-        await this.sm.claimReward(staker2);
-
-        expect((await this.sm.calculateReward(staker2, new BN('0')))[1]).to.be.bignumber.equal(ether('0.0'));
-        expect(await this.lpToken1.balanceOf(staker2)).to.be.bignumber.equal(ether('10.0'));
-        expect(await this.lpToken2.balanceOf(staker2)).to.be.bignumber.equal(ether('10.0'));
-        expect(await this.xbe.balanceOf(staker2)).to.be.bignumber.equal(ether('1138.95'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 6
-        await this.sm.addStake(staker1, this.lpToken3.address, ether('10.0'));
+        await this.sm.addStake(staker3, this.lpToken3.address, ether('10.0'));
         ///
         await time.increase(time.duration.days('1'));
         /// day 7
-        await this.sm.addStake(staker3, this.lpToken1.address, ether('10.0'));
+        await expectRevert(this.sm.claimReward(staker1), 'wait end time');
+        await expectRevert(this.sm.claimReward(staker2), 'wait end time');
+        await expectRevert(this.sm.claimReward(staker3), 'wait end time');
 
-        expect((await this.sm.calculateReward(staker1, new BN('0')))[0][2])
-          .to.be.bignumber.equal(ether('10.0'));
-        // expect((await this.sm.calculateReward(
-        //   staker3,
-        //   (await time.latest()).add(time.duration.days()),
-        // ))[0][0]).to.be.bignumber.equal(ether('10.0'));
-        ///
         await time.increase(time.duration.days('1'));
         /// day off
         await this.sm.claimReward(staker1);
+        await this.sm.claimReward(staker2);
         await this.sm.claimReward(staker3);
 
-        expect(await this.xbe.balanceOf(staker1)).to.be.bignumber.equal(ether('3013.05'));
-        expect(await this.xbe.balanceOf(staker2)).to.be.bignumber.equal(ether('1138.95'));
-        expect(await this.xbe.balanceOf(staker3)).to.be.bignumber.equal(ether('192.9'));
+        expect(await this.xbe.balanceOf(staker1)).to.be.bignumber.equal(ether('2874.15'));
+        expect(await this.xbe.balanceOf(staker2)).to.be.bignumber.equal(ether('1540.95'));
+        expect(await this.xbe.balanceOf(staker3)).to.be.bignumber.equal(ether('415.5'));
+
+        expect(await this.lpToken1.balanceOf(staker1)).to.be.bignumber.equal(ether('20'));
+        expect(await this.lpToken1.balanceOf(staker2)).to.be.bignumber.equal(ether('20'));
+        expect(await this.lpToken1.balanceOf(staker3)).to.be.bignumber.equal(ether('0'));
+
+        expect(await this.lpToken2.balanceOf(staker1)).to.be.bignumber.equal(ether('10'));
+        expect(await this.lpToken2.balanceOf(staker2)).to.be.bignumber.equal(ether('10'));
+        expect(await this.lpToken2.balanceOf(staker3)).to.be.bignumber.equal(ether('0'));
+
+        expect(await this.lpToken3.balanceOf(staker1)).to.be.bignumber.equal(ether('0'));
+        expect(await this.lpToken3.balanceOf(staker2)).to.be.bignumber.equal(ether('0'));
+        expect(await this.lpToken3.balanceOf(staker3)).to.be.bignumber.equal(ether('10'));
 
         expect((await this.sm.totalRewardForPool(this.lpToken1.address))[0])
-          .to.be.bignumber.equal(ether('485.7'));
+          .to.be.bignumber.equal(ether('0'));
         checkInfoPerDay((await this.sm.totalRewardForPool(this.lpToken1.address))[1], [
-          ether('0.'),
           ether('0'),
           ether('0'),
           ether('0'),
-          ether('263.1'),
-          ether('222.6'),
+          ether('0'),
+          ether('0'),
+          ether('0'),
           ether('0'),
         ]);
 

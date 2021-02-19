@@ -82,7 +82,7 @@ contract StakingManager is Initializable, IStakingManager {
     /**
      * @return end time
      */
-    function endTime() external view override returns (uint256) {
+    function endTime() public view override returns (uint256) {
         return _startTime + 7 days;
     }
 
@@ -150,15 +150,18 @@ contract StakingManager is Initializable, IStakingManager {
         uint256[4] memory usersLP;
         uint256[4] memory xbeReward;
 
+        uint256 _endTime = endTime();
         if (timestamp == 0) {
-            timestamp = block.timestamp;
+            timestamp = _endTime;
+        } else if (timestamp > _endTime) {
+            timestamp = _endTime;
         }
 
         for (uint256 i = 0; i < 4; ++i) {
             address pool = _pools[i];
             uint256 accumulateTotalLP = 0;
             uint256 accumulateUserLP = 0;
-            for (uint256 j = 0; j < 7 && timestamp > _startTime + (j + 1) * 86400; ++j) {
+            for (uint256 j = 0; j < 7 && timestamp >= _startTime + (j + 1) * 86400; ++j) {
                 Accumulator memory dailyAccumulator = _dailyAccumulator[pool][j];
                 accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
                 uint256 stake = _stakes[user][pool][j];
@@ -206,6 +209,7 @@ contract StakingManager is Initializable, IStakingManager {
      * @dev Pick up reward and LP tokens
      */
     function claimReward(address user) external {
+        require(block.timestamp > endTime(), "wait end time");
         uint256 xbeReward = 0;
         uint256[4] memory usersLP;
 
@@ -213,7 +217,7 @@ contract StakingManager is Initializable, IStakingManager {
             address pool = _pools[i];
             uint256 accumulateTotalLP = 0;
             uint256 accumulateUserLP = 0;
-            for (uint256 j = 0; j < 7 && block.timestamp > _startTime + (j + 1) * 86400; ++j) {
+            for (uint256 j = 0; j < 7; ++j) {
                 Accumulator storage dailyAccumulator = _dailyAccumulator[pool][j];
                 accumulateTotalLP = accumulateTotalLP.add(dailyAccumulator.lpTotalAmount);
                 uint256 stake = _stakes[user][pool][j];
