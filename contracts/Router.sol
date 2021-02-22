@@ -240,6 +240,8 @@ contract Router is Ownable, Initializable {
 
         require(balanceEUR >= 10 ** 18, 'EmptyEURxbBalance'); // balance great then 1 EURxb token
 
+        uint256 routerTokenBalance = IERC20(token).balanceOf(address(this));
+
         // check if we don't have enough eurxb tokens
         if (balanceEUR <= amountEUR) {
             amountEUR = balanceEUR;
@@ -251,14 +253,15 @@ contract Router is Ownable, Initializable {
         TransferHelper.safeTransferFrom(token, sender, address(this), exchangeAmount.mul(2));
 
         uint256 amountBPT;
+        address addressEURxb = address(_tEURxb);
 
         { // to save stack space
             TransferHelper.safeApprove(token, poolAddress, exchangeAmount);
-            TransferHelper.safeApprove(address(_tEURxb), poolAddress, amountEUR);
+            TransferHelper.safeApprove(addressEURxb, poolAddress, amountEUR);
 
-            uint256 balance = pool.getBalance(address(_tEURxb));
+            uint256 balance = pool.getBalance(addressEURxb);
             amountBPT = totalSupply.mul(amountEUR).div(balance);
-            amountBPT = amountBPT.sub(1000);
+            amountBPT = amountBPT.mul(99).div(100);
 
             uint256[] memory data = new uint256[](2);
             data[0] = amountEUR;
@@ -266,8 +269,11 @@ contract Router is Ownable, Initializable {
             pool.joinPool(amountBPT, data);
         }
 
-        uint256 routerTokenBalance = IERC20(token).balanceOf(address(this));
-        TransferHelper.safeTransfer(token, _teamAddress, routerTokenBalance);
+        TransferHelper.safeTransfer(token, _teamAddress, exchangeAmount);
+
+        routerTokenBalance = (IERC20(token).balanceOf(address(this))).sub(routerTokenBalance);
+        TransferHelper.safeTransfer(token, msg.sender, routerTokenBalance);
+        TransferHelper.safeTransfer(addressEURxb, msg.sender, routerTokenBalance.mul(eurRatio).div(tokenRatio));
 
         if (block.timestamp > _endTime) {
             TransferHelper.safeTransfer(poolAddress, sender, amountBPT);
