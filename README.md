@@ -12,24 +12,34 @@ The EURxb is an ERC20 Euro Stable coin that earns real time interest of 7% per a
 ## **Contracts Overview**
 
 [Allow List](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/AllowList.sol)
+Contract, to control user access to the EURxb.finance system (KYC)
 
 [EURxb BondToken (EBND)](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/BondToken.sol)
+Bond contract holding information about the bond to be issued (id, term, value)
 
 [DDP - Delegated Depenture Position](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/DDP.sol)
+Contract issuing eurxb and redeeming EBND tokens
 
 [EURxb](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/EURxb.sol)
+Euro Stable coin contract, which is mintined, when a new EBND token is issued
 
 [MultiSignature](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/MultiSignature.sol)
+A administration contract that has unique control rights over the entire EURxb.finance system (issuing and burning of Assets, adding and removing users, etc.)
 
 [OperatorVote](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/OperatorVote.sol)
+Basic contract for voting for a new MultiSignature contract operator.
 
 [EURxb Router - Atomic swap module](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/Router.sol)
+A contract that provides the ability to add liquidity to 4 pools: uniswap pairs: eurxb-usdt, eurxb-busd; balancer pools: eurxb-usdc, eurxb-dai
 
 [EURxb SecurityAssetToken (ESAT)](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/SecurityAssetToken.sol)
+Contract of the asset corresponding to the issued EBND token. The value of an asset token is always 33% higher than the value of an EBND token.
 
 [StakingManager](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/StakingManager.sol)
+Control token distribution contract (XBE) for staking LP tokens  of one of 4 pools (uniswap pairs: eurxb-usdt, eurxb-busd; balancer pools: eurxb-usdc, eurxb-dai)
 
 [EURxb Governance token - XBE](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/XBE.sol)
+Governance tokens, which in the future will be used in the governance contract  [WIP]
 
 
 
