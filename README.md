@@ -21,7 +21,7 @@ Bond contract holding information about the bond to be issued (id, term, value)
 Contract issuing eurxb and redeeming EBND tokens
 
 [EURxb](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/EURxb.sol)
-Euro Stable coin contract, which is mintined, when a new EBND token is issued
+Euro Stable coin contract, which is minted when a new EBND token is issued
 
 [MultiSignature](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/MultiSignature.sol)
 A administration contract that has unique control rights over the entire EURxb.finance system (issuing and burning of Assets, adding and removing users, etc.)
