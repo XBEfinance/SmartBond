@@ -35,6 +35,17 @@ const rinkebyNetworkConfig = {
   gasPrice: 25000000000,
 };
 
+const mainnetNetworkConfig = {
+  provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`),
+  network_id: 1, // mainnet's id
+  networkCheckTimeout: 10000000,
+  gasLimit: 5000000,
+  from: process.env.DEPLOYER_ACCOUNT, // contracts owner address
+  websockets: true,
+  confirmations: 2,
+  gasPrice: 125000000000,
+};
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -76,6 +87,13 @@ module.exports = {
     rinkeby_part_4: rinkebyNetworkConfig,
     rinkeby_part_5: rinkebyNetworkConfig,
     rinkeby_part_6: rinkebyNetworkConfig,
+    mainnet: mainnetNetworkConfig,
+    mainnet_part_1: mainnetNetworkConfig,
+    mainnet_part_2: mainnetNetworkConfig,
+    mainnet_part_3: mainnetNetworkConfig,
+    mainnet_part_4: mainnetNetworkConfig,
+    mainnet_part_5: mainnetNetworkConfig,
+    mainnet_part_6: mainnetNetworkConfig,
     // Useful for private networks
     // private: {
     // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
