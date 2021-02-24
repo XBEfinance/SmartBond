@@ -12,7 +12,7 @@ The EURxb is an ERC20 Euro Stable coin that earns real time interest of 7% per a
 ## **Contracts Overview**
 
 [Allow List](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/AllowList.sol)
-Contract, to control user access to the EURxb.finance system (KYC)
+Contract, to control user access to the EURxb.finance system 
 
 [EURxb BondToken (EBND)](https://github.com/EURxbfinance/SmartBond/blob/master/contracts/BondToken.sol)
 Bond contract holding information about the bond to be issued (id, term, value)
