@@ -145,6 +145,9 @@ module.exports = function (deployer, network) {
         console.log('minted SAT/Bond token #', 100);
 
       } else if (network === 'rinkeby_part_6' || network === 'rinkeby_part_6-fork') {
+      } else {
+        console.log('unsupported rinkeby fork', network);
+      }
     } else if (network.startsWith('mainnet')) {
       if (network === 'mainnet_part_1' || network === 'mainnet_part_1-fork') {
         await deployer.deploy(LinkedList, { overwrite: false });
