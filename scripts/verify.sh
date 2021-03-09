@@ -12,8 +12,6 @@ if [ -z $1 ]; then
   truffle run verify DDP --network rinkeby
   truffle run verify EURxb --network rinkeby
   truffle run verify XBE --network rinkeby
-  truffle run verify Router --network rinkeby
-  truffle run verify StakingManager --network rinkeby
 else
   if [ -z $2 ]; then
     truffle run verify $1 --network rinkeby
@@ -26,8 +24,6 @@ else
       truffle run verify DDP --network $2
       truffle run verify EURxb --network $2
       truffle run verify XBE --network $2
-      truffle run verify Router --network $2
-      truffle run verify StakingManager --network $2
     else
       truffle run verify $1 --network $2
     fi

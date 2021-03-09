@@ -13,9 +13,6 @@ else
   # remove previous build
   rm -rf ./build
 
-  # build third party contracts
-  ./scripts/third_party_build.sh
-
   # build our contracts
   generate_truffle_config "0.6.3" ".\/contracts"
   truffle compile
